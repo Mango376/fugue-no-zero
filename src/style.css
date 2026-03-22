@@ -1,0 +1,72 @@
+@import "tailwindcss";
+
+/* ========================
+字体声明
+======================== */
+@font-face {
+  font-family: '正文中文';
+  src: url('./assets/fonts/正文中文.ttf') format('truetype');
+}
+
+@font-face {
+  font-family: '内容英文';
+  src: url('./assets/fonts/内容英文.ttf') format('truetype');
+}
+
+@font-face {
+  font-family: '标题英文';
+  src: url('./assets/fonts/标题英文.otf') format('opentype');
+}
+
+@font-face {
+  font-family: '手写中文';
+  src: url('./assets/fonts/手写中文.ttf') format('truetype');
+}
+
+/* ========================
+全局重置 + 默认字体
+======================== */
+* {
+  margin: 0;
+  padding: 0;
+  box-sizing: border-box;
+  font-family: '正文中文', 'KaiTi', serif; /* ← 合并到一起 */
+}
+
+body {
+  overflow: hidden;
+  height: 100vh;
+  width: 100vw;
+  font-family: '正文中文', 'KaiTi', serif; /* ← 更新 */
+}
+
+#app {
+  height: 100vh;
+  width: 100vw;
+}
+
+/* ========================
+滚动条
+======================== */
+::-webkit-scrollbar {
+  width: 4px;
+}
+::-webkit-scrollbar-track {
+  background: transparent;
+}
+::-webkit-scrollbar-thumb {
+  background: #c4a882;
+  border-radius: 2px;
+}
+
+/* ========================
+通用动画
+======================== */
+.fade-enter-active,
+.fade-leave-active {
+  transition: opacity 1s ease;
+}
+.fade-enter-from,
+.fade-leave-to {
+  opacity: 0;
+}

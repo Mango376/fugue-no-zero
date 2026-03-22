@@ -1,0 +1,33 @@
+{
+  "name": "fugue-no-zero",
+  "private": true,
+  "version": "0.0.0",
+  "type": "module",
+  "scripts": {
+    "dev": "vite",
+    "build": "vite build",
+    "preview": "vite preview"
+  },
+  "dependencies": {
+    "@mujian/js-sdk": "^0.0.6-beta.75",
+    "axios": "^1.13.6",
+    "dexie": "^4.3.0",
+    "gsap": "^3.14.2",
+    "pinia": "^3.0.4",
+    "vue": "^3.5.25",
+    "vue-router": "^5.0.3"
+  },
+  "devDependencies": {
+    "@tailwindcss/vite": "^4.2.1",
+    "@vitejs/plugin-vue": "^6.0.2",
+    "autoprefixer": "^10.4.27",
+    "pixi.js": "^8.17.0",
+    "postcss": "^8.5.8",
+    "tailwindcss": "^4.2.1",
+    "vite": "^8.0.0-beta.13",
+    "vite-plugin-pwa": "^1.2.0"
+  },
+  "overrides": {
+    "vite": "^8.0.0-beta.13"
+  }
+}
