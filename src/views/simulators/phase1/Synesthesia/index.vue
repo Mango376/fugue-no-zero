@@ -1,253 +1,220 @@
 <template>
   <div class="synesthesia-shell">
     <Transition name="fade">
-      <section v-if="phase === 'title'" class="screen title-screen">
-        <div class="title-noise"></div>
-        <div class="title-glow"></div>
+      <section v-if="phase === 'title'" class="screen screen-title">
+        <div class="title-veil"></div>
+        <div class="title-grid"></div>
 
-        <div class="title-content">
-          <div class="eyebrow">PHASE I / SIMULATOR II</div>
-          <h1 class="title-main">{{ gameOverview.title }}</h1>
-          <div class="title-sub">{{ gameOverview.subtitle }}</div>
-          <p class="title-tagline">{{ gameOverview.tagline }}</p>
+        <div class="title-panel">
+          <div class="title-eyebrow">{{ titleContent.eyebrow }}</div>
+          <h1 class="title-main">{{ titleContent.title }}</h1>
+          <div class="title-sub">{{ titleContent.subtitle }}</div>
+          <p class="title-tagline">{{ titleContent.tagline }}</p>
 
-          <div class="title-card">
-            <p>{{ gameOverview.setting }}</p>
-            <p>{{ gameOverview.fantasy }}</p>
+          <div class="title-copy">
+            <p>{{ titleContent.summary }}</p>
+            <p>{{ titleContent.detail }}</p>
           </div>
 
           <div class="title-actions">
-            <button class="primary-btn" @click="enterWorkbench">进入开发骨架</button>
-            <button class="ghost-btn" @click="$router.push('/')">返回主界面</button>
+            <button class="btn-primary" @click="startNewGame">开始新游戏</button>
+            <button
+              class="btn-secondary"
+              :class="{ disabled: !hasSave || isCheckingSave }"
+              :disabled="!hasSave || isCheckingSave"
+              @click="continueGame"
+            >
+              继续游戏
+            </button>
+          </div>
+
+          <div class="title-status">
+            <span v-if="isCheckingSave">正在检查存档...</span>
+            <span v-else-if="hasSave">{{ titleContent.continueHint }}</span>
+            <span v-else>当前没有可继续的进度。</span>
+          </div>
+
+          <div class="title-footer">
+            <button class="text-link" @click="goHome">返回主界面</button>
           </div>
         </div>
       </section>
     </Transition>
 
     <Transition name="fade">
-      <section v-if="phase === 'workbench'" class="screen workbench-screen">
-        <header class="topbar">
-          <button class="back-btn" @click="goBackToTitle">‹ 返回</button>
-          <div class="topbar-meta">
-            <div class="topbar-label">SYNESTHESIA WORKBENCH</div>
-            <div class="topbar-sub">第二个模拟器的内容骨架与提示词拆分</div>
+      <section v-if="phase === 'background_intro'" class="screen screen-intro">
+        <header class="intro-topbar">
+          <button class="text-link" @click="goToPrevBackgroundPage">返回</button>
+          <div class="progress-label">背景介绍 {{ backgroundPage + 1 }} / {{ backgroundTotal }}</div>
+        </header>
+
+        <div class="intro-card">
+          <div class="intro-kicker">{{ currentBackgroundPage.kicker }}</div>
+          <h2 class="intro-title">{{ currentBackgroundPage.title }}</h2>
+          <div class="intro-divider"></div>
+
+          <div class="intro-body">
+            <p v-for="(paragraph, index) in currentBackgroundPage.paragraphs" :key="index">
+              {{ paragraph }}
+            </p>
+          </div>
+
+          <div class="intro-actions">
+            <button class="btn-secondary" @click="returnToTitle">返回标题</button>
+            <button class="btn-primary" @click="goToNextBackgroundPage">
+              {{ backgroundPage + 1 === backgroundTotal ? '继续介绍' : '下一页' }}
+            </button>
+          </div>
+        </div>
+      </section>
+    </Transition>
+
+    <Transition name="fade">
+      <section v-if="phase === 'identity_intro'" class="screen screen-intro intro-identity">
+        <header class="intro-topbar">
+          <button class="text-link" @click="goToPrevIdentityPage">返回</button>
+          <div class="progress-label">身份介绍 {{ identityPage + 1 }} / {{ identityTotal }}</div>
+        </header>
+
+        <div class="intro-card identity-card">
+          <div class="intro-kicker">{{ currentIdentityPage.kicker }}</div>
+          <h2 class="intro-title">{{ currentIdentityPage.title }}</h2>
+          <div class="identity-role">{{ playerProfile.title }}</div>
+          <div class="identity-workplace">{{ playerProfile.workplace }}</div>
+          <div class="intro-divider"></div>
+
+          <div class="intro-body">
+            <p v-for="(paragraph, index) in currentIdentityPage.paragraphs" :key="index">
+              {{ paragraph }}
+            </p>
+          </div>
+
+          <div class="intro-actions">
+            <button class="btn-secondary" @click="goToPrevIdentityPage">上一页</button>
+            <button class="btn-primary" @click="goToNextIdentityPage">
+              {{ identityPage + 1 === identityTotal ? '进入主界面' : '下一页' }}
+            </button>
+          </div>
+        </div>
+      </section>
+    </Transition>
+
+    <Transition name="fade">
+      <section v-if="phase === 'hub'" class="screen screen-hub">
+        <header class="hub-topbar">
+          <button class="text-link" @click="returnToTitle">标题页</button>
+          <div class="hub-topbar-actions">
+            <button class="btn-secondary compact" @click="saveHubProgress">{{ hubActions.saveLabel }}</button>
+            <button class="btn-secondary compact" @click="goHome">返回主界面</button>
           </div>
         </header>
 
-        <main class="workbench-grid">
-          <aside class="panel-nav">
-            <button
-              v-for="panel in panels"
-              :key="panel.id"
-              class="nav-btn"
-              :class="{ active: activePanel === panel.id }"
-              @click="setActivePanel(panel.id)"
-            >
-              {{ panel.label }}
-            </button>
-          </aside>
+        <main class="hub-main">
+          <section class="hero-card">
+            <div class="hero-kicker">CURRENT ROLE</div>
+            <h2 class="hero-title">{{ playerProfile.title }}</h2>
+            <div class="hero-sub">{{ playerProfile.workplace }}</div>
+            <p class="hero-text">{{ playerProfile.brief }}</p>
+            <p class="hero-creed">{{ playerProfile.creed }}</p>
+          </section>
 
-          <section class="content-panel">
-            <template v-if="activePanel === 'overview'">
-              <div class="section-head">
-                <div class="section-kicker">Project Overview</div>
-                <h2>项目定位</h2>
-              </div>
-
-              <div class="info-block">
-                <p>{{ gameOverview.setting }}</p>
-                <p>{{ gameOverview.fantasy }}</p>
-              </div>
-
-              <div class="card-grid two-col">
-                <article class="info-card">
-                  <div class="card-title">五感系统</div>
-                  <div v-for="item in sensorSystem" :key="item.id" class="list-row">
-                    <strong>{{ item.name }}</strong>
-                    <span>{{ item.symptom }}</span>
-                  </div>
-                </article>
-
-                <article class="info-card">
-                  <div class="card-title">异常等级</div>
-                  <div v-for="item in anomalyLevels" :key="item.level" class="list-row">
-                    <strong>{{ item.level }}</strong>
-                    <span>{{ item.desc }}</span>
-                  </div>
-                </article>
-              </div>
-            </template>
-
-            <template v-else-if="activePanel === 'loop'">
-              <div class="section-head">
-                <div class="section-kicker">Core Loop</div>
-                <h2>核心游戏循环</h2>
-              </div>
-
-              <div class="timeline">
-                <article v-for="step in gameLoopSteps" :key="step.id" class="timeline-item">
-                  <div class="timeline-dot"></div>
-                  <div class="timeline-body">
-                    <div class="timeline-title">{{ step.title }}</div>
-                    <div class="timeline-text">{{ step.detail }}</div>
-                  </div>
-                </article>
-              </div>
-
-              <div class="info-card">
-                <div class="card-title">AI 调用边界</div>
-                <div v-for="item in aiTimeline" :key="item.trigger" class="list-row">
-                  <strong>{{ item.trigger }}</strong>
-                  <span>{{ item.behavior }}</span>
+          <section class="hub-grid">
+            <article class="hub-card stats-card">
+              <div class="card-head">当前信息</div>
+              <div class="stats-grid">
+                <div v-for="item in hubStats" :key="item.label" class="stat-tile">
+                  <div class="stat-label">{{ item.label }}</div>
+                  <div class="stat-value">{{ item.value }}</div>
+                  <div class="stat-meta">{{ item.meta }}</div>
                 </div>
               </div>
-            </template>
+            </article>
 
-            <template v-else-if="activePanel === 'systems'">
-              <div class="section-head">
-                <div class="section-kicker">Systems</div>
-                <h2>治疗与环境系统</h2>
+            <article class="hub-card environment-card">
+              <div class="card-head">当前环境</div>
+              <div class="environment-phase">{{ currentEnvironment.label }}</div>
+              <div class="environment-name">{{ currentEnvironment.name }}</div>
+              <p class="environment-text">{{ currentEnvironment.description }}</p>
+            </article>
+
+            <article class="hub-card equipment-card">
+              <div class="hub-card-header">
+                <div class="card-head">设备概览</div>
+                <button
+                  v-if="isMobileLayout"
+                  class="collapse-btn"
+                  type="button"
+                  @click="toggleEquipmentSection"
+                >
+                  {{ equipmentExpanded ? '收起' : '展开' }}
+                </button>
               </div>
-
-              <div class="card-grid two-col">
-                <article class="info-card">
-                  <div class="card-title">治疗仪结构</div>
-                  <div v-for="device in deviceSystem" :key="device.sense" class="device-row">
-                    <div class="device-name">{{ device.sense }}</div>
-                    <div class="chip-row">
-                      <span v-for="module in device.modules" :key="module" class="chip">{{ module }}</span>
-                    </div>
+              <div v-if="isMobileLayout && !equipmentExpanded" class="collapsed-summary">
+                {{ equipmentSummary.length }} 台设备已收纳，展开后可查看模块与等级概览。
+              </div>
+              <div v-show="!isMobileLayout || equipmentExpanded" class="equipment-list">
+                <div v-for="item in equipmentSummary" :key="item.id" class="equipment-row">
+                  <div class="equipment-meta">
+                    <div class="equipment-name">{{ item.name }}</div>
+                    <div class="equipment-desc">{{ item.summary }}</div>
                   </div>
-                </article>
-
-                <article class="info-card">
-                  <div class="card-title">收费与升级规则</div>
-                  <div v-for="rule in economyRules" :key="rule" class="plain-row">{{ rule }}</div>
-                </article>
-              </div>
-
-              <div class="info-card">
-                <div class="card-title">环境干扰池</div>
-                <div class="card-grid three-col">
-                  <div v-for="factor in environmentFactors" :key="factor.name" class="mini-card">
-                    <div class="mini-card-title">{{ factor.name }}</div>
-                    <div class="mini-card-text">{{ factor.impact }}</div>
+                  <div class="equipment-level">
+                    <span>{{ item.levelText }}</span>
+                    <small>{{ item.moduleCount }}</small>
                   </div>
                 </div>
               </div>
-            </template>
+            </article>
 
-            <template v-else-if="activePanel === 'patients'">
-              <div class="section-head">
-                <div class="section-kicker">Preset Patients</div>
-                <h2>前期样例患者</h2>
+            <article class="hub-card action-card">
+              <div class="card-head">主行动入口</div>
+              <p class="action-copy">
+                诊所已经准备就绪。下一阶段将从这里接入患者进门、问诊、诊断与治疗的正式循环。
+              </p>
+              <button class="btn-primary action-btn" @click="startPatientFlow">{{ hubActions.primaryLabel }}</button>
+              <div v-if="hubNotice" class="hub-notice">{{ hubNotice }}</div>
+            </article>
+
+            <article class="hub-card snapshot-card">
+              <div class="hub-card-header">
+                <div class="card-head">当前系统快照</div>
+                <button
+                  v-if="isMobileLayout"
+                  class="collapse-btn"
+                  type="button"
+                  @click="toggleSnapshotSection"
+                >
+                  {{ snapshotExpanded ? '收起' : '展开' }}
+                </button>
               </div>
-
-              <div class="patient-layout">
-                <div class="patient-list">
-                  <button
-                    v-for="patient in presetPatients"
-                    :key="patient.id"
-                    class="patient-tab"
-                    :class="{ active: selectedPatientId === patient.id }"
-                    @click="selectPatient(patient.id)"
-                  >
-                    <div class="patient-tab-name">{{ patient.name }}</div>
-                    <div class="patient-tab-job">{{ patient.job }}</div>
-                  </button>
-                </div>
-
-                <div class="patient-detail info-card">
-                  <div class="card-title">{{ selectedPatient.name }}</div>
-                  <div class="detail-row">
-                    <span class="detail-label">职业定位</span>
-                    <span>{{ selectedPatient.job }}</span>
-                  </div>
-                  <div class="detail-row">
-                    <span class="detail-label">核心牵挂</span>
-                    <span>{{ selectedPatient.attachment }}</span>
-                  </div>
-                  <div class="detail-row vertical">
-                    <span class="detail-label">症状样例</span>
-                    <div class="chip-row">
-                      <span v-for="item in selectedPatient.symptoms" :key="item" class="chip strong">{{ item }}</span>
-                    </div>
-                  </div>
-                  <div class="detail-note">{{ selectedPatient.note }}</div>
+              <div v-if="isMobileLayout && !snapshotExpanded" class="collapsed-summary">
+                {{ systemSnapshot.length }} 条系统说明已收纳，需要时再展开查看。
+              </div>
+              <div v-show="!isMobileLayout || snapshotExpanded">
+                <div v-for="item in systemSnapshot" :key="item" class="snapshot-row">
+                  {{ item }}
                 </div>
               </div>
-
-              <div class="prompt-box">
-                <div class="prompt-head">
-                  <div>
-                    <div class="card-title">提示词预览</div>
-                    <div class="prompt-sub">把 Prompt 相关代码提前拆出来，后面接 AI 时可以直接用。</div>
-                  </div>
-                  <div class="prompt-switch">
-                    <button
-                      class="switch-btn"
-                      :class="{ active: promptMode === 'seed' }"
-                      @click="setPromptMode('seed')"
-                    >
-                      档案生成
-                    </button>
-                    <button
-                      class="switch-btn"
-                      :class="{ active: promptMode === 'dialogue' }"
-                      @click="setPromptMode('dialogue')"
-                    >
-                      问诊对话
-                    </button>
-                    <button
-                      class="switch-btn"
-                      :class="{ active: promptMode === 'treatment' }"
-                      @click="setPromptMode('treatment')"
-                    >
-                      治疗反馈
-                    </button>
-                  </div>
-                </div>
-
-                <pre class="prompt-preview">{{ promptPreview }}</pre>
-              </div>
-            </template>
-
-            <template v-else-if="activePanel === 'architecture'">
-              <div class="section-head">
-                <div class="section-kicker">Architecture</div>
-                <h2>代码拆分方案</h2>
-              </div>
-
-              <div class="card-grid two-col">
-                <article class="info-card">
-                  <div class="card-title">当前目录结构</div>
-                  <div v-for="item in fileStructure" :key="item" class="plain-row">{{ item }}</div>
-                </article>
-
-                <article class="info-card">
-                  <div class="card-title">开发里程碑</div>
-                  <div v-for="item in devMilestones" :key="item" class="plain-row">{{ item }}</div>
-                </article>
-              </div>
-
-              <div class="card-grid two-col">
-                <article class="info-card">
-                  <div class="card-title">系统提示词</div>
-                  <pre class="plain-pre">{{ systemPrompt }}</pre>
-                </article>
-
-                <article class="info-card">
-                  <div class="card-title">世界书条目</div>
-                  <div v-for="entry in worldBook" :key="entry.id" class="world-row">
-                    <strong>{{ entry.title }}</strong>
-                    <span>{{ entry.content }}</span>
-                  </div>
-                </article>
-              </div>
-            </template>
+            </article>
           </section>
         </main>
       </section>
+    </Transition>
+
+    <Transition name="modal-fade">
+      <div v-if="showConfirmNewGameModal" class="modal-overlay" @click.self="cancelStartNewGame">
+        <div class="modal-card">
+          <div class="modal-kicker">覆盖确认</div>
+          <div class="modal-title">检测到现有存档。</div>
+          <p class="modal-text">
+            开始新游戏会覆盖当前《共觉之境》的进度，并从背景介绍第一页重新开始。
+          </p>
+          <div class="modal-actions">
+            <button class="btn-secondary" @click="cancelStartNewGame">取消</button>
+            <button class="btn-primary" @click="confirmStartNewGame">确认覆盖</button>
+          </div>
+        </div>
+      </div>
     </Transition>
   </div>
 </template>
@@ -257,30 +224,40 @@ import { useGameLogic } from './composables/useGameLogic'
 
 const {
   phase,
-  activePanel,
-  panels,
-  promptMode,
-  selectedPatientId,
-  selectedPatient,
-  promptPreview,
-  enterWorkbench,
-  goBackToTitle,
-  setActivePanel,
-  selectPatient,
-  setPromptMode,
-  aiTimeline,
-  anomalyLevels,
-  deviceSystem,
-  devMilestones,
-  economyRules,
-  environmentFactors,
-  fileStructure,
-  gameLoopSteps,
-  gameOverview,
-  presetPatients,
-  sensorSystem,
-  systemPrompt,
-  worldBook
+  hasSave,
+  isCheckingSave,
+  showConfirmNewGameModal,
+  hubNotice,
+  backgroundPage,
+  identityPage,
+  playerProfile,
+  currentBackgroundPage,
+  currentIdentityPage,
+  currentEnvironment,
+  hubStats,
+  equipmentSummary,
+  backgroundTotal,
+  identityTotal,
+  titleContent,
+  hubActions,
+  systemSnapshot,
+  isMobileLayout,
+  equipmentExpanded,
+  snapshotExpanded,
+  startNewGame,
+  confirmStartNewGame,
+  cancelStartNewGame,
+  continueGame,
+  goHome,
+  returnToTitle,
+  goToNextBackgroundPage,
+  goToPrevBackgroundPage,
+  goToNextIdentityPage,
+  goToPrevIdentityPage,
+  saveHubProgress,
+  startPatientFlow,
+  toggleEquipmentSection,
+  toggleSnapshotSection
 } = useGameLogic()
 </script>
 
@@ -290,10 +267,10 @@ const {
   height: 100vh;
   overflow: hidden;
   background:
-    radial-gradient(circle at top, rgba(38, 73, 91, 0.32), transparent 42%),
-    radial-gradient(circle at bottom, rgba(118, 62, 41, 0.22), transparent 46%),
-    #071015;
-  color: #ddd3c3;
+    radial-gradient(circle at top, rgba(35, 78, 96, 0.24), transparent 32%),
+    radial-gradient(circle at 80% 20%, rgba(164, 85, 55, 0.12), transparent 24%),
+    linear-gradient(180deg, #081116 0%, #050a0e 100%);
+  color: #ddd3c2;
   font-family: 'KaiTi', 'STKaiti', serif;
 }
 
@@ -303,217 +280,297 @@ const {
 }
 
 .fade-enter-active,
-.fade-leave-active {
-  transition: opacity 0.35s ease;
+.fade-leave-active,
+.modal-fade-enter-active,
+.modal-fade-leave-active {
+  transition: opacity 0.3s ease;
 }
 
 .fade-enter-from,
-.fade-leave-to {
+.fade-leave-to,
+.modal-fade-enter-from,
+.modal-fade-leave-to {
   opacity: 0;
 }
 
-.title-screen {
+.screen-title {
   display: flex;
   align-items: center;
   justify-content: center;
-  overflow: hidden;
   position: relative;
+  overflow: hidden;
 }
 
-.title-noise,
-.title-glow {
+.title-veil,
+.title-grid {
   position: absolute;
   inset: 0;
 }
 
-.title-noise {
-  background: repeating-linear-gradient(
-    180deg,
-    rgba(255, 255, 255, 0.02),
-    rgba(255, 255, 255, 0.02) 2px,
-    transparent 2px,
-    transparent 5px
-  );
-  opacity: 0.35;
-  pointer-events: none;
-}
-
-.title-glow {
+.title-veil {
   background:
-    radial-gradient(circle at 30% 30%, rgba(70, 130, 150, 0.25), transparent 35%),
-    radial-gradient(circle at 70% 70%, rgba(180, 96, 64, 0.2), transparent 30%);
+    radial-gradient(circle at 25% 25%, rgba(82, 133, 148, 0.18), transparent 28%),
+    radial-gradient(circle at 70% 70%, rgba(179, 103, 69, 0.14), transparent 24%);
 }
 
-.title-content {
+.title-grid {
+  background-image:
+    linear-gradient(rgba(255, 255, 255, 0.025) 1px, transparent 1px),
+    linear-gradient(90deg, rgba(255, 255, 255, 0.025) 1px, transparent 1px);
+  background-size: 34px 34px;
+  mask-image: linear-gradient(180deg, rgba(0, 0, 0, 0.8), transparent);
+}
+
+.title-panel,
+.intro-card,
+.hero-card,
+.hub-card,
+.modal-card {
+  background: rgba(8, 16, 20, 0.82);
+  border: 1px solid rgba(219, 194, 139, 0.14);
+  box-shadow:
+    inset 0 0 0 1px rgba(255, 255, 255, 0.02),
+    0 18px 48px rgba(0, 0, 0, 0.25);
+}
+
+.title-panel {
   position: relative;
   z-index: 1;
-  width: min(720px, calc(100vw - 3rem));
+  width: min(760px, calc(100vw - 2.5rem));
+  border-radius: 22px;
+  padding: 2rem 2.1rem;
   display: flex;
   flex-direction: column;
   gap: 1rem;
 }
 
-.eyebrow {
-  font-size: 0.72rem;
-  letter-spacing: 0.32em;
-  color: rgba(177, 164, 127, 0.72);
+.title-eyebrow,
+.intro-kicker,
+.hero-kicker,
+.card-head,
+.modal-kicker,
+.progress-label {
+  font-family: 'Courier New', monospace;
+  font-size: 0.68rem;
+  letter-spacing: 0.28em;
+  color: #9aa08b;
+}
+
+.title-main,
+.intro-title,
+.hero-title {
+  margin: 0;
+  font-weight: normal;
+  color: #f0dfb1;
 }
 
 .title-main {
-  margin: 0;
-  font-size: clamp(2.8rem, 7vw, 5.2rem);
-  font-weight: normal;
-  letter-spacing: 0.18em;
-  color: #f1e0b1;
-  text-shadow: 0 0 24px rgba(234, 205, 121, 0.18);
+  font-size: clamp(2.8rem, 7vw, 5rem);
+  letter-spacing: 0.16em;
+}
+
+.title-sub,
+.hero-sub,
+.environment-phase,
+.environment-name,
+.identity-role,
+.identity-workplace {
+  letter-spacing: 0.16em;
 }
 
 .title-sub {
   font-size: 1rem;
-  letter-spacing: 0.28em;
-  color: #8da5aa;
+  color: #88a0a6;
 }
 
-.title-tagline {
-  margin: 0;
-  font-size: 1rem;
+.title-tagline,
+.hero-text,
+.hero-creed,
+.intro-body p,
+.action-copy,
+.modal-text,
+.environment-text,
+.snapshot-row,
+.stat-meta,
+.equipment-desc,
+.title-copy p,
+.title-status,
+.collapsed-summary {
   line-height: 1.9;
-  color: #bbb09c;
+  color: #c0b4a2;
 }
 
-.title-card {
-  padding: 1.3rem 1.5rem;
-  background: rgba(8, 17, 22, 0.76);
-  border: 1px solid rgba(215, 191, 133, 0.16);
-  border-radius: 12px;
-  box-shadow: 0 10px 40px rgba(0, 0, 0, 0.28);
-}
-
-.title-card p {
+.title-tagline,
+.title-copy p,
+.title-status,
+.hero-text,
+.hero-creed,
+.action-copy,
+.modal-text,
+.environment-text {
   margin: 0;
-  line-height: 1.95;
-  color: #c6baab;
 }
 
-.title-card p + p {
-  margin-top: 0.9rem;
+.title-copy {
+  display: flex;
+  flex-direction: column;
+  gap: 0.8rem;
+  padding: 1.15rem 1.25rem;
+  border-radius: 16px;
+  background: rgba(255, 255, 255, 0.025);
+  border: 1px solid rgba(219, 194, 139, 0.08);
 }
 
-.title-actions {
+.title-actions,
+.intro-actions,
+.modal-actions,
+.hub-topbar-actions {
   display: flex;
   gap: 0.8rem;
   flex-wrap: wrap;
 }
 
-.primary-btn,
-.ghost-btn,
-.back-btn,
-.nav-btn,
-.patient-tab,
-.switch-btn {
+.btn-primary,
+.btn-secondary,
+.text-link,
+.collapse-btn {
   font-family: inherit;
   cursor: pointer;
   transition: all 0.2s ease;
 }
 
-.primary-btn,
-.ghost-btn,
-.back-btn {
-  padding: 0.8rem 1.35rem;
-  border-radius: 8px;
-  font-size: 0.92rem;
+.btn-primary,
+.btn-secondary {
+  border-radius: 10px;
+  padding: 0.78rem 1.3rem;
+  font-size: 0.88rem;
   letter-spacing: 0.12em;
 }
 
-.primary-btn {
-  background: linear-gradient(135deg, rgba(148, 98, 56, 0.94), rgba(104, 65, 34, 0.94));
-  border: 1px solid rgba(241, 213, 146, 0.34);
-  color: #f7edd4;
+.btn-primary {
+  border: 1px solid rgba(237, 211, 151, 0.36);
+  background: linear-gradient(135deg, #8a5938, #5e3925);
+  color: #f6e9cf;
 }
 
-.primary-btn:hover {
+.btn-primary:hover {
   transform: translateY(-1px);
-  filter: brightness(1.05);
+  filter: brightness(1.04);
 }
 
-.ghost-btn,
-.back-btn {
+.btn-secondary {
+  border: 1px solid rgba(219, 194, 139, 0.18);
   background: transparent;
-  border: 1px solid rgba(215, 191, 133, 0.2);
-  color: #af9f82;
+  color: #b9ac8e;
 }
 
-.ghost-btn:hover,
-.back-btn:hover {
-  border-color: rgba(215, 191, 133, 0.42);
-  color: #decda8;
+.btn-secondary:hover:not(.disabled) {
+  border-color: rgba(219, 194, 139, 0.34);
+  color: #ead9af;
 }
 
-.workbench-screen {
+.btn-secondary.disabled,
+.btn-secondary:disabled {
+  opacity: 0.35;
+  cursor: not-allowed;
+}
+
+.btn-secondary.compact {
+  padding: 0.55rem 1rem;
+  font-size: 0.78rem;
+}
+
+.text-link {
+  border: none;
+  background: transparent;
+  color: #96876a;
+  padding: 0;
+  font-size: 0.82rem;
+  letter-spacing: 0.08em;
+}
+
+.text-link:hover {
+  color: #d8c89d;
+}
+
+.title-footer {
+  padding-top: 0.2rem;
+}
+
+.screen-intro,
+.screen-hub {
   display: flex;
   flex-direction: column;
 }
 
-.topbar {
+.intro-topbar,
+.hub-topbar {
   display: flex;
   align-items: center;
-  gap: 1rem;
+  justify-content: space-between;
   padding: 1.2rem 1.4rem;
-  border-bottom: 1px solid rgba(215, 191, 133, 0.08);
-  background: rgba(5, 12, 16, 0.72);
+  border-bottom: 1px solid rgba(219, 194, 139, 0.08);
+  background: rgba(6, 12, 16, 0.76);
 }
 
-.topbar-meta {
+.intro-card {
+  width: min(760px, calc(100vw - 2.5rem));
+  margin: auto;
+  border-radius: 20px;
+  padding: 1.8rem 1.9rem;
+}
+
+.intro-title {
+  font-size: clamp(2rem, 4vw, 3rem);
+  line-height: 1.25;
+}
+
+.identity-card {
+  border-color: rgba(123, 156, 167, 0.16);
+}
+
+.identity-role {
+  margin-top: 0.8rem;
+  font-size: 0.96rem;
+  color: #d8c897;
+}
+
+.identity-workplace,
+.hero-sub {
+  margin-top: 0.3rem;
+  font-size: 0.78rem;
+  color: #7f97a0;
+}
+
+.intro-divider {
+  width: 100%;
+  height: 1px;
+  margin: 1rem 0 1.2rem;
+  background: linear-gradient(90deg, transparent, rgba(219, 194, 139, 0.25), transparent);
+}
+
+.intro-body {
   display: flex;
   flex-direction: column;
-  gap: 0.18rem;
+  gap: 0.9rem;
 }
 
-.topbar-label {
-  font-size: 0.72rem;
-  letter-spacing: 0.32em;
-  color: #b4a378;
+.intro-body p {
+  margin: 0;
+  font-size: 0.98rem;
 }
 
-.topbar-sub {
-  font-size: 0.82rem;
-  color: #6d7d84;
+.intro-actions {
+  margin-top: 1.4rem;
+  justify-content: space-between;
 }
 
-.workbench-grid {
+.screen-hub {
+  overflow: hidden;
+}
+
+.hub-main {
   flex: 1;
-  min-height: 0;
-  display: grid;
-  grid-template-columns: 220px 1fr;
-}
-
-.panel-nav {
-  padding: 1.1rem;
-  display: flex;
-  flex-direction: column;
-  gap: 0.7rem;
-  border-right: 1px solid rgba(215, 191, 133, 0.08);
-  background: rgba(5, 11, 14, 0.64);
-}
-
-.nav-btn {
-  text-align: left;
-  padding: 0.9rem 1rem;
-  border-radius: 10px;
-  border: 1px solid rgba(215, 191, 133, 0.08);
-  background: rgba(255, 255, 255, 0.02);
-  color: #90846d;
-  font-size: 0.88rem;
-}
-
-.nav-btn:hover,
-.nav-btn.active {
-  border-color: rgba(215, 191, 133, 0.28);
-  background: rgba(215, 191, 133, 0.08);
-  color: #e2d2a8;
-}
-
-.content-panel {
   overflow-y: auto;
   padding: 1.4rem;
   display: flex;
@@ -521,297 +578,261 @@ const {
   gap: 1rem;
 }
 
-.section-head {
-  display: flex;
-  flex-direction: column;
-  gap: 0.3rem;
+.hero-card {
+  border-radius: 18px;
+  padding: 1.5rem 1.6rem;
 }
 
-.section-head h2 {
-  margin: 0;
-  font-size: 1.75rem;
-  font-weight: normal;
-  letter-spacing: 0.08em;
-  color: #f1dfb4;
+.hero-title {
+  font-size: clamp(1.8rem, 4vw, 2.7rem);
+  margin-top: 0.4rem;
 }
 
-.section-kicker {
-  font-size: 0.68rem;
-  letter-spacing: 0.28em;
-  color: #7f928f;
-  font-family: 'Courier New', monospace;
+.hero-text {
+  margin-top: 0.9rem;
 }
 
-.info-block,
-.info-card,
-.prompt-box {
-  background: rgba(8, 16, 20, 0.74);
-  border: 1px solid rgba(215, 191, 133, 0.12);
-  border-radius: 14px;
-  padding: 1.1rem 1.2rem;
-  box-shadow: inset 0 0 0 1px rgba(255, 255, 255, 0.015);
+.hero-creed {
+  margin-top: 0.6rem;
+  color: #d4c59d;
 }
 
-.info-block p,
-.plain-row,
-.mini-card-text,
-.timeline-text,
-.detail-note,
-.world-row span,
-.list-row span,
-.plain-pre,
-.prompt-sub {
-  line-height: 1.85;
-  color: #bdb29f;
-}
-
-.info-block p {
-  margin: 0;
-}
-
-.info-block p + p {
-  margin-top: 0.7rem;
-}
-
-.card-grid {
+.hub-grid {
   display: grid;
-  gap: 1rem;
-}
-
-.two-col {
   grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 1rem;
 }
 
-.three-col {
+.hub-card {
+  border-radius: 18px;
+  padding: 1.15rem 1.2rem;
+}
+
+.hub-card-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 0.8rem;
+}
+
+.stats-grid {
+  margin-top: 0.9rem;
+  display: grid;
   grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 0.8rem;
 }
 
-.card-title {
-  margin-bottom: 0.9rem;
-  font-size: 1rem;
-  color: #e8d7a9;
+.stat-tile {
+  padding: 0.9rem;
+  border-radius: 14px;
+  background: rgba(255, 255, 255, 0.025);
+  border: 1px solid rgba(219, 194, 139, 0.08);
+}
+
+.stat-label {
+  font-size: 0.72rem;
+  color: #948a75;
   letter-spacing: 0.08em;
 }
 
-.list-row,
-.world-row,
-.detail-row {
-  display: flex;
-  gap: 0.8rem;
-  align-items: flex-start;
-  padding: 0.65rem 0;
-  border-top: 1px solid rgba(215, 191, 133, 0.08);
+.stat-value {
+  margin-top: 0.55rem;
+  font-size: 1.45rem;
+  color: #f0dfb1;
 }
 
-.list-row:first-of-type,
-.world-row:first-of-type,
-.detail-row:first-of-type {
-  border-top: none;
-  padding-top: 0;
+.stat-meta {
+  margin-top: 0.45rem;
+  font-size: 0.72rem;
 }
 
-.list-row strong,
-.world-row strong,
-.detail-label,
-.timeline-title,
-.device-name,
-.mini-card-title,
-.patient-tab-name {
-  color: #e6d7b6;
-  font-weight: normal;
+.environment-phase {
+  margin-top: 0.9rem;
+  font-size: 0.78rem;
+  color: #87a1aa;
 }
 
-.list-row strong,
-.world-row strong,
-.detail-label {
-  min-width: 7rem;
+.environment-name {
+  margin-top: 0.35rem;
+  font-size: 1.4rem;
+  color: #e7d7aa;
 }
 
-.timeline {
+.environment-text {
+  margin-top: 0.75rem;
+}
+
+.equipment-list {
+  margin-top: 0.9rem;
   display: flex;
   flex-direction: column;
   gap: 0.7rem;
 }
 
-.timeline-item {
-  display: grid;
-  grid-template-columns: 18px 1fr;
-  gap: 0.8rem;
-}
-
-.timeline-dot {
-  width: 10px;
-  height: 10px;
-  margin-top: 0.5rem;
-  border-radius: 50%;
-  background: linear-gradient(135deg, #e0c88f, #5f95a7);
-  box-shadow: 0 0 12px rgba(224, 200, 143, 0.26);
-}
-
-.timeline-body {
-  padding: 0.9rem 1rem;
-  background: rgba(8, 16, 20, 0.58);
-  border: 1px solid rgba(215, 191, 133, 0.08);
-  border-radius: 12px;
-}
-
-.device-row + .device-row {
-  margin-top: 1rem;
-}
-
-.chip-row {
-  display: flex;
-  flex-wrap: wrap;
-  gap: 0.45rem;
-}
-
-.chip {
-  padding: 0.25rem 0.6rem;
-  border-radius: 999px;
-  border: 1px solid rgba(215, 191, 133, 0.16);
-  background: rgba(215, 191, 133, 0.05);
-  color: #bcae8f;
-  font-size: 0.72rem;
-}
-
-.chip.strong {
-  color: #eadcb8;
-  border-color: rgba(215, 191, 133, 0.3);
-}
-
-.mini-card {
+.collapsed-summary {
+  margin-top: 0.9rem;
   padding: 0.85rem 0.9rem;
-  background: rgba(255, 255, 255, 0.02);
-  border: 1px solid rgba(215, 191, 133, 0.08);
-  border-radius: 12px;
+  border-radius: 14px;
+  background: rgba(255, 255, 255, 0.025);
+  border: 1px solid rgba(219, 194, 139, 0.08);
 }
 
-.plain-row + .plain-row {
-  margin-top: 0.7rem;
-}
-
-.patient-layout {
-  display: grid;
-  grid-template-columns: 280px 1fr;
-  gap: 1rem;
-}
-
-.patient-list {
-  display: flex;
-  flex-direction: column;
-  gap: 0.7rem;
-}
-
-.patient-tab {
-  padding: 0.95rem 1rem;
-  text-align: left;
-  border-radius: 12px;
-  border: 1px solid rgba(215, 191, 133, 0.08);
-  background: rgba(8, 16, 20, 0.62);
-}
-
-.patient-tab.active,
-.patient-tab:hover {
-  border-color: rgba(215, 191, 133, 0.24);
-  background: rgba(215, 191, 133, 0.08);
-}
-
-.patient-tab-job {
-  margin-top: 0.25rem;
-  font-size: 0.72rem;
-  line-height: 1.65;
-  color: #7f8d92;
-}
-
-.patient-detail {
-  min-height: 100%;
-}
-
-.detail-row.vertical {
-  flex-direction: column;
-  gap: 0.45rem;
-}
-
-.detail-note {
-  margin-top: 1rem;
-  padding-top: 1rem;
-  border-top: 1px solid rgba(215, 191, 133, 0.08);
-}
-
-.prompt-box {
-  display: flex;
-  flex-direction: column;
-  gap: 1rem;
-}
-
-.prompt-head {
+.equipment-row {
   display: flex;
   align-items: flex-start;
   justify-content: space-between;
   gap: 1rem;
+  padding: 0.85rem 0.9rem;
+  border-radius: 14px;
+  background: rgba(255, 255, 255, 0.025);
+  border: 1px solid rgba(219, 194, 139, 0.08);
 }
 
-.prompt-switch {
+.equipment-name {
+  color: #e7d7ab;
+  font-size: 0.96rem;
+}
+
+.equipment-desc {
+  margin-top: 0.25rem;
+  font-size: 0.78rem;
+}
+
+.equipment-level {
   display: flex;
-  gap: 0.5rem;
-  flex-wrap: wrap;
-}
-
-.switch-btn {
-  padding: 0.45rem 0.85rem;
-  border-radius: 999px;
-  border: 1px solid rgba(215, 191, 133, 0.1);
-  background: rgba(255, 255, 255, 0.02);
-  color: #887b63;
-  font-size: 0.75rem;
-}
-
-.switch-btn.active,
-.switch-btn:hover {
-  color: #eadcb6;
-  border-color: rgba(215, 191, 133, 0.28);
-  background: rgba(215, 191, 133, 0.08);
-}
-
-.prompt-preview,
-.plain-pre {
-  margin: 0;
-  white-space: pre-wrap;
-  word-break: break-word;
-  font-family: 'Courier New', monospace;
-  font-size: 0.73rem;
-  line-height: 1.75;
-  color: #b9c3c0;
-}
-
-.world-row {
   flex-direction: column;
-  gap: 0.3rem;
+  align-items: flex-end;
+  gap: 0.2rem;
+  color: #d8c898;
 }
 
-@media (max-width: 980px) {
-  .workbench-grid,
-  .patient-layout,
-  .two-col,
-  .three-col {
+.equipment-level span {
+  font-size: 1rem;
+}
+
+.equipment-level small {
+  font-size: 0.7rem;
+  color: #7f918f;
+}
+
+.action-card,
+.snapshot-card {
+  align-self: stretch;
+}
+
+.action-copy {
+  margin-top: 0.9rem;
+}
+
+.action-btn {
+  margin-top: 1rem;
+  width: 100%;
+}
+
+.collapse-btn {
+  border: 1px solid rgba(219, 194, 139, 0.18);
+  border-radius: 999px;
+  background: rgba(255, 255, 255, 0.02);
+  color: #b9ac8e;
+  padding: 0.28rem 0.75rem;
+  font-size: 0.76rem;
+  letter-spacing: 0.08em;
+}
+
+.collapse-btn:hover {
+  border-color: rgba(219, 194, 139, 0.34);
+  color: #ead9af;
+}
+
+.hub-notice {
+  margin-top: 0.8rem;
+  padding: 0.8rem 0.9rem;
+  border-radius: 12px;
+  background: rgba(123, 156, 167, 0.08);
+  border: 1px solid rgba(123, 156, 167, 0.18);
+  color: #bdd0d6;
+  line-height: 1.8;
+}
+
+.snapshot-card {
+  grid-column: 1 / -1;
+}
+
+.snapshot-row + .snapshot-row {
+  margin-top: 0.75rem;
+  padding-top: 0.75rem;
+  border-top: 1px solid rgba(219, 194, 139, 0.08);
+}
+
+.modal-overlay {
+  position: absolute;
+  inset: 0;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: rgba(3, 6, 8, 0.76);
+  backdrop-filter: blur(4px);
+  z-index: 20;
+}
+
+.modal-card {
+  width: min(440px, calc(100vw - 2rem));
+  border-radius: 18px;
+  padding: 1.5rem;
+}
+
+.modal-title {
+  margin-top: 0.55rem;
+  font-size: 1.5rem;
+  color: #f0dfb1;
+}
+
+.modal-text {
+  margin-top: 0.9rem;
+}
+
+.modal-actions {
+  margin-top: 1.3rem;
+  justify-content: flex-end;
+}
+
+@media (max-width: 900px) {
+  .hub-grid,
+  .stats-grid {
     grid-template-columns: 1fr;
   }
 
-  .panel-nav {
-    flex-direction: row;
-    overflow-x: auto;
-    border-right: none;
-    border-bottom: 1px solid rgba(215, 191, 133, 0.08);
-  }
-
-  .nav-btn {
-    min-width: 132px;
-  }
-
-  .prompt-head,
-  .title-actions {
+  .intro-actions,
+  .title-actions,
+  .hub-topbar,
+  .intro-topbar,
+  .hub-topbar-actions,
+  .modal-actions {
     flex-direction: column;
     align-items: stretch;
+  }
+
+  .hub-main {
+    padding: 1rem;
+  }
+
+  .title-panel,
+  .intro-card,
+  .hero-card,
+  .hub-card {
+    padding: 1.1rem;
+  }
+
+  .hub-card-header {
+    align-items: flex-start;
+  }
+
+  .equipment-row {
+    flex-direction: column;
+  }
+
+  .equipment-level {
+    align-items: flex-start;
   }
 }
 </style>
