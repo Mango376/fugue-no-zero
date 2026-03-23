@@ -42,6 +42,33 @@ class SaveService {
         return save ? save.gameState : null
     }
 
+    async saveArchive(scriptId, gameState, saveName = '') {
+        const archiveId = `${scriptId}-archive-${Date.now()}`
+        await db.saves.add({
+            scriptId: archiveId,
+            saveName: saveName || archiveId,
+            saveTime: new Date().toISOString(),
+            savedAt: Date.now(),
+            gameState
+        })
+        return archiveId
+    }
+
+    async loadById(scriptId) {
+        const save = await db.saves
+            .where('scriptId')
+            .equals(scriptId)
+            .first()
+        return save ? save.gameState : null
+    }
+
+    async getSavesByPrefix(prefix) {
+        const saves = await db.saves.toArray()
+        return saves
+            .filter(item => typeof item.scriptId === 'string' && item.scriptId.startsWith(prefix))
+            .sort((a, b) => (b.savedAt || 0) - (a.savedAt || 0))
+    }
+
     // 删除存档
     async deleteSave(scriptId) {
         await db.saves

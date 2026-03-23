@@ -1847,7 +1847,7 @@ function formatPatientDate(value) {
    结算
 =========================== */
 .screen-settlement { align-items: center; justify-content: center; background: #05050e; padding: 2rem; }
-.breath-screen { max-width: 480px; text-align: center; padding: 2rem; }
+.breath-screen { max-width: 460px; text-align: center; padding: 2rem; }
 .breath-text { font-size: 0.9rem; color: #706860; line-height: 2.3; letter-spacing: 0.08em; }
 .settlement-card {
   max-width: 480px;
