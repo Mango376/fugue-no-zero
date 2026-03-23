@@ -138,6 +138,7 @@ const showPatientStatusModal = ref(false) // 现状弹窗
   const baseMaxLoad = ref(100) 
   const resonance = ref(0)
   const currentRound = ref(0)
+  const isDying = ref(false)
   const dyingRoundsLeft = ref(0)
 
   // ---------- 叙事内容 ----------

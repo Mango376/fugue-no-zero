@@ -1340,6 +1340,7 @@ function getParticleStyle(n) {
    01. CSS 变量系统（Gemini配色）
 ============================================================ */
 
+/* 放在 <style scoped> 最顶部，.dream-layer 之前 */
 .dream-layer {
   --bg-paper:       #F7F4EB;
   --bg-panel:       rgba(255, 255, 255, 0.65);
@@ -2378,21 +2379,22 @@ function getParticleStyle(n) {
 }
 
 /* 选择提示：隐藏节省空间，hover才显示 */
+
 .card-enter {
   font-size: 0.65rem;
   color: var(--border-brass);
   letter-spacing: 0.1em;
   text-align: right;
-  transition: color 0.3s;
   margin-top: 0;
   opacity: 0;
-  transition: opacity 0.2s;
+  transition: opacity 0.2s, color 0.3s;  /* ✅ 合并 */
 }
 .script-card:hover .card-enter {
   color: var(--border-gold);
   font-weight: bold;
   opacity: 1;
 }
+
 
 .script-card-loading {
   align-items: center;
