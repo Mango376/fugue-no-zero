@@ -63,7 +63,7 @@ export const BACKGROUND_PAGES = [
 ]
 
 export const PLAYER_PROFILE = {
-  title: '下城区仿生人感官维修师',
+  title: '维修师',
   workplace: '边缘诊所 / 感官维修台',
   brief: '你负责接待感染“共觉”的仿生人，问诊、诊断、治疗，并在必要时约定复诊。',
   creed: '你不替任何人评判生活，只负责把错乱的感官重新校准。'

@@ -1,4 +1,4 @@
-import { computed, onBeforeUnmount, onMounted, ref } from 'vue'
+﻿import { computed, onBeforeUnmount, onMounted, ref } from 'vue'
 import { useRouter } from 'vue-router'
 import aiService from '@/services/aiService'
 import saveService from '@/services/saveService'
@@ -37,6 +37,7 @@ const SCRIPT_ID = 'synesthesia'
 const ARCHIVE_PREFIX = `${SCRIPT_ID}-archive-`
 const VALID_PHASES = ['background_intro', 'hub', 'consult', 'treatment', 'patient_feedback']
 const VALID_CONSULT_STAGES = ['arrival_intro', 'questioning']
+const VALID_CONSULT_ENTRY_STAGES = ['pre_consult', 'entering_consult', 'questioning']
 const AUTOSAVE_DELAY = 400
 const BASE_TREATMENT_FEE = 30
 const DEFAULT_SYMPTOM_LEVEL = 1
@@ -48,6 +49,10 @@ function createEmptyMapping() {
 
 function createEmptyLevelMap() {
   return {}
+}
+
+function buildDefaultModuleLevels(sourceId) {
+  return Object.fromEntries((SENSE_TARGETS[sourceId] ?? []).map(targetId => [targetId, 1]))
 }
 
 function normalizeTargets(sourceId, targets = []) {
@@ -149,7 +154,11 @@ function formatMappingSummary(mapping) {
 function cloneEquipmentOverview(source = DEFAULT_EQUIPMENT_OVERVIEW) {
   return source.map(item => ({
     ...item,
-    modules: Array.isArray(item.modules) ? [...item.modules] : []
+    modules: Array.isArray(item.modules) ? [...item.modules] : [],
+    moduleLevels: {
+      ...buildDefaultModuleLevels(item.id),
+      ...(item.moduleLevels ?? {})
+    }
   }))
 }
 
@@ -242,6 +251,7 @@ function buildDefaultGameState() {
   return {
     phase: DEFAULT_GAME_STATE.phase,
     consultStage: DEFAULT_GAME_STATE.consultStage,
+    consultEntryStage: 'pre_consult',
     backgroundPage: DEFAULT_GAME_STATE.backgroundPage,
     credits: DEFAULT_GAME_STATE.credits,
     patientCount: DEFAULT_GAME_STATE.patientCount,
@@ -251,13 +261,18 @@ function buildDefaultGameState() {
     environmentPhase: DEFAULT_GAME_STATE.environmentPhase,
     playerProfile: { ...PLAYER_PROFILE },
     equipmentOverview: cloneEquipmentOverview(),
+    waitingPatients: [],
+    lastQueueRollAt: Date.now(),
     activePatient: null,
     consultationHistory: [],
+    consultOptions: CONSULT_OPTION_LIBRARY.map(item => ({ ...item })),
     consultNotes: '',
     diagnosisDraft: createEmptyMapping(),
     confirmedDiagnosis: createEmptyMapping(),
     diagnosisUsesLeft: DIAGNOSIS_LIMIT,
     treatmentDraft: createEmptyMapping(),
+    isConsultNarrativeReady: false,
+    isConsultOptionsReady: false,
     revisitQueue: [],
     completedCases: []
   }
@@ -464,17 +479,21 @@ function applyRevisitMutation(patient, environment, currentDay) {
   return nextPatient
 }
 
-function getEquipmentLevel(equipmentOverview, sourceId) {
+function getEquipmentLevel(equipmentOverview, sourceId, targetId = '') {
   const matched = Array.isArray(equipmentOverview)
     ? equipmentOverview.find(item => item.id === sourceId)
     : null
+
+  if (targetId) {
+    return Math.max(1, Number(matched?.moduleLevels?.[targetId] || 1))
+  }
 
   return Math.max(1, Number(matched?.level || 1))
 }
 
 function buildSettlementItems(resolvedMappings, equipmentList) {
   return getMappingPairs(resolvedMappings).map(pair => {
-    const level = getEquipmentLevel(equipmentList, pair.source)
+    const level = getEquipmentLevel(equipmentList, pair.source, pair.target)
     return {
       id: pair.key,
       source: pair.source,
@@ -498,7 +517,50 @@ function normalizeNarrativeError(error) {
   return error?.message || '生成文本时出现问题。'
 }
 
-function parseOptionPayload(text) {
+function sanitizeDoctorLine(text = '', label = '') {
+  return String(text || '')
+    .replace(/^[—\-–\s]+/, '')
+    .replace(new RegExp(`^${label}[：:、\\s-]*`), '')
+    .replace(/\s+/g, ' ')
+    .trim()
+}
+
+function normalizeQuestionText(text = '') {
+  return String(text || '')
+    .replace(/[—\-–\s，。！？、：:“”"'`]/g, '')
+    .trim()
+}
+
+function isRepeatedQuestion(candidate, historyLines = [], currentLines = []) {
+  const normalized = normalizeQuestionText(candidate)
+  if (!normalized) return true
+
+  return [...historyLines, ...currentLines].some(item => {
+    const compare = normalizeQuestionText(item)
+    if (!compare) return false
+    return normalized === compare || normalized.includes(compare) || compare.includes(normalized)
+  })
+}
+
+function buildFallbackOptions(recentDoctorLines = []) {
+  const selected = []
+
+  CONSULT_OPTION_LIBRARY.forEach((item, index) => {
+    const doctorLine = sanitizeDoctorLine(item.doctorLine, item.label)
+    if (isRepeatedQuestion(doctorLine, recentDoctorLines, selected.map(option => option.doctorLine))) return
+
+    selected.push({
+      id: item.id || `fallback-${index + 1}`,
+      label: item.label || `问诊选项 ${index + 1}`,
+      doctorLine,
+      promptFocus: item.promptFocus || '继续追问当前最需要澄清的症状。'
+    })
+  })
+
+  return selected.slice(0, 4)
+}
+
+function parseOptionPayload(text, recentDoctorLines = []) {
   const cleaned = String(text || '').trim().replace(/^```json\s*/i, '').replace(/^```\s*/i, '').replace(/\s*```$/, '')
   const parsed = JSON.parse(cleaned)
 
@@ -506,16 +568,36 @@ function parseOptionPayload(text) {
     throw new Error('选项返回格式错误。')
   }
 
-  return parsed
+  const selected = parsed
     .filter(item => item && typeof item === 'object')
     .map((item, index) => ({
       id: item.id || `dynamic-${index + 1}`,
       label: item.label || `问诊选项 ${index + 1}`,
-      doctorLine: item.doctorLine || item.label || '再说细一点。',
-      promptFocus: item.promptFocus || '继续追问患者当前最明显的不适。',
-      hint: item.hint || '继续逼近真相'
+      doctorLine: sanitizeDoctorLine(item.doctorLine || item.label || '再说细一点。', item.label || ''),
+      promptFocus: item.promptFocus || '继续追问患者当前最明显的不适。'
     }))
+    .filter((item, index, list) => {
+      if (!item.doctorLine) return false
+      return !isRepeatedQuestion(
+        item.doctorLine,
+        recentDoctorLines,
+        list.slice(0, index).map(option => option.doctorLine)
+      )
+    })
     .slice(0, 4)
+
+  if (selected.length >= 4) {
+    return selected
+  }
+
+  const fallbackPool = buildFallbackOptions(recentDoctorLines)
+  fallbackPool.forEach(item => {
+    if (selected.length >= 4) return
+    if (isRepeatedQuestion(item.doctorLine, recentDoctorLines, selected.map(option => option.doctorLine))) return
+    selected.push(item)
+  })
+
+  return selected.slice(0, 4)
 }
 
 function buildGeneratedMappings(seed) {
@@ -535,10 +617,13 @@ export function useGameLogic() {
 
   const phase = ref('title')
   const consultStage = ref('arrival_intro')
+  const consultEntryStage = ref('pre_consult')
   const hasSave = ref(false)
   const hasArchiveSave = ref(false)
   const isCheckingSave = ref(true)
   const showConfirmNewGameModal = ref(false)
+  const showUpgradeFailureModal = ref(false)
+  const upgradeFailureMessage = ref('')
   const showProfilePanel = ref(false)
   const isMobileLayout = ref(false)
   const equipmentExpanded = ref(true)
@@ -557,13 +642,18 @@ export function useGameLogic() {
   const lastTimeSyncAt = ref(Date.now())
   const nextPatientSerial = ref(1)
   const environmentPhase = ref(1)
+  const nowTick = ref(Date.now())
   const playerProfile = ref({ ...PLAYER_PROFILE })
   const equipmentOverview = ref(cloneEquipmentOverview())
+  const waitingPatients = ref([])
+  const lastQueueRollAt = ref(Date.now())
 
   const activePatient = ref(null)
   const consultationHistory = ref([])
   const consultOptions = ref(CONSULT_OPTION_LIBRARY.map(item => ({ ...item })))
   const consultNotes = ref('')
+  const isConsultNarrativeReady = ref(false)
+  const isConsultOptionsReady = ref(false)
   const diagnosisDraft = ref(createEmptyMapping())
   const confirmedDiagnosis = ref(createEmptyMapping())
   const diagnosisUsesLeft = ref(DIAGNOSIS_LIMIT)
@@ -573,6 +663,21 @@ export function useGameLogic() {
   const archiveSaves = ref([])
 
   let autosaveTimer = null
+  let queueTimer = null
+  let consultRequestToken = 0
+
+  function beginConsultRequest() {
+    consultRequestToken += 1
+    return consultRequestToken
+  }
+
+  function invalidateConsultRequest() {
+    consultRequestToken += 1
+  }
+
+  function isCurrentConsultRequest(token) {
+    return token === consultRequestToken
+  }
 
   function updateDiagnosisUses(value) {
     const nextValue = clamp(Number(value) || 0, 0, DIAGNOSIS_LIMIT)
@@ -584,13 +689,13 @@ export function useGameLogic() {
   }
 
   function createPatient(serial, envPhase) {
-    const job = pickFrom(PATIENT_JOB_POOL, serial * 2 + envPhase)
+    const job = pickFrom(PATIENT_JOB_POOL, serial * 7 + envPhase * 3)
     const generatedMappings = buildGeneratedMappings(serial + envPhase)
 
     return {
       id: `synesthesia-patient-${serial}-${Date.now()}`,
       serial,
-      name: pickFrom(PATIENT_NAME_POOL, serial + envPhase),
+      name: pickFrom(PATIENT_NAME_POOL, serial * 5 + envPhase * 2),
       job: job.title,
       jobContext: job.context,
       attachment: pickFrom(PATIENT_ATTACHMENT_POOL, serial * 3 + envPhase),
@@ -601,8 +706,70 @@ export function useGameLogic() {
       diagnosisUsesLeft: DIAGNOSIS_LIMIT,
       hiddenMappings: cloneMapping(generatedMappings),
       originalMappings: cloneMapping(generatedMappings),
-      trackingSheet: null
+      trackingSheet: null,
+      trackingSheetReady: false
     }
+  }
+
+  function maybeShiftEnvironment(daysPassed = 1) {
+    let nextPhase = environmentPhase.value
+
+    for (let index = 0; index < daysPassed; index += 1) {
+      const seed = gameDay.value + index + nextPatientSerial.value
+      if (seed % 100 < 42) {
+        nextPhase = computeEnvironmentPhase(gameDay.value + index + 1)
+      }
+    }
+
+    environmentPhase.value = nextPhase
+  }
+
+  function refreshPatientQueue() {
+    const now = Date.now()
+    const elapsed = Math.max(0, now - lastQueueRollAt.value)
+    const refreshTurns = Math.max(1, Math.floor(elapsed / (15 * 60 * 1000)))
+    let added = 0
+
+    for (let turn = 0; turn < refreshTurns; turn += 1) {
+      if (waitingPatients.value.length >= 3) break
+
+      const seed = nextPatientSerial.value + gameDay.value + turn + waitingPatients.value.length
+      if (seed % 100 < 48) {
+        waitingPatients.value = [
+          ...waitingPatients.value,
+          createPatient(nextPatientSerial.value, environmentPhase.value)
+        ].slice(0, 3)
+        nextPatientSerial.value += 1
+        added += 1
+      }
+    }
+
+    if (!waitingPatients.value.length && added === 0) {
+      waitingPatients.value = [createPatient(nextPatientSerial.value, environmentPhase.value)]
+      nextPatientSerial.value += 1
+    }
+
+    lastQueueRollAt.value = now
+    nowTick.value = now
+  }
+
+  function ensureQueueTimer() {
+    if (queueTimer) clearInterval(queueTimer)
+
+    queueTimer = setInterval(() => {
+      if (phase.value === 'consult' || phase.value === 'treatment' || phase.value === 'patient_feedback') return
+      refreshPatientQueue()
+      scheduleProgressSave()
+    }, 60000)
+  }
+
+  function popWaitingPatient() {
+    if (!waitingPatients.value.length) return null
+
+    const [nextPatient, ...rest] = waitingPatients.value
+    waitingPatients.value = rest
+    refreshPatientQueue()
+    return clonePatient(nextPatient)
   }
 
   function buildCompletedCaseRecord(outcome, extras = {}) {
@@ -649,9 +816,12 @@ export function useGameLogic() {
 
   function resetCaseState() {
     consultStage.value = 'arrival_intro'
+    consultEntryStage.value = 'pre_consult'
     consultationHistory.value = []
     consultOptions.value = CONSULT_OPTION_LIBRARY.map(item => ({ ...item }))
     consultNotes.value = ''
+    isConsultNarrativeReady.value = false
+    isConsultOptionsReady.value = false
     diagnosisDraft.value = createEmptyMapping()
     confirmedDiagnosis.value = createEmptyMapping()
     updateDiagnosisUses(DIAGNOSIS_LIMIT)
@@ -671,6 +841,7 @@ export function useGameLogic() {
     return {
       phase: phase.value,
       consultStage: consultStage.value,
+      consultEntryStage: consultEntryStage.value,
       backgroundPage: backgroundPage.value,
       credits: credits.value,
       patientCount: patientCount.value,
@@ -680,9 +851,14 @@ export function useGameLogic() {
       environmentPhase: environmentPhase.value,
       playerProfile: { ...playerProfile.value },
       equipmentOverview: cloneEquipmentOverview(equipmentOverview.value),
+      waitingPatients: waitingPatients.value.map(item => clonePatient(item)),
+      lastQueueRollAt: lastQueueRollAt.value,
       activePatient: clonePatient(activePatient.value),
       consultationHistory: consultationHistory.value.map(item => ({ ...item })),
+      consultOptions: consultOptions.value.map(item => ({ ...item })),
       consultNotes: consultNotes.value,
+      isConsultNarrativeReady: isConsultNarrativeReady.value,
+      isConsultOptionsReady: isConsultOptionsReady.value,
       diagnosisDraft: cloneMapping(diagnosisDraft.value),
       confirmedDiagnosis: cloneMapping(confirmedDiagnosis.value),
       diagnosisUsesLeft: diagnosisUsesLeft.value,
@@ -716,9 +892,13 @@ export function useGameLogic() {
     const nextConsultStage = VALID_CONSULT_STAGES.includes(rawState.consultStage)
       ? rawState.consultStage
       : fallback.consultStage
+    const nextConsultEntryStage = VALID_CONSULT_ENTRY_STAGES.includes(rawState.consultEntryStage)
+      ? rawState.consultEntryStage
+      : fallback.consultEntryStage
 
     phase.value = nextPhase
     consultStage.value = nextConsultStage
+    consultEntryStage.value = nextConsultEntryStage
     backgroundPage.value = clamp(Number(rawState.backgroundPage ?? fallback.backgroundPage), 0, BACKGROUND_PAGES.length - 1)
     credits.value = Number.isFinite(rawState.credits) ? rawState.credits : fallback.credits
     patientCount.value = Number.isFinite(rawState.patientCount) ? rawState.patientCount : fallback.patientCount
@@ -737,6 +917,10 @@ export function useGameLogic() {
     equipmentOverview.value = Array.isArray(rawState.equipmentOverview) && rawState.equipmentOverview.length > 0
       ? cloneEquipmentOverview(rawState.equipmentOverview)
       : cloneEquipmentOverview()
+    waitingPatients.value = Array.isArray(rawState.waitingPatients)
+      ? rawState.waitingPatients.map(item => clonePatient(item)).filter(Boolean).slice(0, 3)
+      : []
+    lastQueueRollAt.value = Number.isFinite(rawState.lastQueueRollAt) ? rawState.lastQueueRollAt : Date.now()
 
     activePatient.value = clonePatient(rawState.activePatient)
     if (activePatient.value && !activePatient.value.trackingSheet) {
@@ -746,8 +930,12 @@ export function useGameLogic() {
     consultationHistory.value = Array.isArray(rawState.consultationHistory)
       ? rawState.consultationHistory.map(item => ({ ...item }))
       : []
-    consultOptions.value = getConsultOptions()
+    consultOptions.value = Array.isArray(rawState.consultOptions) && rawState.consultOptions.length
+      ? rawState.consultOptions.map(item => ({ ...item }))
+      : getConsultOptions()
     consultNotes.value = typeof rawState.consultNotes === 'string' ? rawState.consultNotes : ''
+    isConsultNarrativeReady.value = Boolean(rawState.isConsultNarrativeReady)
+    isConsultOptionsReady.value = Boolean(rawState.isConsultOptionsReady)
     diagnosisDraft.value = normalizeMapping(rawState.diagnosisDraft)
     confirmedDiagnosis.value = normalizeMapping(rawState.confirmedDiagnosis)
     updateDiagnosisUses(rawState.diagnosisUsesLeft ?? activePatient.value?.diagnosisUsesLeft ?? DIAGNOSIS_LIMIT)
@@ -795,7 +983,8 @@ export function useGameLogic() {
 
     if (passedDays > 0) {
       gameDay.value += passedDays
-      environmentPhase.value = computeEnvironmentPhase(gameDay.value)
+      maybeShiftEnvironment(passedDays)
+      refreshPatientQueue()
     }
 
     lastTimeSyncAt.value = Date.now()
@@ -825,6 +1014,7 @@ export function useGameLogic() {
     phase.value = 'background_intro'
     lastTimeSyncAt.value = Date.now()
     environmentPhase.value = computeEnvironmentPhase(gameDay.value)
+    refreshPatientQueue()
     statusNotice.value = ''
     await saveProgress()
   }
@@ -860,6 +1050,7 @@ export function useGameLogic() {
 
     const passedDays = settleElapsedGameTime(saved)
     narrativeError.value = ''
+    refreshPatientQueue()
 
     if (passedDays > 0) {
       statusNotice.value = `离线期间过去了 ${passedDays} 个游戏日。`
@@ -880,6 +1071,11 @@ export function useGameLogic() {
       }
 
       await restoreFromSave(saved)
+
+      if (phase.value === 'background_intro' || phase.value === 'title') {
+        phase.value = 'hub'
+        await saveProgress()
+      }
     } catch (error) {
       console.error('Synesthesia 读取存档失败:', error)
       hasSave.value = false
@@ -912,6 +1108,35 @@ export function useGameLogic() {
   }
 
   async function returnToHub() {
+    invalidateConsultRequest()
+    isGeneratingText.value = false
+
+    if (consultEntryStage.value === 'questioning') {
+      isConsultNarrativeReady.value = consultationHistory.value.length > 0
+      isConsultOptionsReady.value = consultOptions.value.length > 0
+    }
+
+    if (consultEntryStage.value === 'entering_consult') {
+      if (consultationHistory.value.length) {
+        consultEntryStage.value = 'questioning'
+        consultStage.value = 'questioning'
+        isConsultNarrativeReady.value = true
+        if (!consultOptions.value.length) {
+          const recentDoctorLines = consultationHistory.value
+            .filter(item => item?.speaker === 'doctor')
+            .slice(-3)
+            .map(item => item.text)
+          consultOptions.value = buildFallbackOptions(recentDoctorLines)
+        }
+        isConsultOptionsReady.value = consultOptions.value.length > 0
+      } else {
+        consultEntryStage.value = 'pre_consult'
+        consultStage.value = 'arrival_intro'
+        isConsultNarrativeReady.value = false
+        isConsultOptionsReady.value = false
+      }
+    }
+
     phase.value = 'hub'
     statusNotice.value = ''
 
@@ -995,10 +1220,9 @@ export function useGameLogic() {
     }
   }
 
-  async function generateArrivalNarrative() {
+  async function generateArrivalNarrative(requestToken = null) {
     if (!activePatient.value) return
 
-    isGeneratingText.value = true
     narrativeError.value = ''
 
     try {
@@ -1010,6 +1234,10 @@ export function useGameLogic() {
       const reply = await aiService.generateReply(prompt, SYSTEM_PROMPT)
       const trimmed = reply?.trim()
 
+      if (requestToken !== null && !isCurrentConsultRequest(requestToken)) {
+        return
+      }
+
       if (!trimmed) {
         throw new Error('AI 返回了空白内容。')
       }
@@ -1017,15 +1245,16 @@ export function useGameLogic() {
       consultationHistory.value = [
         makeHistoryEntry({
           speaker: 'narrator',
-          label: activePatient.value.visitCount > 1 ? '复诊来访' : '来客',
+          label: activePatient.value.visitCount > 1 ? '复诊来访' : '到诊记录',
           text: trimmed,
           type: 'arrival'
         })
       ]
     } catch (error) {
+      if (requestToken !== null && !isCurrentConsultRequest(requestToken)) {
+        return
+      }
       narrativeError.value = normalizeNarrativeError(error)
-    } finally {
-      isGeneratingText.value = false
     }
   }
 
@@ -1051,81 +1280,105 @@ export function useGameLogic() {
   async function startPatientFlow() {
     if (isGeneratingText.value) return
 
+    if (activePatient.value) {
+      phase.value = 'consult'
+      statusNotice.value = '继续上次诊断。'
+      await saveProgress()
+      return
+    }
+
     resetCaseState()
 
     const revisitingPatient = pullDueRevisitPatient()
-    const nextPatient = revisitingPatient || createPatient(nextPatientSerial.value, environmentPhase.value)
+    refreshPatientQueue()
+    const nextPatient = revisitingPatient || popWaitingPatient()
 
-    if (!revisitingPatient) {
-      nextPatientSerial.value += 1
+    if (!nextPatient) {
+      statusNotice.value = '当前还没有患者到诊，门外暂时安静。'
+      await saveProgress()
+      return
     }
 
-    const nextTrackingSheet = await generateTrackingSheet(nextPatient)
-    if (revisitingPatient?.trackingSheet) {
-      nextTrackingSheet.originalMappings = cloneMapping(
-        revisitingPatient.trackingSheet.originalMappings ?? nextTrackingSheet.originalMappings
-      )
-      nextTrackingSheet.confirmedMappings = cloneMapping(revisitingPatient.trackingSheet.confirmedMappings)
-      nextTrackingSheet.resolvedMappings = cloneMapping(revisitingPatient.trackingSheet.resolvedMappings)
-    }
-    nextPatient.trackingSheet = nextTrackingSheet
+    nextPatient.trackingSheet = revisitingPatient?.trackingSheet
+      ? cloneTrackingSheet(revisitingPatient.trackingSheet)
+      : buildFallbackTrackingSheet(nextPatient, activeEnvironment.value)
+    nextPatient.trackingSheetReady = Boolean(revisitingPatient?.trackingSheet)
     activePatient.value = nextPatient
     updateDiagnosisUses(nextPatient.diagnosisUsesLeft)
     consultStage.value = 'arrival_intro'
+    consultEntryStage.value = 'pre_consult'
     phase.value = 'consult'
-    statusNotice.value = revisitingPatient
-      ? `${nextPatient.name} 按约定时间回来了。`
-      : HUB_ACTIONS.primaryHint
+    isConsultNarrativeReady.value = false
+    isConsultOptionsReady.value = false
+    statusNotice.value = revisitingPatient ? `复诊患者 ${nextPatient.name} 已到诊。` : '新的患者已经到诊。'
 
-    await saveProgress()
-    await generateArrivalNarrative()
     await saveProgress()
   }
 
   async function continueConsultFlow() {
-    consultStage.value = 'questioning'
+    if (!activePatient.value || isGeneratingText.value || consultEntryStage.value !== 'pre_consult') return
+
+    const requestToken = beginConsultRequest()
+    consultEntryStage.value = 'entering_consult'
+    consultStage.value = 'arrival_intro'
+    isConsultNarrativeReady.value = false
+    isConsultOptionsReady.value = false
+    isGeneratingText.value = true
     narrativeError.value = ''
-    await refreshConsultOptions()
     await saveProgress()
+
+    try {
+      if (activePatient.value && !activePatient.value.trackingSheetReady) {
+        const generatedTrackingSheet = await generateTrackingSheet(activePatient.value)
+        if (!isCurrentConsultRequest(requestToken)) return
+
+        activePatient.value.trackingSheet = generatedTrackingSheet
+        activePatient.value.trackingSheetReady = true
+      }
+
+      await generateArrivalNarrative(requestToken)
+      if (!isCurrentConsultRequest(requestToken)) return
+
+      isConsultNarrativeReady.value = consultationHistory.value.length > 0
+
+      if (!isConsultNarrativeReady.value) {
+        consultEntryStage.value = 'pre_consult'
+        return
+      }
+
+      await refreshConsultOptions(requestToken)
+      if (!isCurrentConsultRequest(requestToken)) return
+
+      isConsultOptionsReady.value = consultOptions.value.length > 0
+      consultEntryStage.value = 'questioning'
+      consultStage.value = 'questioning'
+    } finally {
+      if (isCurrentConsultRequest(requestToken)) {
+        isGeneratingText.value = false
+        await saveProgress()
+      }
+    }
   }
 
   function getConsultOptions() {
-    if (!activePatient.value) return CONSULT_OPTION_LIBRARY
-
-    return CONSULT_OPTION_LIBRARY.map(option => {
-      if (option.id === 'trigger') {
-        return {
-          ...option,
-          hint: activePatient.value.job
-        }
-      }
-
-      if (option.id === 'impact') {
-        return {
-          ...option,
-          hint: activePatient.value.attachment
-        }
-      }
-
-      if (option.id === 'environment') {
-        return {
-          ...option,
-          hint: activeEnvironment.value.name
-        }
-      }
-
-      return {
-        ...option,
-        hint: activePatient.value.speechStyle
-      }
-    })
+    return CONSULT_OPTION_LIBRARY.map((option, index) => ({
+      id: option.id || `library-${index + 1}`,
+      label: option.label || `问诊选项 ${index + 1}`,
+      doctorLine: sanitizeDoctorLine(option.doctorLine || option.label || '再说细一点。', option.label || ''),
+      promptFocus: option.promptFocus || '继续追问患者当前最明显的不适。'
+    }))
   }
 
-  async function refreshConsultOptions() {
+  async function refreshConsultOptions(requestToken = null) {
     if (!activePatient.value) {
       consultOptions.value = CONSULT_OPTION_LIBRARY.map(item => ({ ...item }))
-      return
+      return consultOptions.value
     }
+
+    const recentDoctorLines = consultationHistory.value
+      .filter(item => item?.speaker === 'doctor')
+      .slice(-3)
+      .map(item => item.text)
 
     try {
       const prompt = buildConsultOptionsPrompt({
@@ -1138,35 +1391,45 @@ export function useGameLogic() {
         confirmedDiagnosis: confirmedDiagnosis.value
       })
       const reply = await aiService.generateReply(prompt, SYSTEM_PROMPT)
-      const parsedOptions = parseOptionPayload(reply)
+      if (requestToken !== null && !isCurrentConsultRequest(requestToken)) {
+        return []
+      }
+
+      const parsedOptions = parseOptionPayload(reply, recentDoctorLines)
 
       if (parsedOptions.length >= 3) {
         consultOptions.value = parsedOptions
-        return
+        return consultOptions.value
       }
     } catch (error) {
+      if (requestToken !== null && !isCurrentConsultRequest(requestToken)) {
+        return []
+      }
       console.warn('Synesthesia 问诊选项生成失败，使用兜底选项:', error)
     }
 
-    consultOptions.value = getConsultOptions()
+    consultOptions.value = buildFallbackOptions(recentDoctorLines)
+    return consultOptions.value
   }
 
   async function chooseConsultOption(option) {
     if (!activePatient.value || isGeneratingText.value) return
 
-    consultStage.value = 'questioning'
-    isGeneratingText.value = true
-    narrativeError.value = ''
+    const requestToken = beginConsultRequest()
+    const historyBeforeChoice = [...consultationHistory.value]
+    const doctorEntry = makeHistoryEntry({
+      speaker: 'doctor',
+      label: '问诊',
+      text: option.doctorLine,
+      type: 'question'
+    })
 
-    consultationHistory.value = [
-      ...consultationHistory.value,
-      makeHistoryEntry({
-        speaker: 'doctor',
-        label: '问诊',
-        text: option.doctorLine,
-        type: 'question'
-      })
-    ]
+    consultStage.value = 'questioning'
+    consultEntryStage.value = 'questioning'
+    isGeneratingText.value = true
+    isConsultNarrativeReady.value = false
+    isConsultOptionsReady.value = false
+    narrativeError.value = ''
 
     try {
       const prompt = buildConsultReplyPrompt({
@@ -1174,7 +1437,10 @@ export function useGameLogic() {
         environment: activeEnvironment.value,
         trackingSheet: activePatient.value.trackingSheet,
         option,
-        consultationHistory: consultationHistory.value,
+        consultationHistory: [
+          ...historyBeforeChoice,
+          doctorEntry
+        ],
         consultNotes: consultNotes.value,
         diagnosisDraft: diagnosisDraft.value,
         confirmedDiagnosis: confirmedDiagnosis.value
@@ -1182,12 +1448,15 @@ export function useGameLogic() {
       const reply = await aiService.generateReply(prompt, SYSTEM_PROMPT)
       const trimmed = reply?.trim()
 
+      if (!isCurrentConsultRequest(requestToken)) return
+
       if (!trimmed) {
         throw new Error('AI 返回了空白内容。')
       }
 
       consultationHistory.value = [
-        ...consultationHistory.value,
+        ...historyBeforeChoice,
+        doctorEntry,
         makeHistoryEntry({
           speaker: 'patient',
           label: activePatient.value.name,
@@ -1195,10 +1464,15 @@ export function useGameLogic() {
           type: 'answer'
         })
       ]
+      isConsultNarrativeReady.value = true
     } catch (error) {
+      if (!isCurrentConsultRequest(requestToken)) return
       narrativeError.value = normalizeNarrativeError(error)
     } finally {
-      await refreshConsultOptions()
+      if (!isCurrentConsultRequest(requestToken)) return
+
+      await refreshConsultOptions(requestToken)
+      isConsultOptionsReady.value = consultOptions.value.length > 0
       isGeneratingText.value = false
       await saveProgress()
     }
@@ -1443,8 +1717,38 @@ export function useGameLogic() {
   }
 
   function toggleEquipmentSection() {
-    if (!isMobileLayout.value) return
     equipmentExpanded.value = !equipmentExpanded.value
+  }
+
+  async function upgradeEquipmentModule(sourceId, targetId) {
+    const cost = 20 * (getEquipmentLevel(equipmentOverview.value, sourceId, targetId) + 1)
+    if (credits.value < cost) {
+      upgradeFailureMessage.value = '信用点不足，暂时无法升级对应模块。'
+      showUpgradeFailureModal.value = true
+      return
+    }
+
+    equipmentOverview.value = equipmentOverview.value.map(item => {
+      if (item.id !== sourceId) return item
+
+      const nextLevel = Math.min(4, getEquipmentLevel(equipmentOverview.value, sourceId, targetId) + 1)
+      return {
+        ...item,
+        moduleLevels: {
+          ...buildDefaultModuleLevels(item.id),
+          ...(item.moduleLevels ?? {}),
+          [targetId]: nextLevel
+        }
+      }
+    })
+    credits.value -= cost
+    statusNotice.value = `${SENSE_LABELS[sourceId]} -> ${SENSE_LABELS[targetId]} 已升级到 Lv.${getEquipmentLevel(equipmentOverview.value, sourceId, targetId)}。`
+    await saveProgress()
+  }
+
+  function closeUpgradeFailureModal() {
+    showUpgradeFailureModal.value = false
+    upgradeFailureMessage.value = ''
   }
 
   function toggleSnapshotSection() {
@@ -1510,11 +1814,36 @@ export function useGameLogic() {
       moduleCount: `${item.modules.length} 个映射模块`
     }))
   })
+  const equipmentModuleRows = computed(() => {
+    return equipmentOverview.value.map(item => ({
+      id: item.id,
+      name: item.name,
+      modules: (SENSE_TARGETS[item.id] ?? []).map(targetId => ({
+        id: `${item.id}:${targetId}`,
+        targetId,
+        label: SENSE_LABELS[targetId],
+        level: getEquipmentLevel(equipmentOverview.value, item.id, targetId),
+        upgradeCost: 20 * (getEquipmentLevel(equipmentOverview.value, item.id, targetId) + 1)
+      }))
+    }))
+  })
+  const waitingPatientCount = computed(() => waitingPatients.value.length)
+  const timeProgressPercent = computed(() => {
+    const elapsed = Math.max(0, nowTick.value - lastTimeSyncAt.value)
+    return Math.min(100, (elapsed / REAL_MS_PER_GAME_DAY) * 100)
+  })
 
   const currentConsultOptions = computed(() => consultOptions.value)
   const activeTrackingSheet = computed(() => activePatient.value?.trackingSheet ?? null)
   const confirmedDiagnosisSummary = computed(() => formatMappingSummary(confirmedDiagnosis.value))
   const treatmentDraftSummary = computed(() => formatMappingSummary(treatmentDraft.value))
+  const canShowConsultChoices = computed(() => {
+    return phase.value === 'consult'
+      && consultEntryStage.value === 'questioning'
+      && isConsultNarrativeReady.value
+      && isConsultOptionsReady.value
+      && !isGeneratingText.value
+  })
   const confirmedDiagnosisDetails = computed(() => {
     return getMappingPairs(confirmedDiagnosis.value).map(pair => ({
       ...pair,
@@ -1528,7 +1857,7 @@ export function useGameLogic() {
     if (!confirmed) return false
 
     const symptomLevel = getMappingLevel(activeTrackingSheet.value?.mappingLevels, sourceId, targetId)
-    const equipmentLevel = getEquipmentLevel(equipmentOverview.value, sourceId)
+    const equipmentLevel = getEquipmentLevel(equipmentOverview.value, sourceId, targetId)
     return equipmentLevel >= symptomLevel
   }
 
@@ -1546,7 +1875,7 @@ export function useGameLogic() {
 
   function getTreatmentOptionMeta(sourceId, targetId) {
     const symptomLevel = getMappingLevel(activeTrackingSheet.value?.mappingLevels, sourceId, targetId)
-    const equipmentLevel = getEquipmentLevel(equipmentOverview.value, sourceId)
+    const equipmentLevel = getEquipmentLevel(equipmentOverview.value, sourceId, targetId)
     const confirmed = confirmedDiagnosis.value?.[sourceId]?.includes(targetId)
 
     if (!confirmed) {
@@ -1618,6 +1947,8 @@ export function useGameLogic() {
   onMounted(() => {
     syncSaveStatus()
     syncResponsiveState()
+    refreshPatientQueue()
+    ensureQueueTimer()
     window.addEventListener('resize', syncResponsiveState)
   })
 
@@ -1627,15 +1958,22 @@ export function useGameLogic() {
     if (autosaveTimer) {
       clearTimeout(autosaveTimer)
     }
+
+    if (queueTimer) {
+      clearInterval(queueTimer)
+    }
   })
 
   return {
     phase,
     consultStage,
+    consultEntryStage,
     hasSave,
     hasArchiveSave,
     isCheckingSave,
     showConfirmNewGameModal,
+    showUpgradeFailureModal,
+    upgradeFailureMessage,
     showProfilePanel,
     isMobileLayout,
     equipmentExpanded,
@@ -1654,6 +1992,8 @@ export function useGameLogic() {
     activePatient,
     consultationHistory,
     consultNotes,
+    isConsultNarrativeReady,
+    isConsultOptionsReady,
     diagnosisDraft,
     confirmedDiagnosis,
     diagnosisUsesLeft,
@@ -1665,9 +2005,13 @@ export function useGameLogic() {
     activeEnvironment,
     pendingRevisitCount,
     dueRevisitCount,
+    waitingPatientCount,
     hubStats,
     equipmentSummary,
+    equipmentModuleRows,
+    timeProgressPercent,
     currentConsultOptions,
+    canShowConsultChoices,
     activeTrackingSheet,
     confirmedDiagnosisDetails,
     confirmedDiagnosisSummary,
@@ -1703,6 +2047,7 @@ export function useGameLogic() {
     toggleProfilePanel,
     updatePlayerName,
     updatePlayerAvatar,
+    upgradeEquipmentModule,
     goHome,
     returnToHub,
     returnToTitle,
@@ -1721,7 +2066,9 @@ export function useGameLogic() {
     submitTreatment,
     advanceFromFeedback,
     toggleEquipmentSection,
+    closeUpgradeFailureModal,
     toggleSnapshotSection,
     toggleNotesDrawer
   }
 }
+

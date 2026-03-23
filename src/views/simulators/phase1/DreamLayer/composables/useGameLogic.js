@@ -138,7 +138,7 @@ const showPatientStatusModal = ref(false) // 现状弹窗
   const baseMaxLoad = ref(100) 
   const resonance = ref(0)
   const currentRound = ref(0)
-  const isDying = ref(false)
+  const dyingRoundsLeft = ref(0)
 
   // ---------- 叙事内容 ----------
   const conversationHistory = ref([])
@@ -976,6 +976,7 @@ if (record) {
     escapeSuccess.value = false
     escapeDone.value = false
     escapeCanRetry.value = false
+    dyingRoundsLeft.value = 0
     historyCollapsed.value = true
     bottomTab.value = 'choices'
     hasReachedDropThreshold.value = false
@@ -1120,6 +1121,7 @@ if (trackingMatch) {
   }
 
   async function generateNextRound(playerAction, usedItem = null) {
+    const wasAlreadyDying = isDying.value
     isLoading.value = true
     currentRound.value++
     totalRoundsPlayed.value++
@@ -1179,8 +1181,52 @@ if (trackingMatch) {
       await nextTick()
       choices.value = parsed.options.length > 0 ? parsed.options : getDefaultChoices()
 
-      if (isDying.value) displayHistory.value.push({ type: 'system', content: '⚠ 神经载荷归零——你有2轮逃脱窗口' })
-      if (resonance.value >= 100) displayHistory.value.push({ type: 'system', content: '▲ 共振深度100%——立即撤离' })
+         if (!wasAlreadyDying && isDying.value) {
+      // 本轮首次归零
+      dyingRoundsLeft.value = 2
+      displayHistory.value.push({ 
+        type: 'system', 
+        content: '⚠ 神经载荷归零——剩余 2 轮，拒绝撤离将永久离调' 
+      })
+      historyCollapsed.value = false
+
+    } else if (wasAlreadyDying && !isDying.value) {
+      // 道具救回来了，解除濒死
+      dyingRoundsLeft.value = 0
+
+    } else if (wasAlreadyDying && isDying.value) {
+      // 玩家无视继续走，倒计时递减
+      dyingRoundsLeft.value--
+
+      if (dyingRoundsLeft.value <= 0) {
+        // 倒计时归零，强制死亡
+        displayHistory.value.push({ 
+          type: 'system', 
+          content: '✖ 意识彻底断裂——调律者永久离调' 
+        })
+        choices.value = []
+        await scrollToBottom(narrativeEl)
+        await delay(800)
+        escapeSuccess.value = false
+        await goToSettlement()
+        return   // 直接结束，不往下走
+      } else {
+        displayHistory.value.push({ 
+          type: 'system', 
+          content: `⚠ 最后警告：仅剩 ${dyingRoundsLeft.value} 轮，再不撤离将永久离调` 
+        })
+        historyCollapsed.value = false
+      }
+    }
+
+    // 共振满提示，保持不变
+    if (resonance.value >= 100) {
+      displayHistory.value.push({ 
+        type: 'system', 
+        content: '▲ 共振深度100%——立即撤离' 
+      })
+    }
+
 
       await scrollToBottom(narrativeEl)
       saveProgress().catch(err => console.warn('存档失败:', err))
@@ -1399,7 +1445,17 @@ const resonanceCap =
       }
     }
 
-    if (neuralLoad.value <= 0) isDying.value = true
+    if (neuralLoad.value <= 0) {
+  isDying.value = true
+} else if (isDying.value) {
+  // 道具（镇定剂/摇篮曲/绷带）恢复了载荷，解除濒死
+  isDying.value = false
+  dyingRoundsLeft.value = 0
+  displayHistory.value.push({ 
+    type: 'system', 
+    content: '✦ 神经载荷已恢复——意识连接重新稳定' 
+  })
+}
 
     if (resonanceTag === 'fall' || resonanceTag === 'drop') {
       consecutiveResonanceDrop.value++
@@ -2014,6 +2070,7 @@ return {
   // ========== 游戏数值 ==========
   neuralLoad, maxLoad, baseMaxLoad,
   resonance, currentRound, isDying,
+  dyingRoundsLeft,
   mustEvacuate, estimatedRounds,
 
   // ========== 叙事内容 ==========

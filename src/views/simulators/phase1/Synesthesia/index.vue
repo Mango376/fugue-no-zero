@@ -69,6 +69,9 @@
         <div class="hub-time-pill">第 {{ gameDay }} 天</div>
       </header>
       <main class="hub-main hub-main-reframed">
+        <div class="timeflow-strip">
+          <div class="timeflow-fill" :style="{ width: `${timeProgressPercent}%` }"></div>
+        </div>
         <section class="hub-identity-card clickable-card" @click="toggleProfilePanel">
           <div class="profile-kicker">玩家信息</div>
           <div class="profile-card-row">
@@ -78,36 +81,57 @@
           </div>
         </section>
         <section class="hub-environment-card">
-          <div class="profile-kicker">当前环境</div>
-          <div class="environment-title">{{ currentEnvironment.name }}</div>
+          <div class="environment-title">当前环境 —— {{ currentEnvironment.name }}</div>
           <div class="environment-copy">{{ currentEnvironment.description }}</div>
         </section>
         <section class="hub-folders">
-          <article class="hub-folder-card primary-item" @click="startPatientFlow">
-            <div class="folder-title">{{ hubActions.primaryLabel }}</div>
-            <div class="folder-copy">选择今日要接待的下一位患者</div>
+          <article class="hub-folder-card primary-item">
+            <div class="folder-inline">
+              <div>
+                <div class="folder-title">{{ hubActions.primaryLabel }}</div>
+                <div class="folder-copy">当前候诊 {{ waitingPatientCount }} / 3，患者会随时间到达。</div>
+              </div>
+              <button
+                class="btn-primary compact hub-inline-btn"
+                :disabled="!activePatient && waitingPatientCount === 0"
+                @click="startPatientFlow"
+              >
+                {{ activePatient ? '继续接诊' : (waitingPatientCount > 0 ? '开始接待' : '暂无到诊') }}
+              </button>
+            </div>
           </article>
           <article class="hub-folder-card collapsible">
             <div class="folder-title">待复诊患者</div>
             <div class="folder-copy">到期复诊 {{ dueRevisitCount }} · 排队中 {{ pendingRevisitCount }}</div>
           </article>
           <article class="hub-folder-card collapsible">
-            <div class="folder-title">设备总览</div>
-            <div class="folder-copy">查看五感设备等级与模块</div>
-            <button class="mini-toggle" type="button" @click.stop="toggleEquipmentSection">
-              {{ equipmentExpanded ? '收起' : '展开' }}
-            </button>
+            <div class="folder-inline">
+              <div>
+                <div class="folder-title">设备总览</div>
+                <div class="folder-copy">查看五感设备等级与模块</div>
+              </div>
+              <button class="mini-toggle" type="button" @click.stop="toggleEquipmentSection">
+                {{ equipmentExpanded ? '收起' : '展开' }}
+              </button>
+            </div>
           </article>
         </section>
         <div v-if="equipmentExpanded" class="hub-expand-panel">
-          <div v-for="item in equipmentSummary" :key="item.id" class="equipment-row">
-            <div>
-              <div class="equipment-name">{{ item.name }}</div>
-              <div class="equipment-desc">{{ item.summary }}</div>
-            </div>
-            <div class="equipment-level">
-              <span>{{ item.levelText }}</span>
-              <small>{{ item.moduleCount }}</small>
+          <div v-for="item in equipmentModuleRows" :key="item.id" class="equipment-module-card">
+            <div class="equipment-name">{{ item.name }}</div>
+            <div class="equipment-module-list">
+              <div v-for="module in item.modules" :key="module.id" class="equipment-module-row">
+                <span>{{ module.label }}</span>
+                <strong>Lv.{{ module.level }}</strong>
+                <button
+                  class="btn-secondary compact equipment-upgrade-btn"
+                  type="button"
+                  :disabled="module.level >= 4"
+                  @click="upgradeEquipmentModule(item.id, module.targetId)"
+                >
+                  {{ module.level >= 4 ? '满级' : `升级 ${module.upgradeCost}` }}
+                </button>
+              </div>
             </div>
           </div>
         </div>
@@ -278,40 +302,58 @@
               >
                 <div class="entry-label">{{ entry.label }}</div>
                 <div class="entry-body">
-                  <p v-for="(paragraph, idx) in splitParagraphs(entry.text)" :key="idx">
-                    {{ paragraph }}
-                  </p>
+                  <template v-if="typingEntryId === entry.id">
+                    <Typewriter :text="entry.text" :speed="22" @done="handleTypingDone" />
+                  </template>
+                  <template v-else>
+                    <p v-for="(paragraph, idx) in splitParagraphs(entry.text)" :key="idx">
+                      {{ paragraph }}
+                    </p>
+                  </template>
                 </div>
               </div>
             </div>
+          </article>
+        </section>
 
-            <div v-if="consultStage === 'arrival_intro'" class="dialogue-actions">
-              <button class="btn-primary" :disabled="isGeneratingText" @click="continueConsultFlow">
-                开始问诊
+        <section class="question-panel">
+          <div v-if="consultEntryStage === 'pre_consult'" class="question-prestart">
+            <div class="question-bar-title">准备开始</div>
+            <div class="question-loading-copy">患者已经到诊，点击下方按钮进入诊断室。</div>
+            <button class="btn-primary compact consult-start-btn" @click="continueConsultFlow">
+              开始诊断
+            </button>
+          </div>
+
+          <div v-else-if="consultEntryStage === 'entering_consult' || isGeneratingText" class="question-loading">
+            <div class="consult-loading-animation" aria-hidden="true">
+              <span></span>
+              <span></span>
+              <span></span>
+            </div>
+            <div class="question-bar-title">{{ consultationHistory.length ? '正在整理新的问诊回应' : '正在进入诊断室' }}</div>
+            <div class="question-loading-copy">
+              {{ consultationHistory.length ? '病人的这一轮回应正在生成，请稍候。' : '诊断室门锁已经落下，记录正在同步。' }}
+            </div>
+          </div>
+
+          <div v-else-if="canShowConsultChoices && !isTypingNarrative" class="question-bar separated">
+            <div class="question-bar-title">做出选择</div>
+            <div class="question-grid">
+              <button
+                v-for="option in currentConsultOptions"
+                :key="option.id"
+                class="question-btn"
+                :disabled="isGeneratingText"
+                @click="chooseConsultOption(option)"
+              >
+                <span class="question-title">{{ option.label }}</span>
+                <small class="question-line">{{ option.doctorLine }}</small>
               </button>
             </div>
+          </div>
 
-            <div v-else-if="isGeneratingText" class="question-loading">
-              <div class="question-bar-title">正在整理新的问诊回应</div>
-              <div class="question-loading-copy">请稍候，新的叙事完成后才会开放下一轮追问。</div>
-            </div>
-
-            <div v-else class="question-bar">
-              <div class="question-bar-title">做出选择</div>
-              <div class="question-grid">
-                <button
-                  v-for="option in currentConsultOptions"
-                  :key="option.id"
-                  class="question-btn"
-                  :disabled="isGeneratingText"
-                  @click="chooseConsultOption(option)"
-                >
-                  <span class="question-title">{{ option.label }}</span>
-                  <small class="question-line">{{ option.doctorLine }}</small>
-                </button>
-              </div>
-            </div>
-          </article>
+          <div v-else class="question-hidden-state"></div>
         </section>
 
         <div
@@ -496,6 +538,19 @@
     </Transition>
 
     <Transition name="modal-fade">
+      <div v-if="showUpgradeFailureModal" class="modal-overlay" @click.self="closeUpgradeFailureModal">
+        <div class="modal-card">
+          <div class="modal-kicker">升级失败</div>
+          <div class="modal-title">当前无法完成升级。</div>
+          <p class="modal-text">{{ upgradeFailureMessage }}</p>
+          <div class="modal-actions">
+            <button class="btn-primary" @click="closeUpgradeFailureModal">知道了</button>
+          </div>
+        </div>
+      </div>
+    </Transition>
+
+    <Transition name="modal-fade">
       <div v-if="showProfilePanel" class="modal-overlay" @click.self="toggleProfilePanel">
         <div class="modal-card profile-modal">
           <div class="modal-kicker">玩家档案</div>
@@ -550,15 +605,19 @@
 
 <script setup>
 import { computed, ref, watch } from 'vue'
+import Typewriter from '@/components/common/Typewriter.vue'
 import { useGameLogic } from './composables/useGameLogic'
 
 const {
   phase,
   consultStage,
+  consultEntryStage,
   hasSave,
   hasArchiveSave,
   isCheckingSave,
   showConfirmNewGameModal,
+  showUpgradeFailureModal,
+  upgradeFailureMessage,
   showProfilePanel,
   isMobileLayout,
   equipmentExpanded,
@@ -576,6 +635,8 @@ const {
   activePatient,
   consultationHistory,
   consultNotes,
+  isConsultNarrativeReady,
+  isConsultOptionsReady,
   diagnosisDraft,
   treatmentDraft,
   currentBackgroundPage,
@@ -583,9 +644,13 @@ const {
   activeEnvironment,
   pendingRevisitCount,
   dueRevisitCount,
+  waitingPatientCount,
   hubStats,
   equipmentSummary,
+  equipmentModuleRows,
+  timeProgressPercent,
   currentConsultOptions,
+  canShowConsultChoices,
   confirmedDiagnosisDetails,
   confirmedDiagnosisSummary,
   treatmentDraftSummary,
@@ -618,6 +683,7 @@ const {
   toggleProfilePanel,
   updatePlayerName,
   updatePlayerAvatar,
+  upgradeEquipmentModule,
   goHome,
   returnToHub,
   returnToTitle,
@@ -636,13 +702,20 @@ const {
   submitTreatment,
   advanceFromFeedback,
   toggleEquipmentSection,
+  closeUpgradeFailureModal,
   toggleSnapshotSection,
   toggleNotesDrawer
 } = useGameLogic()
 
 const showFullHistory = ref(false)
+const typingEntryId = ref('')
+const isTypingNarrative = ref(false)
 
 const visibleConsultationHistory = computed(() => {
+  if (consultEntryStage.value === 'pre_consult') {
+    return []
+  }
+
   if (showFullHistory.value) {
     return consultationHistory.value
   }
@@ -662,8 +735,22 @@ watch(
   () => consultationHistory.value.length,
   () => {
     showFullHistory.value = false
+    const latestEntry = consultationHistory.value.at(-1)
+    if (latestEntry && latestEntry.speaker !== 'doctor') {
+      typingEntryId.value = latestEntry.id
+      isTypingNarrative.value = true
+      return
+    }
+
+    typingEntryId.value = ''
+    isTypingNarrative.value = false
   }
 )
+
+function handleTypingDone() {
+  typingEntryId.value = ''
+  isTypingNarrative.value = false
+}
 
 function splitParagraphs(text = '') {
   return String(text)
@@ -1046,6 +1133,28 @@ function handleAvatarChange(event) {
   gap: 0.9rem;
 }
 
+.timeflow-head,
+.folder-inline,
+.equipment-module-row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 0.8rem;
+}
+
+.timeflow-strip {
+  height: 10px;
+  border-radius: 999px;
+  background: rgba(255, 255, 255, 0.05);
+  overflow: hidden;
+}
+
+.timeflow-fill {
+  height: 100%;
+  border-radius: inherit;
+  background: linear-gradient(90deg, #7ec4cf, #d3b06d);
+}
+
 .hub-identity-card,
 .hub-environment-card,
 .hub-folder-card,
@@ -1066,6 +1175,16 @@ function handleAvatarChange(event) {
   display: flex;
   flex-direction: column;
   gap: 0.35rem;
+}
+
+.hub-action-btn {
+  align-self: flex-start;
+  margin-top: 0.55rem;
+}
+
+.hub-inline-btn,
+.equipment-upgrade-btn {
+  white-space: nowrap;
 }
 
 .folder-title,
@@ -1224,6 +1343,20 @@ function handleAvatarChange(event) {
   gap: 0.7rem;
 }
 
+.equipment-module-card {
+  padding: 0.9rem 0.95rem;
+  border-radius: 14px;
+  background: rgba(255, 255, 255, 0.025);
+  border: 1px solid rgba(219, 194, 139, 0.08);
+}
+
+.equipment-module-list {
+  display: flex;
+  flex-direction: column;
+  gap: 0.55rem;
+  margin-top: 0.75rem;
+}
+
 .equipment-row {
   display: flex;
   justify-content: space-between;
@@ -1327,6 +1460,7 @@ function handleAvatarChange(event) {
 .consult-main {
   display: grid;
   grid-template-columns: minmax(0, 1.6fr) minmax(320px, 0.95fr);
+  grid-template-rows: minmax(0, 1fr) auto;
   gap: 1rem;
   position: relative;
   height: calc(100vh - 88px);
@@ -1415,44 +1549,100 @@ function handleAvatarChange(event) {
   border-color: rgba(179, 103, 69, 0.2);
 }
 
-.question-bar {
-  margin-top: auto;
-  padding-top: 1rem;
-  border-top: 1px solid rgba(219, 194, 139, 0.12);
-  flex-shrink: 0;
-  max-height: 28vh;
-  overflow-y: auto;
+.question-bar.separated,
+.question-prestart,
+.question-loading,
+.question-panel {
+  min-height: 0;
+}
+
+.question-bar.separated,
+.question-prestart,
+.question-loading {
+  height: 100%;
+  border-radius: 18px;
+  padding: 1rem 1.1rem;
+  background: rgba(8, 13, 19, 0.96);
+  border: 1px solid rgba(219, 194, 139, 0.08);
+}
+
+.question-bar.separated {
+  display: flex;
+  flex-direction: column;
+  overflow: hidden;
+}
+
+.question-panel {
+  overflow: hidden;
+}
+
+.question-prestart,
+.question-loading {
+  display: flex;
+  flex-direction: column;
+  justify-content: center;
+  align-items: flex-start;
+  gap: 0.9rem;
 }
 
 .question-bar-title {
-  position: sticky;
-  top: 0;
-  z-index: 1;
   margin-bottom: 0.8rem;
   padding-bottom: 0.55rem;
   font-size: 0.86rem;
   letter-spacing: 0.12em;
   color: #cbb37d;
-  background: linear-gradient(180deg, rgba(8, 13, 19, 0.98), rgba(8, 13, 19, 0.9));
+  background: none;
 }
 
 .question-grid {
   display: grid;
   grid-template-columns: 1fr;
   gap: 0.72rem;
-  padding-bottom: 0.25rem;
-}
-
-.question-loading {
-  margin-top: auto;
-  padding-top: 0.95rem;
-  border-top: 1px solid rgba(219, 194, 139, 0.08);
-  flex-shrink: 0;
+  padding: 0.05rem 0.08rem 0.25rem 0;
+  min-height: 0;
+  overflow-y: auto;
+  overscroll-behavior: contain;
 }
 
 .question-loading-copy {
   color: #a89c86;
   line-height: 1.7;
+}
+
+.consult-start-btn {
+  min-width: 148px;
+}
+
+.question-hidden-state {
+  height: 100%;
+}
+
+.consult-loading-animation {
+  display: inline-flex;
+  align-items: flex-end;
+  gap: 0.35rem;
+  min-height: 28px;
+}
+
+.consult-loading-animation span {
+  width: 6px;
+  border-radius: 999px;
+  background: rgba(219, 194, 139, 0.85);
+  animation: consultPulse 1.1s ease-in-out infinite;
+}
+
+.consult-loading-animation span:nth-child(1) {
+  height: 14px;
+}
+
+.consult-loading-animation span:nth-child(2) {
+  height: 20px;
+  animation-delay: 0.16s;
+}
+
+.consult-loading-animation span:nth-child(3) {
+  height: 26px;
+  animation-delay: 0.32s;
 }
 
 .question-btn {
@@ -1479,9 +1669,23 @@ function handleAvatarChange(event) {
   font-size: 0.78rem;
 }
 
+@keyframes consultPulse {
+  0%,
+  100% {
+    transform: scaleY(0.72);
+    opacity: 0.42;
+  }
+
+  50% {
+    transform: scaleY(1);
+    opacity: 1;
+  }
+}
+
 .notes-sidebar {
   position: relative;
   min-height: 0;
+  grid-row: 1 / span 2;
 }
 
 .notes-card {
@@ -1760,8 +1964,7 @@ function handleAvatarChange(event) {
 @media (max-width: 900px) {
   .hub-stats-bar,
   .question-grid,
-  .treatment-grid,
-  .consult-main {
+  .treatment-grid {
     grid-template-columns: 1fr;
   }
 
@@ -1813,6 +2016,8 @@ function handleAvatarChange(event) {
 
   .consult-main {
     height: calc(100vh - 112px);
+    grid-template-columns: 1fr;
+    grid-template-rows: minmax(0, 1fr) minmax(180px, 32vh);
   }
 
   .notes-sidebar.mobile {
@@ -1832,6 +2037,10 @@ function handleAvatarChange(event) {
     width: 100%;
     justify-content: flex-start;
     text-align: left;
+  }
+
+  .notes-sidebar {
+    grid-row: auto;
   }
 }
 </style>
