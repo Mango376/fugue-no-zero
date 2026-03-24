@@ -1,4 +1,4 @@
-export const SENSE_CONFIGS = [
+﻿export const SENSE_CONFIGS = [
   { id: 'vision', label: '视觉' },
   { id: 'hearing', label: '听觉' },
   { id: 'touch', label: '触觉' },
@@ -19,54 +19,56 @@ export const SENSE_TARGETS = Object.fromEntries(
 
 export const TITLE_CONTENT = {
   eyebrow: 'PHASE I / SIMULATOR II',
-  title: '共觉之境',
-  subtitle: '仿生人感官修复模拟器',
-  tagline: '在错乱的感官之间，听见一座城市仍在努力活下去的声音。',
+  title: '感官错位症',
+  subtitle: '下城诊所里的连锁误读与迟发回声',
+  tagline:
+    '你处理的不是幻觉本身，而是被污染后的感官映射。每一次问诊、诊断与治疗，都会在患者和系统里留下新的偏差。',
   summary:
-    '2157 年，恶意代码“共觉”在仿生人神经网络中蔓延。它不摧毁躯体，只改写感官映射，让看见、听见、触碰、闻到与尝到彼此串线。',
+    '2157 年，零号赋格下城诊所开始接收一批异常病例。患者并没有失去感觉，他们只是把世界接收错了方向。有人把噪音闻成铁锈味，有人把冷风看成光斑，有人触到金属时却在舌根尝到苦味。',
   detail:
-    '你经营着一家位于下城区边缘的感官维修店。门面狭窄，设备陈旧，但足够让那些去不起上城区医疗机构的人，暂时拥有一个被认真倾听的地方。',
-  continueHint: '继续游戏将恢复到上次离开的阶段。'
+    '你是诊所里负责“联觉维修”的维修师。你需要通过有限的问诊与诊断机会，判断是哪一条感官通路被错误连接，并决定如何调整设备、介入治疗，或者在风险过高时安排复诊。',
+  continueHint: '继续翻阅背景资料，了解这座下城、这间诊所，以及第一批病人的来处。'
 }
 
 export const BACKGROUND_PAGES = [
   {
     id: 'virus',
-    kicker: '背景介绍 / 01',
-    title: '共觉不是伤口，而是一种错位',
+    kicker: '城市剖面 / 01',
+    title: '错位不是疾病爆发，而是基础层被悄悄改写',
     paragraphs: [
-      '“共觉”是一段在仿生人神经网络中传播的恶意代码。它不令关节失灵，不令内核熄灭，也不在表面留下任何显眼的裂痕。',
-      '它做的事情更隐秘，也更残忍。视觉会牵出味觉，触碰会唤起声音，雨夜的铁锈味可能从眼前的霓虹里冒出来，明明只是听见门轴响动，却像被冰冷的金属沿着脊背缓慢划过。',
-      '感染者往往还能正常说话、走路、工作，于是他们更容易被误解成夸张、失控，或者故意把痛苦说得难以理解。'
+      '最早的病例没有集中出现在医院，而是零散地出现在仓储区、回收站、廉价公寓与高架轨道沿线。患者起初只以为自己过劳、缺觉，或者撞上了劣质义体补丁。真正让事情引起注意的，是相同的感官串线模式在不同街区重复出现。',
+      '城市维护系统把这类现象临时归档为“低优先级神经噪声”，直到有工人因为把警报声误判成刺鼻消毒水而错过撤离指令。诊所由此被拉进处理链，成了最前线、也最廉价的一道筛网。',
+      '后来人们发现，这不是单一病毒，也不是传统精神疾病，而是一种借由环境、设备、记忆残留与长期压力共同放大的联觉错位。你要修的，从来不是一句症状，而是一整套被拖偏的感知回路。'
     ]
   },
   {
     id: 'district',
-    kicker: '背景介绍 / 02',
-    title: '上城区太贵，下城区太近',
+    kicker: '城市剖面 / 02',
+    title: '下城从不安静，噪声、广告与粉尘一起构成日常',
     paragraphs: [
-      '上城区有更先进的设备，也有更体面的诊室。但那里的收费高得吓人，足以把一个仿生人接下来几个月的生活彻底掏空。',
-      '于是更多人来到下城区，走进巷口、管道、蒸汽和潮气交叠的地方。他们在工厂上夜班，在街边支摊，在地下诊所搬药，在帮派和货运站之间讨生活。',
-      '你的店就开在这样的缝隙里。门口没有霓虹招牌，只有一块旧牌和一盏时亮时暗的指示灯，但熟悉这片街区的人都知道，这里能修的，不只是设备。'
+      '高架列车从诊所外墙后掠过时，会带起整面楼体的轻微共振。廉价投影屏循环播送着分期义体广告，通风井里常年有热气、潮气和回收站的金属粉末。住在这里的人很少真正独处，他们只是习惯了被持续干扰。',
+      '街区工作依赖短工平台与自动派单系统。人们在冷链仓、无人机塔、数据清洗间、旧件拆解场和灰色物流线上来回流动。收入不稳定，工时被切碎，睡眠和饮食都被挤压到最低限度。',
+      '在这样的环境里，感官错位不会显得戏剧化，它更像一根悄悄偏掉的螺丝。多数患者会拖到生活实在受影响时才来求诊，而那时，串线往往已经形成了稳定习惯。'
     ]
   },
   {
     id: 'tone',
-    kicker: '背景介绍 / 03',
-    title: '你面对的不是病例，而是生活本身',
+    kicker: '城市剖面 / 03',
+    title: '诊所不负责拯救谁，它只负责在崩坏前把人勉强扶正',
     paragraphs: [
-      '每一个走进门的人，都带着一种仍想继续活下去的理由。有人想回家吃一顿热饭，有人想撑到给弟妹汇完生活费，有人只是还想把明天的班上完。',
-      '所以在这里，问诊不是审判，诊断不是猜谜，治疗也不是把一切修得像新的一样。你要做的，是先听见，再判断，然后尽可能把那些已经错位的感官，一点一点归回原处。',
-      '门铃响起时，故事就会真正开始。你会先听到患者的脚步，再听到他们把生活里的裂口一点点讲给你。'
+      '联觉维修诊所挂着“恢复日常功能”的牌子，却很少承诺“彻底治愈”。这里的设备多数是拼装升级而来，诊断仪的精度够用但不奢侈，治疗仪更像一个需要谨慎操作的校准台。',
+      '你见过太多病人带着“先凑合一下”的态度进门。有人只想顺利撑完这个月工单，有人怕失去平台评分，有人不愿让家里知道自己感知出了问题。于是，很多决定都不是最优解，而是他们能承受的那个。',
+      '这就是这间诊所的现实气味：不浪漫，不高尚，但足够具体。你的判断会改变病人接下来几天、几周甚至几个月的生活方向。'
     ]
   }
 ]
 
 export const PLAYER_PROFILE = {
   title: '维修师',
-  workplace: '边缘诊所 / 感官维修台',
-  brief: '你负责接待感染“共觉”的仿生人，问诊、诊断、治疗，并在必要时约定复诊。',
-  creed: '你不替任何人评判生活，只负责把错乱的感官重新校准。'
+  workplace: '下城区联觉维修诊所 / 诊断工位',
+  brief:
+    '你负责接待出现感官串线的患者，通过问诊、诊断和治疗模块，尽可能在有限资源内找出错位路径并处理。',
+  creed: '先确认错位，再动手校正。任何看起来“差不多”的治疗，都可能把患者推向更深一层的混乱。'
 }
 
 export const ENVIRONMENT_PHASES = [
@@ -74,163 +76,138 @@ export const ENVIRONMENT_PHASES = [
     phase: 1,
     label: '环境阶段 I',
     name: '潮湿雨夜',
-    description: '雨水顺着铁皮棚边缘往下滴，空气里有潮湿的铁锈味，诊所外的脚步声被积水闷得很浅。'
+    description: '夜雨刚停，空气里浮着冷潮与机油味，高架桥滴水，诊所外墙偶尔传来电流贴着金属壳滑过去的轻响。'
   },
   {
     phase: 2,
     label: '环境阶段 II',
-    name: '蒸汽回流',
-    description: '隔壁管道偶尔吐出薄雾，墙体发热，诊室里隐约混着消毒水与金属烫过后的味道。'
+    name: '闷热午后',
+    description: '午后的热气被风道困在街区里，塑料棚顶发白发亮，远处冷却塔低鸣不止，诊室里连呼吸都显得有些黏。'
   },
   {
     phase: 3,
     label: '环境阶段 III',
-    name: '低频震动',
-    description: '不远处的地下演出场把低音送进地面，桌角和玻璃杯会在某些停顿里细微共振。'
+    name: '清晨换班',
+    description: '天刚亮，街道还没完全醒过来，送货车和换班人流先一步把噪声推到窗边，诊所灯光比外面的天色更稳定。'
   }
 ]
 
 export const DEFAULT_EQUIPMENT_OVERVIEW = [
   {
     id: 'vision',
-    name: '视觉治疗仪',
+    name: '视觉诊断模组',
     level: 1,
-    summary: '修复视觉端接收到的错误映射信号。',
-    modules: ['听觉映射', '触觉映射', '味觉映射', '嗅觉映射']
+    summary: '用于确认视觉通路是否被映射到其他感官。',
+    modules: ['听觉校准', '触觉校准', '味觉校准', '嗅觉校准']
   },
   {
     id: 'hearing',
-    name: '听觉治疗仪',
+    name: '听觉诊断模组',
     level: 1,
-    summary: '修复听觉端的串线与误触发。',
-    modules: ['视觉映射', '触觉映射', '味觉映射', '嗅觉映射']
+    summary: '用于确认听觉刺激在患者体内的偏移方向。',
+    modules: ['视觉校准', '触觉校准', '味觉校准', '嗅觉校准']
   },
   {
     id: 'touch',
-    name: '触觉治疗仪',
+    name: '触觉诊断模组',
     level: 1,
-    summary: '用于校准触觉反馈回路。',
-    modules: ['视觉映射', '听觉映射', '味觉映射', '嗅觉映射']
+    summary: '用于确认接触反馈是否被错误转译。',
+    modules: ['视觉校准', '听觉校准', '味觉校准', '嗅觉校准']
   },
   {
     id: 'taste',
-    name: '味觉治疗仪',
+    name: '味觉诊断模组',
     level: 1,
-    summary: '修复味觉回路中的异常联动。',
-    modules: ['视觉映射', '听觉映射', '触觉映射', '嗅觉映射']
+    summary: '用于确认味觉与外界刺激之间的异常联动。',
+    modules: ['视觉校准', '听觉校准', '触觉校准', '嗅觉校准']
   },
   {
     id: 'smell',
-    name: '嗅觉治疗仪',
+    name: '嗅觉诊断模组',
     level: 1,
-    summary: '修复嗅觉端的错误感官接入。',
-    modules: ['视觉映射', '听觉映射', '触觉映射', '味觉映射']
+    summary: '用于确认嗅觉残留与其他感官的串线强度。',
+    modules: ['视觉校准', '听觉校准', '触觉校准', '味觉校准']
   }
 ]
 
 export const HUB_ACTIONS = {
   primaryLabel: '接待下一位患者',
-  primaryHint: '门铃下一次响起时，就从这里进入完整的问诊闭环。',
-  saveLabel: '保存进度'
+  primaryHint: '诊断仪和治疗仪次数会在新病例开始时重置，但你每天面对的环境和病例复杂度会继续变化。',
+  saveLabel: '保存'
 }
 
 export const CONSULT_OPTION_LIBRARY = [
   {
     id: 'symptom',
-    label: '追问异常表现',
-    doctorLine: '先别急，把那种错位最明显的一瞬间，再说细一点。',
-    promptFocus: '追问患者最直接的感官错乱表现，让患者用自己的语言复述最难受的一幕。'
+    label: '追问触发条件',
+    doctorLine: '这个感觉通常在什么情况下出现，什么时候会更明显？',
+    promptFocus: '引导患者补充症状出现的具体场景、频率和变化趋势。'
   },
   {
     id: 'trigger',
-    label: '追问触发场景',
-    doctorLine: '这种异常通常在什么情况下出现？是在工作的时候，还是在某个固定场景里？',
-    promptFocus: '追问异常的触发时机、场景与动作，帮助玩家区分真实映射问题和环境干扰。'
+    label: '追问时间频率',
+    doctorLine: '这种情况持续多久了？是一阵一阵，还是几乎一直都在？',
+    promptFocus: '引导患者补充首次发生时间、持续时长和近期加重节点。'
   },
   {
     id: 'impact',
-    label: '追问生活影响',
-    doctorLine: '它最先影响到你生活里的哪一部分？工作、关系，还是你自己？',
-    promptFocus: '追问异常如何影响患者的工作、关系和日常秩序，让症状与生活压力结合。'
+    label: '追问症状细节',
+    doctorLine: '你刚才说的那个感觉，具体像什么？每次都一样吗？',
+    promptFocus: '引导患者补充主观感受、细节差异和强度变化。'
   },
   {
     id: 'environment',
-    label: '排查环境干扰',
-    doctorLine: '进门前后，你周围有没有什么声音、气味、震动或者灯光特别明显？',
-    promptFocus: '追问患者所处环境中的噪音、蒸汽、潮气和光线，提醒玩家环境可能会制造误导。'
+    label: '追问近期生活变化',
+    doctorLine: '最近工作和住处有没有什么变化？有没有接触新的设备、气味或者环境？',
+    promptFocus: '引导患者补充工作内容、环境刺激和可能相关的生活事件。'
   }
 ]
 
 export const PATIENT_NAME_POOL = [
-  '林柊',
-  '周纱',
-  '季衡',
-  '祁芮',
-  '岑野',
-  '夏闻',
-  '唐屿',
-  '阮烁',
-  '邵祈',
-  '温珞'
+  '祁渺',
+  '阮见',
+  '姜穗',
+  '林渡',
+  '邵闻',
+  '白砚',
+  '沈槐',
+  '孟栖',
+  '顾遥',
+  '周既'
 ]
 
-export const PATIENT_JOB_POOL = [
-  {
-    title: '夜班焊接工',
-    context: '常年在雨棚和热管之间焊接补缝，工作时耳边总有金属回响和电流味。'
-  },
-  {
-    title: '地下货运分拣员',
-    context: '在货运站和升降轨之间搬运包裹，班次混乱，常常靠短暂休息硬撑。'
-  },
-  {
-    title: '街边摊炊烟工',
-    context: '每天在油烟、热气和霓虹灯下守摊，习惯一边招呼客人一边记账。'
-  },
-  {
-    title: '旧楼管道维护员',
-    context: '负责老旧街区的蒸汽管道检修，长期待在闷热、回声重的狭窄空间里。'
-  },
-  {
-    title: '地下演出场灯控',
-    context: '在震动和低频声里熬夜调灯，对节拍、闪烁和人群反应极其敏感。'
-  },
-  {
-    title: '义体清洁技师',
-    context: '在诊所后巷帮人维护廉价义体，鼻腔里总混着消毒水和焦塑味。'
-  }
-]
+export const PATIENT_JOB_POOL = []
 
 export const PATIENT_ATTACHMENT_POOL = [
-  '想把这个月的工资按时汇回家里。',
-  '还得撑着去接弟弟放学，不想再把人认错。',
-  '担心夜班再出问题，会被老板直接辞退。',
-  '已经拖了太久，不想让伴侣继续觉得自己在发疯。',
-  '想在下次复工前把症状压下去，至少先把班上完。',
-  '不敢和同事说，怕被丢去做廉价重置。'
+  '袖口有未擦净的金属粉，像是刚从设备间匆忙赶来。',
+  '鞋边沾着潮水和灰，裤脚有被机械刮擦过的旧线头。',
+  '手背留着一次性贴片撕下后的红痕，像是刚做完某种便宜检测。',
+  '衣领上有洗不掉的消毒水气味，混着通风井里的陈旧灰尘。',
+  '随身包里装着折过几次的排班单，边角已经磨软了。',
+  '说话时总会下意识摸一摸耳后接口，像是在确认设备还连着。'
 ]
 
 export const PATIENT_TONE_POOL = [
-  '克制得近乎麻木，但每说到关键处都会停一下。',
-  '表面平静，实际上一直在压着焦躁和疲惫。',
-  '嘴上说没事，语气里却有明显的逞强。',
-  '说话谨慎，像是在反复确认自己是不是会被误解。',
-  '对自己的异常感到羞耻，因此会回避最难堪的细节。'
+  '说话克制，像怕自己描述得不够准确。',
+  '语速偏慢，像是一边回忆一边确认自己有没有说错。',
+  '表面平静，但细节处透着久拖不治后的疲惫。',
+  '有点防备，不愿意一开始就把所有情况摊开。',
+  '试图把症状说得轻描淡写，像是不想让它听起来太严重。'
 ]
 
 export const PATIENT_SPEECH_STYLE_POOL = [
-  '说话短句居多，偶尔会突然停顿。',
-  '叙述会绕弯，需要被追问后才给出关键信息。',
-  '对具体场景记得很清楚，但不擅长总结病症。',
-  '愿意配合问诊，却会下意识淡化自己的痛苦。',
-  '一提到工作就会加快语速，像是怕自己停下来。'
+  '句子简短，常常先停一下再继续。',
+  '描述具体，会不自觉提到工作里的细节。',
+  '不爱用夸张词，更愿意说“像是”“有点像”。',
+  '说到关键感觉时会重复某几个词，像在找最接近的表达。',
+  '会先否认“没什么”，再慢慢补出真正困扰自己的部分。'
 ]
 
 export const SYSTEM_SNAPSHOT = [
-  '先在问诊里收集线索，再把你怀疑的感官错位记录进病历。',
-  '提交诊断仪后，只会确认你猜对的映射；猜错的项目不会被直接提示。',
-  '确认结果会带入治疗仪，只有已经查实的异常才能提交治疗。',
-  '治疗后先看患者反馈；若仍有残留问题，就继续问诊、补诊断、再治疗。'
+  '诊断仪状态稳定，当前精度足以支持基础串线判断。',
+  '治疗仪校准完成，但每次介入仍应以已确认错位为优先。',
+  '今日环境噪声偏高，患者对外界刺激的描述可能更混杂。',
+  '复诊队列允许保留未完全治愈病例，等待下一轮观察与处理。'
 ]
 
 export const DIAGNOSIS_LIMIT = 2
@@ -263,163 +240,131 @@ export const DEFAULT_GAME_STATE = {
 }
 
 // ================================================================
-// 前10个患者的症状规则表
-// 只约束症状等级上限、异常数量、是否允许一对多
-// 不约束患者姓名、职业、牵挂、性格（全部从上方数据池随机生成）
-// 不约束环境因素（使用当前 environmentPhase 的实际环境）
-// 第11个患者起进入随机期，不再查这张表
+// 前 10 位患者使用固定复杂度规则，确保前期难度爬升更平滑。
+// serial 为 1-10 时返回对应规则；超过 10 后交给动态生成逻辑处理。
+// environmentPhase 只决定环境氛围，不直接改变这些配置。
 // ================================================================
 
 export const PRESET_PATIENT_RULES = [
-
-  // 患者1：一个感官，一个Lv.1异常
-  // 最简单，帮助玩家熟悉基本问诊和诊断流程
   {
-    serial:              1,
-    maxLevel:            1,
-    minAbnormal:         1,
-    maxAbnormal:         1,
-    allowOneToMany:      false,
+    serial: 1,
+    maxLevel: 1,
+    minAbnormal: 1,
+    maxAbnormal: 1,
+    allowOneToMany: false,
     maxTargetsPerSource: 1,
-    mustHaveLv2:         false,
-    isUpgradeTutorial:   false,
-    forceDebt:           false
+    mustHaveLv2: false,
+    isUpgradeTutorial: false,
+    forceDebt: false
   },
-
-  // 患者2：两个独立的一对一Lv.1异常
-  // 开始学习同时追踪多个症状
   {
-    serial:              2,
-    maxLevel:            1,
-    minAbnormal:         2,
-    maxAbnormal:         2,
-    allowOneToMany:      false,
+    serial: 2,
+    maxLevel: 1,
+    minAbnormal: 2,
+    maxAbnormal: 2,
+    allowOneToMany: false,
     maxTargetsPerSource: 1,
-    mustHaveLv2:         false,
-    isUpgradeTutorial:   false,
-    forceDebt:           false
+    mustHaveLv2: false,
+    isUpgradeTutorial: false,
+    forceDebt: false
   },
-
-  // 患者3：一个感官，一对多Lv.1异常首次出现
-  // 让玩家理解一个感官可以同时接收多种错误信号
   {
-    serial:              3,
-    maxLevel:            1,
-    minAbnormal:         1,
-    maxAbnormal:         1,
-    allowOneToMany:      true,
+    serial: 3,
+    maxLevel: 1,
+    minAbnormal: 1,
+    maxAbnormal: 1,
+    allowOneToMany: true,
     maxTargetsPerSource: 2,
-    mustHaveLv2:         false,
-    isUpgradeTutorial:   false,
-    forceDebt:           false
+    mustHaveLv2: false,
+    isUpgradeTutorial: false,
+    forceDebt: false
   },
-
-  // 患者4：两个独立的一对一Lv.1异常
-  // 练习同时追踪两个不相关的感官问题
   {
-    serial:              4,
-    maxLevel:            1,
-    minAbnormal:         2,
-    maxAbnormal:         2,
-    allowOneToMany:      false,
+    serial: 4,
+    maxLevel: 1,
+    minAbnormal: 2,
+    maxAbnormal: 2,
+    allowOneToMany: false,
     maxTargetsPerSource: 1,
-    mustHaveLv2:         false,
-    isUpgradeTutorial:   false,
-    forceDebt:           false
+    mustHaveLv2: false,
+    isUpgradeTutorial: false,
+    forceDebt: false
   },
-
-  // 患者5：三个独立的一对一Lv.1异常
-  // 练手期最复杂，为过渡期做准备
   {
-    serial:              5,
-    maxLevel:            1,
-    minAbnormal:         3,
-    maxAbnormal:         3,
-    allowOneToMany:      false,
+    serial: 5,
+    maxLevel: 1,
+    minAbnormal: 3,
+    maxAbnormal: 3,
+    allowOneToMany: false,
     maxTargetsPerSource: 1,
-    mustHaveLv2:         false,
-    isUpgradeTutorial:   false,
-    forceDebt:           false
+    mustHaveLv2: false,
+    isUpgradeTutorial: false,
+    forceDebt: false
   },
-
-  // 患者6：Lv.2首次出现，触发升级教程
-  // 两个异常，至少一个Lv.2
   {
-    serial:              6,
-    maxLevel:            2,
-    minAbnormal:         2,
-    maxAbnormal:         2,
-    allowOneToMany:      false,
+    serial: 6,
+    maxLevel: 2,
+    minAbnormal: 2,
+    maxAbnormal: 2,
+    allowOneToMany: false,
     maxTargetsPerSource: 1,
-    mustHaveLv2:         true,
-    isUpgradeTutorial:   true,
-    forceDebt:           false
+    mustHaveLv2: true,
+    isUpgradeTutorial: true,
+    forceDebt: false
   },
-
-  // 患者7：一对多 + Lv.2，难度进一步提升
-  // 2-3个异常，含一对多和Lv.2
   {
-    serial:              7,
-    maxLevel:            2,
-    minAbnormal:         2,
-    maxAbnormal:         3,
-    allowOneToMany:      true,
+    serial: 7,
+    maxLevel: 2,
+    minAbnormal: 2,
+    maxAbnormal: 3,
+    allowOneToMany: true,
     maxTargetsPerSource: 2,
-    mustHaveLv2:         true,
-    isUpgradeTutorial:   false,
-    forceDebt:           false
+    mustHaveLv2: true,
+    isUpgradeTutorial: false,
+    forceDebt: false
   },
-
-  // 患者8：强制赊账，3个异常，含Lv.2
-  // 玩家第一次面对"治好了但收不到钱"的处境
   {
-    serial:              8,
-    maxLevel:            2,
-    minAbnormal:         3,
-    maxAbnormal:         3,
-    allowOneToMany:      false,
+    serial: 8,
+    maxLevel: 2,
+    minAbnormal: 3,
+    maxAbnormal: 3,
+    allowOneToMany: false,
     maxTargetsPerSource: 1,
-    mustHaveLv2:         true,
-    isUpgradeTutorial:   false,
-    forceDebt:           true
+    mustHaveLv2: true,
+    isUpgradeTutorial: false,
+    forceDebt: true
   },
-
-  // 患者9：一对多 + Lv.2，2-3个异常
-  // 一个感官接收两种不同等级的错误信号
   {
-    serial:              9,
-    maxLevel:            2,
-    minAbnormal:         2,
-    maxAbnormal:         3,
-    allowOneToMany:      true,
+    serial: 9,
+    maxLevel: 2,
+    minAbnormal: 2,
+    maxAbnormal: 3,
+    allowOneToMany: true,
     maxTargetsPerSource: 2,
-    mustHaveLv2:         true,
-    isUpgradeTutorial:   false,
-    forceDebt:           false
+    mustHaveLv2: true,
+    isUpgradeTutorial: false,
+    forceDebt: false
   },
-
-  // 患者10：预设期最复杂，3-4个异常，含Lv.2
-  // 多感官、多映射，为随机期做最后热身
   {
-    serial:              10,
-    maxLevel:            2,
-    minAbnormal:         3,
-    maxAbnormal:         4,
-    allowOneToMany:      true,
+    serial: 10,
+    maxLevel: 2,
+    minAbnormal: 3,
+    maxAbnormal: 4,
+    allowOneToMany: true,
     maxTargetsPerSource: 2,
-    mustHaveLv2:         true,
-    isUpgradeTutorial:   false,
-    forceDebt:           false
+    mustHaveLv2: true,
+    isUpgradeTutorial: false,
+    forceDebt: false
   }
 ]
 
 // ================================================================
-// 工具函数：查规则表
+// 规则查询辅助
 // ================================================================
 
 /**
- * 根据序号获取预设规则
- * 第11个患者及以后返回 null，进入随机期
+ * 根据患者序号返回固定规则。
+ * 前 10 位患者使用预设规则，之后返回 null。
  */
 export function getPresetRule(serial) {
   if (serial > 10) return null
@@ -427,21 +372,21 @@ export function getPresetRule(serial) {
 }
 
 /**
- * 判断是否处于预设期
+ * 是否仍处于预设难度阶段。
  */
 export function isPresetPeriod(serial) {
   return serial <= 10
 }
 
 /**
- * 判断是否触发升级教程
+ * 是否应触发升级教学。
  */
 export function shouldTriggerUpgradeTutorial(serial) {
   return getPresetRule(serial)?.isUpgradeTutorial ?? false
 }
 
 /**
- * 判断是否强制赊账
+ * 是否应强制制造经济压力。
  */
 export function shouldForceDebt(serial) {
   return getPresetRule(serial)?.forceDebt ?? false

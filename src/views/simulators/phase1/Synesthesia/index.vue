@@ -674,13 +674,13 @@
         <div class="modal-kicker">患者档案库</div>
         <div class="archive-panel-intro">按病例索引查看过往患者的诊断记录与背景故事。</div>
         <div class="archive-layout">
-          <div class="archive-list">
+          <div v-if="!isMobileLayout || !showArchiveCaseDetail" class="archive-list">
             <button
               v-for="record in archiveCases"
               :key="record.id"
               class="archive-list-item"
               :class="{ active: selectedArchiveCase?.id === record.id }"
-              @click="selectArchiveCase(record.id)"
+              @click="handleArchiveCaseSelect(record.id)"
             >
               <div class="archive-list-row">
                 <div class="archive-list-name">{{ record.name }}</div>
@@ -691,56 +691,58 @@
             </button>
           </div>
 
-          <div v-if="selectedArchiveCase" class="archive-detail">
-            <div class="archive-detail-head">
-              <div>
-                <div class="archive-detail-title">{{ selectedArchiveCase.name }}</div>
-                <div class="archive-detail-sub">{{ selectedArchiveCase.job }}</div>
-              </div>
-              <div class="archive-detail-meta">
-                <span class="archive-detail-pill">{{ formatArchiveDate(selectedArchiveCase) }}</span>
-                <span class="archive-detail-pill">第 {{ selectedArchiveCase.visitCount }} 次来诊</span>
-              </div>
-            </div>
-
-            <div class="archive-detail-layout">
-              <div class="archive-section archive-section-history">
-                <div class="archive-section-label">诊断记录</div>
-                <div class="archive-history">
-                  <div
-                    v-for="entry in selectedArchiveCase.consultationHistory"
-                    :key="entry.id"
-                    class="archive-history-item"
-                    :class="`is-${entry.type || 'dialogue'}`"
-                  >
-                    <div class="archive-history-head">
-                      <strong>{{ entry.label || entry.speaker || '记录' }}</strong>
-                      <span>{{ getArchiveEntryTypeLabel(entry) }}</span>
-                    </div>
-                    <p>{{ entry.text }}</p>
-                  </div>
-                </div>
+          <div v-if="selectedArchiveCase && (!isMobileLayout || showArchiveCaseDetail)" class="archive-detail">
+            <div class="archive-scroll-container">
+              <div class="archive-detail-head">
+                <button v-if="isMobileLayout" class="archive-back-btn" @click="showArchiveCaseDetail = false">返回档案列表</button>
               </div>
 
-              <div class="archive-side-column">
-                <div class="archive-section">
-                  <div class="archive-section-label">病例摘要</div>
-                  <div class="archive-section-text">{{ selectedArchiveCase.summary }}</div>
+              <div class="archive-header-card">
+                <div class="archive-header-name">{{ selectedArchiveCase.name }}</div>
+                <div class="archive-header-meta">
+                  <span>{{ selectedArchiveCase.job }}</span>
+                  <span>·</span>
+                  <span>{{ formatArchiveDate(selectedArchiveCase) }}</span>
+                  <span>·</span>
+                  <span>{{ selectedArchiveCase.outcomeLabel }}</span>
                 </div>
+                <div class="archive-header-sub">第 {{ selectedArchiveCase.visitCount }} 次来诊</div>
+              </div>
 
-                <div class="archive-section">
-                  <div class="archive-section-label">核心牵挂</div>
-                  <div class="archive-section-text">{{ selectedArchiveCase.coreConcern || '暂无记录' }}</div>
+              <div class="archive-section-title">病例摘要</div>
+              <div class="archive-record-block">
+                <div class="archive-record-text">{{ selectedArchiveCase.summary }}</div>
+              </div>
+
+              <div class="archive-section-title">背景档案</div>
+              <div class="archive-record-stack">
+                <div v-if="selectedArchiveCase.coreConcern" class="archive-record-block">
+                  <div class="archive-record-kicker">核心牵挂</div>
+                  <div class="archive-record-text">{{ selectedArchiveCase.coreConcern }}</div>
                 </div>
-
-                <div class="archive-section">
-                  <div class="archive-section-label">背景故事</div>
+                <div class="archive-record-block">
+                  <div class="archive-record-kicker">背景故事</div>
                   <div class="archive-story">
                     <p
                       v-for="(para, i) in splitParagraphs(selectedArchiveCase.archiveStory || selectedArchiveCase.closingNarrative)"
                       :key="`archive-story-${i}`"
                     >{{ para }}</p>
                   </div>
+                </div>
+              </div>
+
+              <div class="archive-section-title">诊断记录</div>
+              <div class="archive-record-stack">
+                <div
+                  v-for="(entry, index) in selectedArchiveCase.consultationHistory"
+                  :key="entry.id"
+                  class="archive-record-block archive-record-history"
+                >
+                  <div class="archive-record-kicker">
+                    第 {{ index + 1 }} 条 · {{ getArchiveEntryTypeLabel(entry) }}
+                  </div>
+                  <div class="archive-record-role">{{ entry.label || entry.speaker || '记录' }}</div>
+                  <div class="archive-record-text">{{ entry.text }}</div>
                 </div>
               </div>
             </div>
@@ -764,6 +766,7 @@ import { useGameLogic } from './composables/useGameLogic'
 const contentEl = ref(null)
 const showFullHistory = ref(false)
 const showPhonePanel = ref(false)
+const showArchiveCaseDetail = ref(false)
 
 const {
   phase,
@@ -794,6 +797,7 @@ const {
   currentFeedbackActionLabel, feedbackOutcomeLabel,
   activePatientSummary, diagnosisAttemptLabel,
   diagnosisAttemptsLeft, diagnosisAttemptsTotal,
+  isMobileLayout,
   hubActions, senseConfigs, senseLabels, senseTargets,
   equipmentExpanded, snapshotExpanded,
   startNewGame, confirmStartNewGame, cancelStartNewGame,
@@ -847,6 +851,19 @@ watch(() => phase.value, () => {
   showPhonePanel.value = false
 })
 
+watch(() => showArchivePanel.value, value => {
+  if (!value) {
+    showArchiveCaseDetail.value = false
+    return
+  }
+
+  showArchiveCaseDetail.value = !isMobileLayout.value
+})
+
+watch(() => isMobileLayout.value, value => {
+  showArchiveCaseDetail.value = value ? false : !!selectedArchiveCase.value
+})
+
 function togglePhonePanel() {
   showPhonePanel.value = !showPhonePanel.value
   if (showPhonePanel.value) markPhoneMessagesRead()
@@ -884,6 +901,11 @@ function getArchiveEntryTypeLabel(entry) {
   }
 
   return labelMap[entry?.type] || '记录'
+}
+
+function handleArchiveCaseSelect(caseId) {
+  selectArchiveCase(caseId)
+  showArchiveCaseDetail.value = true
 }
 
 function isChecked(mapping, sourceId, targetId) {
@@ -2698,72 +2720,92 @@ function triggerAvatarUpload() {
   scrollbar-width: none;
 }
 .archive-detail::-webkit-scrollbar { display: none; }
+.archive-scroll-container {
+  max-width: 520px;
+  margin: 0 auto;
+  display: flex;
+  flex-direction: column;
+  gap: 1rem;
+}
 .archive-detail-head {
   display: flex;
-  align-items: flex-start;
-  justify-content: space-between;
-  gap: 1rem;
-  padding-bottom: 0.9rem;
-  border-bottom: 1px solid var(--border-paper);
+  align-items: center;
+  justify-content: flex-start;
 }
-.archive-detail-title {
-  font-size: 1.26rem;
-  color: var(--text-dark);
-  letter-spacing: 0.08em;
-}
-.archive-detail-sub {
-  margin-top: 0.28rem;
-  font-size: 0.8rem;
+.archive-back-btn {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  padding: 0.32rem 0.72rem;
+  border: 1px solid rgba(160,130,80,0.2);
+  border-radius: 999px;
+  background: rgba(255,248,236,0.88);
   color: var(--text-muted);
+  font: inherit;
+  font-size: 0.7rem;
 }
-.archive-detail-meta {
+.archive-header-card {
+  background: rgba(255, 255, 255, 0.86);
+  border: 1px solid var(--border-paper);
+  border-radius: 12px;
+  padding: 1.1rem 1rem;
+  box-shadow: 0 4px 15px rgba(0, 0, 0, 0.03);
+}
+.archive-header-name {
+  font-size: 1.12rem;
+  color: var(--text-dark);
+  letter-spacing: 0.12em;
+  margin-bottom: 0.45rem;
+}
+.archive-header-meta {
   display: flex;
   flex-wrap: wrap;
-  justify-content: flex-end;
-  gap: 0.45rem;
-}
-.archive-detail-pill {
-  padding: 0.28rem 0.62rem;
-  border-radius: 999px;
-  border: 1px solid rgba(200, 130, 10, 0.18);
-  background: rgba(255, 248, 236, 0.9);
-  color: var(--text-muted);
-  font-size: 0.64rem;
-  letter-spacing: 0.06em;
-}
-.archive-detail-layout {
-  margin-top: 1rem;
-  display: grid;
-  grid-template-columns: minmax(0, 1.35fr) minmax(260px, 0.85fr);
-  gap: 0.95rem;
-}
-.archive-side-column {
-  display: flex;
-  flex-direction: column;
-  gap: 0.95rem;
-}
-.archive-section {
-  display: flex;
-  flex-direction: column;
   gap: 0.35rem;
-  padding: 0.95rem 1rem;
-  border-radius: 14px;
-  border: 1px solid rgba(160,130,80,0.14);
-  background: linear-gradient(180deg, rgba(255,255,255,0.74), rgba(249,242,229,0.56));
-  box-shadow: 0 14px 26px rgba(70, 46, 8, 0.05);
+  font-size: 0.72rem;
+  color: var(--text-main);
+  line-height: 1.7;
 }
-.archive-section-label {
-  font-family: 'Courier New', monospace;
-  font-size: 0.6rem;
-  letter-spacing: 0.18em;
+.archive-header-sub {
+  margin-top: 0.5rem;
+  font-size: 0.62rem;
+  color: var(--text-muted);
+}
+.archive-section-title {
+  font-size: 0.65rem;
   color: var(--amber);
+  font-weight: bold;
+  letter-spacing: 0.2em;
+  border-bottom: 1px solid var(--border-paper);
+  padding-bottom: 0.28rem;
+  margin-top: 0.2rem;
 }
-.archive-section-text,
-.archive-story p,
-.archive-history-item {
+.archive-record-stack {
+  display: flex;
+  flex-direction: column;
+  gap: 0.7rem;
+}
+.archive-record-block {
+  background: rgba(255, 255, 255, 0.58);
+  border: 1px solid rgba(200, 170, 80, 0.12);
+  border-radius: 8px;
+  padding: 0.85rem 0.95rem;
+}
+.archive-record-kicker {
+  font-size: 0.64rem;
+  color: #8a6838;
+  letter-spacing: 0.14em;
+  margin-bottom: 0.45rem;
+}
+.archive-record-role {
+  font-size: 0.72rem;
+  color: var(--amber);
+  margin-bottom: 0.35rem;
+}
+.archive-record-text,
+.archive-story p {
   font-size: 0.8rem;
   color: var(--text-main);
-  line-height: 1.8;
+  line-height: 2;
 }
 .archive-story p {
   margin: 0 0 0.42rem 0;
@@ -2771,52 +2813,8 @@ function triggerAvatarUpload() {
 .archive-story p:last-child {
   margin-bottom: 0;
 }
-.archive-history {
-  display: flex;
-  flex-direction: column;
-  gap: 0.62rem;
-}
-.archive-history-item {
-  display: flex;
-  flex-direction: column;
-  gap: 0.4rem;
-  padding: 0.72rem 0.8rem;
-  border-radius: 12px;
-  background: rgba(255,255,255,0.52);
-  border: 1px solid rgba(160,130,80,0.12);
-}
-.archive-history-head {
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-  gap: 0.5rem;
-}
-.archive-history-item strong {
-  font-size: 0.72rem;
-  color: var(--amber);
-  letter-spacing: 0.08em;
-}
-.archive-history-head span {
-  flex-shrink: 0;
-  font-size: 0.6rem;
-  color: var(--text-dim);
-  letter-spacing: 0.08em;
-}
-.archive-history-item p {
-  margin: 0;
-  font-size: 0.8rem;
-  line-height: 1.85;
-  color: var(--text-main);
-}
-.archive-history-item.is-question {
-  border-left: 3px solid rgba(200, 130, 10, 0.45);
-}
-.archive-history-item.is-answer,
-.archive-history-item.is-treatment_feedback {
-  border-left: 3px solid rgba(26, 128, 144, 0.34);
-}
-.archive-history-item.is-diagnosis {
-  border-left: 3px solid rgba(122, 104, 72, 0.42);
+.archive-record-history {
+  border-left: 2px solid rgba(200,170,80,0.24);
 }
 
 /* ============================================================
@@ -2847,9 +2845,6 @@ function triggerAvatarUpload() {
   .modal-card { padding: 1.2rem; }
   .modal-stats-row { flex-direction: column; }
   .archive-layout { grid-template-columns: 1fr; min-height: auto; }
-  .archive-detail-head { flex-direction: column; }
-  .archive-detail-meta { justify-content: flex-start; }
-  .archive-detail-layout { grid-template-columns: 1fr; }
   .archive-list, .archive-detail { max-height: none; }
 }
 </style>

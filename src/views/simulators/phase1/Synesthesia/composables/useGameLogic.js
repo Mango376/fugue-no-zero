@@ -1248,52 +1248,6 @@ function normalizeGeneratedEnvironment(rawEnvironment = {}, fallbackPhase = null
     throw new Error('Local patient generation has been disabled.')
   }
 
-  function createPatientLegacy(serial, envPhase, seedBase = 0) {
-  // ✅ 查预设规则表
-  const rule = getPresetRule(serial)
-
-  const nextEnvironmentPhase = ENVIRONMENT_PHASES.some(item => item.phase === envPhase)
-    ? envPhase
-    : drawPatientEnvironmentPhase()
-  const variantOffset  = Math.abs(Number(seedBase) || 0) + Math.floor(Math.random() * 1000000)
-  const attachmentSeed = variantOffset + (serial * 11) + (nextEnvironmentPhase * 5)
-  const toneSeed       = variantOffset + (serial * 3)  + (nextEnvironmentPhase * 7)
-  const speechSeed     = variantOffset + (serial * 2)  + (nextEnvironmentPhase * 11) + Math.floor(serial / 2)
-  const job            = drawPatientJob()
-  const name           = drawPatientName()
-
-  // ✅ 传入 rule，预设期按规则生成，随机期走原有逻辑
-  const generatedMappings = buildGeneratedMappings(
-    variantOffset + (serial * 11) + (nextEnvironmentPhase * 13),
-    rule
-  )
-
-  const patient = {
-    id:               `synesthesia-patient-${serial}-${Date.now()}`,
-    serial,
-    name,
-    job:              job.title,
-    jobContext:       job.context,
-    attachment:       pickFrom(PATIENT_ATTACHMENT_POOL, attachmentSeed),
-    emotionalTone:    pickFrom(PATIENT_TONE_POOL, toneSeed),
-    speechStyle:      pickFrom(PATIENT_SPEECH_STYLE_POOL, speechSeed),
-    visitCount:       1,
-    environmentPhase: nextEnvironmentPhase,
-    diagnosisUsesLeft: DIAGNOSIS_LIMIT,
-    hiddenMappings:   cloneMapping(generatedMappings),
-    originalMappings: cloneMapping(generatedMappings),
-    trackingSheet:    null,
-    trackingSheetReady: false,
-
-    // ✅ 预设期专属字段
-    isPreset:           !!rule,
-    isUpgradeTutorial:  rule?.isUpgradeTutorial ?? false,
-    forceDebt:          rule?.forceDebt ?? false
-  }
-
-  // ✅ 提前生成等级表，追踪表生成时使用
-  return patient
-}
 
 
   function maybeShiftEnvironment(daysPassed = 1) {
