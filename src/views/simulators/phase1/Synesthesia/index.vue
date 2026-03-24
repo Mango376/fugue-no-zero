@@ -3,39 +3,76 @@
     <section v-if="phase === 'title'" class="screen screen-title">
       <div class="title-veil"></div>
       <div class="title-grid"></div>
+      <div class="title-scanlines"></div>
+      <div class="title-orbs" aria-hidden="true">
+        <div class="title-orb orb-1"></div>
+        <div class="title-orb orb-2"></div>
+        <div class="title-orb orb-3"></div>
+        <div class="title-orb orb-4"></div>
+      </div>
 
-      <div class="title-panel title-panel-centered">
-        <div class="title-eyebrow">{{ titleContent.eyebrow }}</div>
-        <h1 class="title-main">{{ titleContent.title }}</h1>
-        <div class="title-sub">{{ titleContent.subtitle }}</div>
-        <div class="title-divider"></div>
+      <div class="title-stage">
+        <div class="title-panel">
+          <div class="title-panel-line"></div>
+          <div class="title-eyebrow">{{ titleContent.eyebrow }}</div>
+          <h1 class="title-main">{{ titleContent.title }}</h1>
+          <div class="title-sub">{{ titleContent.subtitle }}</div>
+          <p class="title-tagline">{{ titleContent.tagline }}</p>
+          <div class="title-divider"></div>
+          <div class="title-copy">
+            <p>{{ titleContent.summary }}</p>
+            <p>{{ titleContent.detail }}</p>
+          </div>
 
-        <div class="title-actions">
-          <button class="title-btn primary title-btn-large" @click="startNewGame">开始新游戏</button>
-          <button
-            class="title-btn secondary"
-            :class="{ disabled: !hasSave || isCheckingSave }"
-            :disabled="!hasSave || isCheckingSave"
-            @click="continueGame"
-          >
-            继续游戏
-          </button>
-          <button
-            class="title-btn secondary"
-            :class="{ disabled: !hasArchiveSave || isCheckingSave }"
-            :disabled="!hasArchiveSave || isCheckingSave"
-            @click="loadArchivedGame"
-          >
-            读取存档
-          </button>
+          <div class="title-actions">
+            <button class="title-btn primary title-btn-large" @click="startNewGame">开始新游戏</button>
+            <button
+              class="title-btn secondary"
+              :class="{ disabled: !hasSave || isCheckingSave }"
+              :disabled="!hasSave || isCheckingSave"
+              @click="continueGame"
+            >
+              继续游戏
+            </button>
+            <button
+              class="title-btn secondary"
+              :class="{ disabled: !hasArchiveSave || isCheckingSave }"
+              :disabled="!hasArchiveSave || isCheckingSave"
+              @click="loadArchivedGame"
+            >
+              读取存档
+            </button>
+          </div>
+          <div class="title-archive-hint">{{ latestArchiveLabel }}</div>
+          <button class="text-link" @click="goHome">返回主界面</button>
         </div>
-        <div class="title-archive-hint">{{ latestArchiveLabel }}</div>
-        <button class="text-link" @click="goHome">返回主界面</button>
+
+        <aside class="title-sidebar">
+          <div class="title-sidebar-kicker">诊所入口 / 校准前夜</div>
+          <div class="title-sidebar-block">
+            <div class="title-sidebar-label">接诊原则</div>
+            <p>先听见异常如何进入生活，再判断感官错位究竟发生在何处。</p>
+          </div>
+          <div class="title-sidebar-block">
+            <div class="title-sidebar-label">诊疗环境</div>
+            <p>下城区边缘诊所，设备旧、空间窄、噪声重，但依旧有人在这里等一个被认真听见的机会。</p>
+          </div>
+          <div class="title-sidebar-block title-sidebar-senses">
+            <div class="title-sidebar-label">五感回路</div>
+            <div class="title-sense-row">
+              <span>视觉</span>
+              <span>听觉</span>
+              <span>触觉</span>
+              <span>味觉</span>
+              <span>嗅觉</span>
+            </div>
+          </div>
+        </aside>
       </div>
     </section>
 
     <section v-else-if="phase === 'background_intro'" class="screen screen-intro">
-      <header class="phase-topbar">
+      <header class="phase-topbar intro-topbar">
         <button class="text-link" @click="goToPrevBackgroundPage">返回</button>
         <div class="phase-topbar-actions">
           <div class="progress-label">背景介绍 {{ backgroundPage + 1 }} / {{ backgroundTotal }}</div>
@@ -43,35 +80,81 @@
         </div>
       </header>
 
-      <div class="intro-card">
-        <div class="intro-kicker">{{ currentBackgroundPage.kicker }}</div>
-        <h2 class="intro-title">{{ currentBackgroundPage.title }}</h2>
-        <div class="intro-divider"></div>
+      <div class="intro-stage">
+        <aside class="intro-sidebar">
+          <div class="intro-sidebar-header">
+            <div class="intro-sidebar-kicker">世界档案</div>
+            <div class="intro-sidebar-title">联觉失序记录</div>
+          </div>
 
-        <div class="intro-body">
-          <p v-for="(paragraph, index) in currentBackgroundPage.paragraphs" :key="index">
-            {{ paragraph }}
-          </p>
-        </div>
+          <div class="intro-page-list">
+            <button
+              v-for="page in backgroundPages"
+              :key="page.id"
+              type="button"
+              class="intro-page-tab"
+              :class="{ active: page.id === currentBackgroundPage.id }"
+            >
+              <span>{{ page.kicker }}</span>
+              <strong>{{ page.title }}</strong>
+            </button>
+          </div>
 
-        <div class="intro-actions single-action">
-          <button class="btn-primary" @click="goToNextBackgroundPage">
-            {{ backgroundPage + 1 === backgroundTotal ? '进入诊所' : '下一页' }}
-          </button>
+          <div class="intro-sidebar-note">
+            门铃响起之前，你会先看见这个世界是如何一步步失去正常感官秩序的。
+          </div>
+        </aside>
+
+        <div class="intro-card">
+          <div class="intro-card-topline"></div>
+          <div class="intro-kicker">{{ currentBackgroundPage.kicker }}</div>
+          <h2 class="intro-title">{{ currentBackgroundPage.title }}</h2>
+          <div class="intro-metadata">
+            <span>下城区病例输入</span>
+            <span>神经映射异常</span>
+            <span>人工校准流程</span>
+          </div>
+          <div class="intro-divider"></div>
+
+          <div class="intro-body">
+            <p v-for="(paragraph, index) in currentBackgroundPage.paragraphs" :key="index">
+              {{ paragraph }}
+            </p>
+          </div>
+
+          <div class="intro-footer">
+            <div class="intro-progress-track">
+              <div class="intro-progress-fill" :style="{ width: `${((backgroundPage + 1) / backgroundTotal) * 100}%` }"></div>
+            </div>
+
+            <div class="intro-actions">
+              <button class="btn-secondary" @click="goToPrevBackgroundPage">
+                {{ backgroundPage === 0 ? '回到标题' : '上一页' }}
+              </button>
+              <button class="btn-primary" @click="goToNextBackgroundPage">
+                {{ backgroundPage + 1 === backgroundTotal ? '进入诊所' : '下一页' }}
+              </button>
+            </div>
+          </div>
         </div>
       </div>
     </section>
 
     <section v-else-if="phase === 'hub'" class="screen screen-hub">
       <header class="hub-topbar hub-topbar-reframed">
-        <button class="btn-secondary compact" @click="returnToTitle">返回</button>
-        <div class="hub-credit-pill">信用点 {{ credits }}</div>
-        <div class="hub-time-pill">第 {{ gameDay }} 天</div>
+        <div class="hub-topbar-row">
+          <button class="btn-secondary compact topbar-action-btn" @click="returnToTitle">返回</button>
+          <div class="hub-topbar-text">信用点 {{ credits }}</div>
+          <div class="hub-topbar-text">第 {{ gameDay }} 天</div>
+        </div>
+        <div class="hub-timeflow-row">
+          <div class="hub-timeflow-label">时间条</div>
+          <div class="timeflow-strip topbar-timeflow">
+            <div class="timeflow-fill" :style="{ width: `${timeProgressPercent}%` }"></div>
+          </div>
+        </div>
       </header>
       <main class="hub-main hub-main-reframed">
-        <div class="timeflow-strip">
-          <div class="timeflow-fill" :style="{ width: `${timeProgressPercent}%` }"></div>
-        </div>
         <section class="hub-identity-card clickable-card" @click="toggleProfilePanel">
           <div class="profile-kicker">玩家信息</div>
           <div class="profile-card-row">
@@ -146,14 +229,6 @@
 
           <article class="hub-menu-item">
             <div class="menu-main">
-              <div class="menu-title">当前环境</div>
-              <div class="menu-sub">{{ currentEnvironment.description }}</div>
-            </div>
-            <div class="menu-state">{{ currentEnvironment.label }}</div>
-          </article>
-
-          <article class="hub-menu-item">
-            <div class="menu-main">
               <div class="menu-title">待复诊患者</div>
               <div class="menu-sub">
                 当前共 {{ pendingRevisitCount }} 名患者在排队，{{ dueRevisitCount }} 名已经到约定时间。
@@ -210,7 +285,7 @@
           <article class="hub-menu-item collapsible">
             <div class="menu-main">
               <div class="menu-title">设备概览</div>
-              <div class="menu-sub">桌面端默认展开，手机端默认折叠。</div>
+              <div class="menu-sub">查看五感治疗仪与可升级模块。</div>
             </div>
             <button class="mini-toggle" type="button" @click.stop="toggleEquipmentSection">
               {{ equipmentExpanded ? '收起' : '展开' }}
@@ -218,14 +293,22 @@
           </article>
 
           <div v-if="equipmentExpanded" class="hub-expand-panel">
-            <div v-for="item in equipmentSummary" :key="item.id" class="equipment-row">
-              <div>
-                <div class="equipment-name">{{ item.name }}</div>
-                <div class="equipment-desc">{{ item.summary }}</div>
-              </div>
-              <div class="equipment-level">
-                <span>{{ item.levelText }}</span>
-                <small>{{ item.moduleCount }}</small>
+            <div v-for="item in equipmentModuleRows" :key="item.id" class="equipment-module-card">
+              <div class="equipment-name">{{ item.name }}</div>
+              <div class="equipment-desc">可分别升级另外四种感官的治疗等级，默认 Lv.1，最高 Lv.4。</div>
+              <div class="equipment-module-list">
+                <div v-for="module in item.modules" :key="module.id" class="equipment-module-row">
+                  <span>{{ module.label }}</span>
+                  <strong>Lv.{{ module.level }}</strong>
+                  <button
+                    class="btn-secondary compact equipment-upgrade-btn"
+                    type="button"
+                    :disabled="module.level >= 4"
+                    @click="upgradeEquipmentModule(item.id, module.targetId)"
+                  >
+                    {{ module.level >= 4 ? '满级' : `升级 ${module.upgradeCost}` }}
+                  </button>
+                </div>
               </div>
             </div>
           </div>
@@ -521,6 +604,50 @@
       </main>
     </section>
 
+    <button
+      v-if="['hub', 'consult', 'treatment', 'patient_feedback'].includes(phase)"
+      class="phone-fab"
+      :class="{ consult: phase === 'consult' }"
+      @click="togglePhonePanel"
+    >
+      手机
+      <span v-if="unreadPhoneCount" class="phone-badge">{{ unreadPhoneCount }}</span>
+    </button>
+
+    <Transition name="modal-fade">
+      <div v-if="showPhonePanel" class="modal-overlay" @click.self="togglePhonePanel">
+        <div class="modal-card phone-modal">
+          <div class="modal-kicker">诊所手机</div>
+          <div class="modal-title">短信息</div>
+          <p class="modal-text">待回款 {{ pendingDebtCount }} 笔</p>
+
+          <div v-if="phoneMessages.length" class="phone-message-list">
+            <article
+              v-for="message in phoneMessages"
+              :key="message.id"
+              class="phone-message-item"
+              :class="{ unread: !message.read }"
+            >
+              <div class="phone-message-head">
+                <strong>{{ message.sender }}</strong>
+                <span>第 {{ message.gameDay }} 天</span>
+              </div>
+              <div class="archive-block-title">{{ message.title }}</div>
+              <div class="archive-copy">{{ message.text }}</div>
+            </article>
+          </div>
+
+          <div v-else class="archive-block">
+            <div class="archive-copy">暂时没有新的短信息。</div>
+          </div>
+
+          <div class="modal-actions">
+            <button class="btn-secondary" @click="togglePhonePanel">关闭</button>
+          </div>
+        </div>
+      </div>
+    </Transition>
+
     <Transition name="modal-fade">
       <div v-if="showConfirmNewGameModal" class="modal-overlay" @click.self="cancelStartNewGame">
         <div class="modal-card">
@@ -645,6 +772,7 @@ const {
   pendingRevisitCount,
   dueRevisitCount,
   waitingPatientCount,
+  phoneMessages,
   hubStats,
   equipmentSummary,
   equipmentModuleRows,
@@ -662,11 +790,14 @@ const {
   totalEarnings,
   totalCuredCount,
   totalEquipmentLevel,
+  unreadPhoneCount,
+  pendingDebtCount,
   latestArchiveLabel,
   currentFeedbackActionLabel,
   feedbackOutcomeLabel,
   activePatientSummary,
   diagnosisAttemptLabel,
+  backgroundPages,
   backgroundTotal,
   titleContent,
   hubActions,
@@ -683,6 +814,7 @@ const {
   toggleProfilePanel,
   updatePlayerName,
   updatePlayerAvatar,
+  markPhoneMessagesRead,
   upgradeEquipmentModule,
   goHome,
   returnToHub,
@@ -708,8 +840,39 @@ const {
 } = useGameLogic()
 
 const showFullHistory = ref(false)
+const showPhonePanel = ref(false)
 const typingEntryId = ref('')
 const isTypingNarrative = ref(false)
+
+function cleanDisplayText(text = '') {
+  return String(text || '')
+    .replace(/^\s*---[A-Z_]+---\s*$/gm, '')
+    .replace(/\n{3,}/g, '\n\n')
+    .trim()
+}
+
+function isPromptLeakText(text = '') {
+  const cleaned = cleanDisplayText(text)
+
+  return (
+    /生成\s*4\s*个下一步问诊选项/.test(cleaned)
+    || /只输出\s*JSON/.test(cleaned)
+    || /"doctorLine"\s*:/.test(cleaned)
+    || /"promptFocus"\s*:/.test(cleaned)
+    || /"patientProfile"\s*:/.test(cleaned)
+    || /"unresolvedMappings"\s*:/.test(cleaned)
+    || /【最近问诊历史】|【本轮医生提问】|【玩家当前记录】|【已知基础资料】/.test(cleaned)
+  )
+}
+
+const safeConsultationHistory = computed(() => {
+  return consultationHistory.value
+    .map(entry => ({
+      ...entry,
+      text: cleanDisplayText(entry?.text)
+    }))
+    .filter(entry => entry.text && !isPromptLeakText(entry.text))
+})
 
 const visibleConsultationHistory = computed(() => {
   if (consultEntryStage.value === 'pre_consult') {
@@ -717,25 +880,25 @@ const visibleConsultationHistory = computed(() => {
   }
 
   if (showFullHistory.value) {
-    return consultationHistory.value
+    return safeConsultationHistory.value
   }
 
   if (consultStage.value === 'arrival_intro') {
-    return consultationHistory.value.slice(-1)
+    return safeConsultationHistory.value.slice(-1)
   }
 
-  return consultationHistory.value.slice(-2)
+  return safeConsultationHistory.value.slice(-2)
 })
 
 const collapsedHistoryCount = computed(() => {
-  return Math.max(0, consultationHistory.value.length - visibleConsultationHistory.value.length)
+  return Math.max(0, safeConsultationHistory.value.length - visibleConsultationHistory.value.length)
 })
 
 watch(
-  () => consultationHistory.value.length,
+  () => safeConsultationHistory.value.length,
   () => {
     showFullHistory.value = false
-    const latestEntry = consultationHistory.value.at(-1)
+    const latestEntry = safeConsultationHistory.value.at(-1)
     if (latestEntry && latestEntry.speaker !== 'doctor') {
       typingEntryId.value = latestEntry.id
       isTypingNarrative.value = true
@@ -747,13 +910,28 @@ watch(
   }
 )
 
+watch(
+  () => phase.value,
+  () => {
+    showPhonePanel.value = false
+  }
+)
+
 function handleTypingDone() {
   typingEntryId.value = ''
   isTypingNarrative.value = false
 }
 
+function togglePhonePanel() {
+  showPhonePanel.value = !showPhonePanel.value
+
+  if (showPhonePanel.value) {
+    markPhoneMessagesRead()
+  }
+}
+
 function splitParagraphs(text = '') {
-  return String(text)
+  return cleanDisplayText(text)
     .split(/\n+/)
     .map(item => item.trim())
     .filter(Boolean)
@@ -786,9 +964,9 @@ function handleAvatarChange(event) {
   height: 100vh;
   overflow: hidden;
   background:
-    radial-gradient(circle at top, rgba(35, 78, 96, 0.24), transparent 32%),
-    radial-gradient(circle at 80% 20%, rgba(164, 85, 55, 0.12), transparent 24%),
-    linear-gradient(180deg, #060b11 0%, #04070c 100%);
+    radial-gradient(circle at top, rgba(35, 78, 96, 0.26), transparent 30%),
+    radial-gradient(circle at 85% 18%, rgba(164, 85, 55, 0.12), transparent 22%),
+    linear-gradient(180deg, #080c14 0%, #04070d 100%);
   color: #ddd3c2;
   font-family: 'KaiTi', 'STKaiti', serif;
 }
@@ -799,23 +977,117 @@ function handleAvatarChange(event) {
 }
 
 .title-veil,
-.title-grid {
+.title-grid,
+.title-scanlines,
+.title-orbs {
   position: absolute;
   inset: 0;
 }
 
 .title-veil {
   background:
-    radial-gradient(circle at 25% 25%, rgba(82, 133, 148, 0.18), transparent 28%),
-    radial-gradient(circle at 70% 70%, rgba(179, 103, 69, 0.14), transparent 24%);
+    radial-gradient(circle at 22% 18%, rgba(82, 133, 148, 0.22), transparent 28%),
+    radial-gradient(circle at 72% 72%, rgba(179, 103, 69, 0.14), transparent 24%);
 }
 
 .title-grid {
   background-image:
-    linear-gradient(rgba(255, 255, 255, 0.025) 1px, transparent 1px),
-    linear-gradient(90deg, rgba(255, 255, 255, 0.025) 1px, transparent 1px);
-  background-size: 34px 34px;
-  mask-image: linear-gradient(180deg, rgba(0, 0, 0, 0.8), transparent);
+    linear-gradient(rgba(219, 194, 139, 0.035) 1px, transparent 1px),
+    linear-gradient(90deg, rgba(219, 194, 139, 0.035) 1px, transparent 1px);
+  background-size: 30px 30px;
+  mask-image: linear-gradient(180deg, rgba(0, 0, 0, 0.92), transparent);
+}
+
+.title-scanlines {
+  pointer-events: none;
+  background: linear-gradient(
+    180deg,
+    transparent 0%,
+    rgba(74, 142, 139, 0.025) 45%,
+    rgba(74, 142, 139, 0.09) 50%,
+    rgba(74, 142, 139, 0.025) 55%,
+    transparent 100%
+  );
+  transform: translateY(-30%);
+  animation: synesthesiaScan 8s cubic-bezier(0.4, 0, 0.6, 1) infinite alternate;
+}
+
+.title-orbs {
+  pointer-events: none;
+  overflow: hidden;
+}
+
+.title-orb {
+  position: absolute;
+  border-radius: 50%;
+  filter: blur(60px);
+  opacity: 0.28;
+}
+
+.title-orb.orb-1 {
+  width: 300px;
+  height: 300px;
+  top: -8%;
+  left: -10%;
+  background: radial-gradient(circle, rgba(184, 153, 71, 0.22), transparent 70%);
+  animation: synesthesiaOrbDrift1 18s ease-in-out infinite alternate;
+}
+
+.title-orb.orb-2 {
+  width: 260px;
+  height: 260px;
+  right: -8%;
+  bottom: -5%;
+  background: radial-gradient(circle, rgba(74, 142, 139, 0.18), transparent 70%);
+  animation: synesthesiaOrbDrift2 22s ease-in-out infinite alternate;
+}
+
+.title-orb.orb-3 {
+  width: 190px;
+  height: 190px;
+  right: 8%;
+  top: 25%;
+  background: radial-gradient(circle, rgba(184, 153, 71, 0.12), transparent 70%);
+  animation: synesthesiaOrbDrift3 16s ease-in-out infinite alternate;
+}
+
+.title-orb.orb-4 {
+  width: 160px;
+  height: 160px;
+  left: 12%;
+  bottom: 12%;
+  background: radial-gradient(circle, rgba(74, 142, 139, 0.14), transparent 70%);
+  animation: synesthesiaOrbDrift4 20s ease-in-out infinite alternate;
+}
+
+@keyframes synesthesiaScan {
+  0% {
+    transform: translateY(-28%);
+  }
+
+  100% {
+    transform: translateY(28%);
+  }
+}
+
+@keyframes synesthesiaOrbDrift1 {
+  0% { transform: translate(0, 0) scale(1); }
+  100% { transform: translate(16px, 20px) scale(1.05); }
+}
+
+@keyframes synesthesiaOrbDrift2 {
+  0% { transform: translate(0, 0) scale(1); }
+  100% { transform: translate(-14px, -16px) scale(1.08); }
+}
+
+@keyframes synesthesiaOrbDrift3 {
+  0% { transform: translate(0, 0) scale(1); }
+  100% { transform: translate(-8px, 12px) scale(0.94); }
+}
+
+@keyframes synesthesiaOrbDrift4 {
+  0% { transform: translate(0, 0) scale(1); }
+  100% { transform: translate(10px, -14px) scale(1.1); }
 }
 
 .screen-title,
@@ -830,8 +1102,9 @@ function handleAvatarChange(event) {
 
 .screen-title {
   justify-content: center;
-  align-items: center;
+  align-items: stretch;
   position: relative;
+  overflow: hidden;
 }
 
 .title-panel,
@@ -849,29 +1122,46 @@ function handleAvatarChange(event) {
 .feedback-card,
 .modal-card {
   background: rgba(8, 16, 20, 0.84);
-  border: 1px solid rgba(219, 194, 139, 0.12);
+  border: 1px solid rgba(219, 194, 139, 0.14);
   box-shadow:
     inset 0 0 0 1px rgba(255, 255, 255, 0.02),
-    0 18px 48px rgba(0, 0, 0, 0.25);
+    0 20px 52px rgba(0, 0, 0, 0.28);
+}
+
+.title-stage {
+  position: relative;
+  z-index: 2;
+  width: min(1220px, calc(100vw - 3rem));
+  margin: auto;
+  display: grid;
+  grid-template-columns: minmax(0, 1.15fr) minmax(280px, 0.75fr);
+  gap: 1.4rem;
+  align-items: end;
 }
 
 .title-panel {
-  position: relative;
-  z-index: 1;
-  width: min(540px, calc(100vw - 2.75rem));
-  border-radius: 0;
-  padding: 7rem 2.1rem 6rem;
+  min-height: min(780px, calc(100vh - 4rem));
+  padding: clamp(2rem, 4vw, 3.2rem);
   display: flex;
   flex-direction: column;
+  justify-content: flex-end;
   gap: 1rem;
-  background: transparent;
-  border: none;
-  box-shadow: none;
+  border-radius: 28px;
+  background:
+    linear-gradient(180deg, rgba(4, 10, 14, 0.48), rgba(4, 10, 14, 0.88)),
+    radial-gradient(circle at top left, rgba(91, 159, 176, 0.16), transparent 36%),
+    radial-gradient(circle at 82% 78%, rgba(173, 98, 62, 0.16), transparent 28%);
+  border: 1px solid rgba(226, 206, 149, 0.15);
+  box-shadow:
+    inset 0 0 0 1px rgba(255, 255, 255, 0.03),
+    0 28px 80px rgba(0, 0, 0, 0.38);
 }
 
-.title-panel-centered {
-  align-items: center;
-  text-align: center;
+.title-panel-line {
+  width: min(180px, 32vw);
+  height: 2px;
+  margin-bottom: 0.35rem;
+  background: linear-gradient(90deg, rgba(99, 162, 180, 0.9), rgba(232, 208, 151, 0.08));
 }
 
 .title-eyebrow,
@@ -899,8 +1189,11 @@ function handleAvatarChange(event) {
 }
 
 .title-main {
-  font-size: clamp(3.2rem, 8vw, 5.4rem);
-  letter-spacing: 0.18em;
+  max-width: 7ch;
+  font-size: clamp(3.6rem, 8vw, 7rem);
+  line-height: 0.94;
+  letter-spacing: 0.12em;
+  text-shadow: 0 4px 18px rgba(184, 153, 71, 0.18);
 }
 
 .title-sub,
@@ -917,6 +1210,14 @@ function handleAvatarChange(event) {
 .phase-sub,
 .case-meta {
   color: #88a0a6;
+}
+
+.title-tagline {
+  max-width: 28rem;
+  margin: 0.1rem 0 0;
+  font-size: clamp(1rem, 2vw, 1.22rem);
+  line-height: 1.8;
+  color: #d7ccba;
 }
 
 .title-copy,
@@ -965,8 +1266,8 @@ function handleAvatarChange(event) {
 }
 
 .title-panel .text-link {
-  align-self: center;
-  margin-top: 0.85rem;
+  align-self: flex-start;
+  margin-top: 0.55rem;
   color: rgba(215, 199, 157, 0.72);
 }
 
@@ -977,10 +1278,10 @@ function handleAvatarChange(event) {
 }
 
 .title-divider {
-  width: 64px;
+  width: min(220px, 42vw);
   height: 1px;
-  margin: 0.35rem 0 0.75rem;
-  background: linear-gradient(90deg, transparent, rgba(219, 194, 139, 0.35), transparent);
+  margin: 0.2rem 0 0.35rem;
+  background: linear-gradient(90deg, rgba(219, 194, 139, 0.42), rgba(219, 194, 139, 0.04));
 }
 
 .title-btn,
@@ -998,28 +1299,91 @@ function handleAvatarChange(event) {
 .title-btn,
 .btn-primary,
 .btn-secondary {
-  border-radius: 10px;
+  border-radius: 8px;
   padding: 0.78rem 1.3rem;
-  font-size: 0.88rem;
-  letter-spacing: 0.12em;
+  font-size: 0.84rem;
+  letter-spacing: 0.16em;
 }
 
 .title-btn.primary,
 .btn-primary {
-  border: 1px solid rgba(237, 211, 151, 0.36);
-  background: linear-gradient(135deg, #8a5938, #5e3925);
+  border: 1px solid rgba(237, 211, 151, 0.34);
+  background: linear-gradient(180deg, rgba(151, 101, 63, 0.96), rgba(92, 57, 35, 0.96));
   color: #f6e9cf;
+  box-shadow: 0 8px 20px rgba(110, 67, 40, 0.26);
 }
 
 .title-btn.secondary,
 .btn-secondary {
   border: 1px solid rgba(219, 194, 139, 0.18);
-  background: transparent;
+  background: rgba(255, 255, 255, 0.015);
   color: #b9ac8e;
 }
 
 .title-btn-large {
-  min-height: 70px;
+  min-height: 64px;
+}
+
+.title-sidebar {
+  min-height: min(620px, calc(100vh - 9rem));
+  padding: 1.6rem;
+  display: flex;
+  flex-direction: column;
+  justify-content: flex-end;
+  gap: 1rem;
+  border-radius: 24px;
+  background:
+    linear-gradient(180deg, rgba(6, 11, 16, 0.46), rgba(6, 11, 16, 0.86)),
+    linear-gradient(135deg, rgba(110, 164, 176, 0.08), transparent 48%);
+  border: 1px solid rgba(226, 206, 149, 0.1);
+  backdrop-filter: blur(10px);
+}
+
+.title-sidebar-kicker,
+.intro-sidebar-kicker {
+  font-family: 'Courier New', monospace;
+  font-size: 0.72rem;
+  letter-spacing: 0.18em;
+  color: #98a8a7;
+}
+
+.title-sidebar-block {
+  display: flex;
+  flex-direction: column;
+  gap: 0.45rem;
+  padding-top: 0.95rem;
+  border-top: 1px solid rgba(219, 194, 139, 0.08);
+}
+
+.title-sidebar-label {
+  color: #ead9af;
+  letter-spacing: 0.08em;
+}
+
+.title-sidebar-block p,
+.intro-sidebar-note {
+  margin: 0;
+  line-height: 1.8;
+  color: #b9b1a1;
+}
+
+.title-sense-row {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.55rem;
+}
+
+.title-sense-row span,
+.intro-metadata span {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  padding: 0.38rem 0.72rem;
+  border-radius: 999px;
+  border: 1px solid rgba(219, 194, 139, 0.14);
+  background: rgba(255, 255, 255, 0.03);
+  color: #d9cba8;
+  font-size: 0.78rem;
 }
 
 .title-btn.secondary.disabled,
@@ -1050,7 +1414,7 @@ function handleAvatarChange(event) {
   justify-content: space-between;
   padding: 1rem 1.4rem;
   border-bottom: 1px solid rgba(219, 194, 139, 0.08);
-  background: rgba(6, 12, 16, 0.84);
+  background: rgba(5, 10, 15, 0.92);
 }
 
 .consult-topbar {
@@ -1087,50 +1451,243 @@ function handleAvatarChange(event) {
   padding: 1.2rem 1.4rem;
 }
 
+.screen-intro {
+  position: relative;
+  overflow: hidden;
+  background:
+    radial-gradient(circle at top right, rgba(112, 162, 172, 0.1), transparent 28%),
+    linear-gradient(180deg, rgba(5, 10, 14, 0.98), rgba(7, 12, 17, 0.96));
+}
+
+.intro-topbar {
+  position: relative;
+  z-index: 2;
+}
+
+.intro-stage {
+  position: relative;
+  z-index: 1;
+  flex: 1;
+  display: grid;
+  grid-template-columns: minmax(260px, 320px) minmax(0, 1fr);
+  gap: 1.2rem;
+  padding: 1.2rem 1.4rem 1.4rem;
+  min-height: 0;
+}
+
+.intro-sidebar {
+  display: flex;
+  flex-direction: column;
+  gap: 1rem;
+  padding: 1.2rem;
+  border-radius: 22px;
+  background: rgba(7, 12, 17, 0.72);
+  border: 1px solid rgba(219, 194, 139, 0.08);
+}
+
+.intro-sidebar-header {
+  display: flex;
+  flex-direction: column;
+  gap: 0.25rem;
+}
+
+.intro-sidebar-title {
+  font-size: 1.3rem;
+  color: #eedfb6;
+}
+
+.intro-page-list {
+  display: flex;
+  flex-direction: column;
+  gap: 0.7rem;
+}
+
+.intro-page-tab {
+  width: 100%;
+  border: 1px solid rgba(219, 194, 139, 0.08);
+  border-radius: 16px;
+  padding: 0.9rem 0.95rem;
+  background: rgba(255, 255, 255, 0.02);
+  color: #9fa6a1;
+  text-align: left;
+  display: flex;
+  flex-direction: column;
+  gap: 0.35rem;
+  pointer-events: none;
+}
+
+.intro-page-tab span {
+  font-size: 0.72rem;
+  letter-spacing: 0.14em;
+}
+
+.intro-page-tab strong {
+  color: #cbc2b2;
+  font-weight: normal;
+  line-height: 1.65;
+}
+
+.intro-page-tab.active {
+  border-color: rgba(219, 194, 139, 0.2);
+  background:
+    linear-gradient(90deg, rgba(117, 166, 182, 0.12), transparent),
+    rgba(255, 255, 255, 0.025);
+}
+
 .intro-card {
-  width: min(760px, calc(100vw - 2.5rem));
-  margin: auto;
-  border-radius: 20px;
-  padding: 1.8rem 1.9rem;
+  width: 100%;
+  margin: 0;
+  border-radius: 24px;
+  padding: clamp(1.5rem, 3vw, 2.3rem);
+  display: flex;
+  flex-direction: column;
+  min-height: 0;
+  background:
+    linear-gradient(180deg, rgba(8, 15, 21, 0.9), rgba(8, 15, 21, 0.98)),
+    radial-gradient(circle at 86% 18%, rgba(118, 168, 176, 0.08), transparent 20%);
+}
+
+.intro-card-topline {
+  width: min(170px, 28vw);
+  height: 2px;
+  margin-bottom: 0.75rem;
+  background: linear-gradient(90deg, rgba(106, 167, 183, 0.92), rgba(233, 209, 152, 0.08));
 }
 
 .intro-title {
   font-size: clamp(2rem, 4vw, 3rem);
-  line-height: 1.25;
+  line-height: 1.22;
+  max-width: 12ch;
+}
+
+.intro-metadata {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.55rem;
+  margin-top: 0.3rem;
 }
 
 .intro-divider {
   width: 100%;
   height: 1px;
   margin: 1rem 0 1.2rem;
-  background: linear-gradient(90deg, transparent, rgba(219, 194, 139, 0.25), transparent);
+  background: linear-gradient(90deg, rgba(219, 194, 139, 0.26), rgba(219, 194, 139, 0.04));
 }
 
-.hub-main {
+.intro-footer {
+  margin-top: auto;
+  padding-top: 1.1rem;
   display: flex;
   flex-direction: column;
   gap: 1rem;
 }
 
+.intro-progress-track {
+  width: 100%;
+  height: 8px;
+  border-radius: 999px;
+  background: rgba(255, 255, 255, 0.05);
+  overflow: hidden;
+}
+
+.intro-progress-fill {
+  height: 100%;
+  border-radius: inherit;
+  background: linear-gradient(90deg, rgba(99, 162, 180, 0.9), rgba(224, 198, 138, 0.86));
+}
+
+.hub-main {
+  display: flex;
+  flex-direction: column;
+  gap: 0.95rem;
+}
+
 .hub-topbar-reframed {
+  display: flex;
+  flex-direction: column;
+  gap: 0.8rem;
+  align-items: stretch;
+}
+
+.hub-topbar-row {
   display: grid;
-  grid-template-columns: repeat(3, minmax(0, 1fr));
+  grid-template-columns: auto 1fr 1fr;
   gap: 0.8rem;
   align-items: center;
 }
 
+.topbar-action-btn {
+  justify-self: start;
+}
+
 .hub-credit-pill,
-.hub-time-pill {
-  border: 1px solid rgba(219, 194, 139, 0.14);
-  border-radius: 999px;
-  padding: 0.55rem 0.9rem;
+.hub-time-pill,
+.hub-topbar-text {
   text-align: center;
   color: #e7d7ab;
-  background: rgba(255, 255, 255, 0.03);
+  justify-self: stretch;
+}
+
+.hub-topbar-text {
+  font-size: 1.1rem;
+  letter-spacing: 0.1em;
+}
+
+.hub-timeflow-row {
+  display: flex;
+  align-items: center;
+  gap: 0.9rem;
+  padding: 0.15rem 0;
+}
+
+.hub-timeflow-label {
+  flex-shrink: 0;
+  min-width: 4.2rem;
+  color: #d8c89d;
+  font-size: 0.9rem;
+  letter-spacing: 0.14em;
+}
+
+.topbar-timeflow {
+  flex: 1;
+  height: 16px;
+  border: 1px solid rgba(219, 194, 139, 0.12);
+  background: rgba(255, 255, 255, 0.035);
+  position: relative;
+  overflow: hidden;
+}
+
+.topbar-timeflow::before {
+  content: '';
+  position: absolute;
+  inset: 0;
+  background:
+    linear-gradient(
+      90deg,
+      transparent 0%,
+      rgba(255, 255, 255, 0.03) 20%,
+      rgba(255, 255, 255, 0.09) 50%,
+      rgba(255, 255, 255, 0.03) 80%,
+      transparent 100%
+    );
+  transform: translateX(-100%);
+  animation: timeflowSweep 3.8s ease-in-out infinite;
+  pointer-events: none;
 }
 
 .hub-main-reframed {
   gap: 0.9rem;
+  position: relative;
+}
+
+.hub-main-reframed::after {
+  content: '诊断室已就绪 · 随时可以开始下一次接待';
+  display: block;
+  padding: 0.8rem 0 0.4rem;
+  text-align: center;
+  font-size: 0.68rem;
+  color: #8f8a7b;
+  letter-spacing: 0.2em;
 }
 
 .timeflow-head,
@@ -1153,22 +1710,88 @@ function handleAvatarChange(event) {
   height: 100%;
   border-radius: inherit;
   background: linear-gradient(90deg, #7ec4cf, #d3b06d);
+  position: relative;
+  overflow: hidden;
+  box-shadow:
+    0 0 12px rgba(126, 196, 207, 0.22),
+    0 0 18px rgba(211, 176, 109, 0.14);
+  transition: width 0.7s cubic-bezier(0.22, 1, 0.36, 1);
+  animation: timeflowPulse 2.8s ease-in-out infinite;
+}
+
+.timeflow-fill::after {
+  content: '';
+  position: absolute;
+  top: 0;
+  right: -18px;
+  width: 56px;
+  height: 100%;
+  background: linear-gradient(
+    90deg,
+    transparent 0%,
+    rgba(255, 255, 255, 0.2) 45%,
+    rgba(255, 255, 255, 0.5) 60%,
+    transparent 100%
+  );
+  transform: skewX(-20deg);
+  animation: timeflowShimmer 2.4s linear infinite;
+}
+
+@keyframes timeflowPulse {
+  0%,
+  100% {
+    filter: saturate(0.95) brightness(0.96);
+  }
+
+  50% {
+    filter: saturate(1.08) brightness(1.08);
+  }
+}
+
+@keyframes timeflowShimmer {
+  0% {
+    transform: translateX(-12px) skewX(-20deg);
+    opacity: 0.2;
+  }
+
+  50% {
+    opacity: 0.8;
+  }
+
+  100% {
+    transform: translateX(160px) skewX(-20deg);
+    opacity: 0.12;
+  }
+}
+
+@keyframes timeflowSweep {
+  0% {
+    transform: translateX(-100%);
+    opacity: 0;
+  }
+
+  20% {
+    opacity: 1;
+  }
+
+  100% {
+    transform: translateX(100%);
+    opacity: 0;
+  }
 }
 
 .hub-identity-card,
 .hub-environment-card,
 .hub-folder-card,
 .hub-secondary-actions {
-  border-radius: 18px;
+  border-radius: 10px;
   padding: 1rem 1.1rem;
   background: rgba(255, 255, 255, 0.02);
   border: 1px solid rgba(219, 194, 139, 0.08);
 }
 
 .hub-folders {
-  display: flex;
-  flex-direction: column;
-  gap: 0.8rem;
+  display: none;
 }
 
 .hub-folder-card {
@@ -1239,10 +1862,6 @@ function handleAvatarChange(event) {
   color: #ead9af;
 }
 
-.hub-menu > :not(.archive-intro):not(.archive-list) {
-  display: none;
-}
-
 .hub-profile,
 .hub-stats-bar,
 .hub-expand-panel,
@@ -1252,7 +1871,7 @@ function handleAvatarChange(event) {
 .treatment-summary-card,
 .treatment-submit-card,
 .feedback-card {
-  border-radius: 18px;
+  border-radius: 10px;
   padding: 1.15rem 1.2rem;
 }
 
@@ -1260,6 +1879,23 @@ function handleAvatarChange(event) {
   display: flex;
   justify-content: space-between;
   gap: 1rem;
+  background: rgba(10, 18, 24, 0.78);
+  border-color: rgba(219, 194, 139, 0.16);
+  transition: all 0.28s ease;
+}
+
+.hub-profile:hover {
+  transform: translateX(4px);
+  border-color: rgba(219, 194, 139, 0.3);
+  box-shadow:
+    inset 0 0 0 1px rgba(255, 255, 255, 0.02),
+    0 16px 36px rgba(0, 0, 0, 0.3);
+}
+
+.hub-identity-card,
+.hub-environment-card {
+  background: rgba(10, 18, 24, 0.78);
+  border-color: rgba(219, 194, 139, 0.14);
 }
 
 .profile-name {
@@ -1272,6 +1908,7 @@ function handleAvatarChange(event) {
   flex-direction: column;
   gap: 0.6rem;
   min-width: 160px;
+  align-items: flex-end;
 }
 
 .meta-chip,
@@ -1295,14 +1932,15 @@ function handleAvatarChange(event) {
 }
 
 .hub-stats-bar {
-  display: grid;
-  grid-template-columns: repeat(4, minmax(0, 1fr));
+  display: flex;
   gap: 0.8rem;
+  align-items: stretch;
+  background: rgba(9, 15, 21, 0.78);
 }
 
 .hub-stat-item,
 .hub-menu-item {
-  border-radius: 14px;
+  border-radius: 8px;
   padding: 0.9rem 1rem;
   background: rgba(255, 255, 255, 0.02);
   border: 1px solid rgba(219, 194, 139, 0.08);
@@ -1319,12 +1957,50 @@ function handleAvatarChange(event) {
   align-items: center;
   justify-content: space-between;
   gap: 1rem;
+  position: relative;
+  overflow: hidden;
+  transition: all 0.28s cubic-bezier(0.34, 1.56, 0.64, 1);
+}
+
+.hub-menu-item::before {
+  content: '';
+  position: absolute;
+  left: 0;
+  top: 0;
+  bottom: 0;
+  width: 3px;
+  background: rgba(219, 194, 139, 0.86);
+  opacity: 0;
+  transition: opacity 0.28s ease;
+}
+
+.hub-menu-item:hover {
+  transform: translateX(5px);
+  border-color: rgba(219, 194, 139, 0.22);
+  background: rgba(255, 255, 255, 0.035);
+}
+
+.hub-menu-item:hover::before {
+  opacity: 1;
 }
 
 .hub-menu-item.primary-item {
   cursor: pointer;
-  border-color: rgba(219, 194, 139, 0.2);
+  border-color: rgba(219, 194, 139, 0.22);
   background: rgba(219, 194, 139, 0.05);
+}
+
+.menu-item-left {
+  display: flex;
+  align-items: center;
+  gap: 0.85rem;
+}
+
+.menu-icon {
+  width: 18px;
+  color: #d5c392;
+  font-size: 0.76rem;
+  text-align: center;
 }
 
 .menu-title {
@@ -1341,11 +2017,17 @@ function handleAvatarChange(event) {
   display: flex;
   flex-direction: column;
   gap: 0.7rem;
+  border-radius: 8px;
+  background: rgba(8, 14, 20, 0.72);
+}
+
+.hub-folders + .hub-expand-panel {
+  display: none;
 }
 
 .equipment-module-card {
   padding: 0.9rem 0.95rem;
-  border-radius: 14px;
+  border-radius: 8px;
   background: rgba(255, 255, 255, 0.025);
   border: 1px solid rgba(219, 194, 139, 0.08);
 }
@@ -1386,7 +2068,7 @@ function handleAvatarChange(event) {
 }
 
 .archive-item {
-  border-radius: 16px;
+  border-radius: 8px;
   border: 1px solid rgba(219, 194, 139, 0.08);
   background: rgba(255, 255, 255, 0.02);
   overflow: hidden;
@@ -1480,6 +2162,8 @@ function handleAvatarChange(event) {
   min-height: 0;
   padding-bottom: 1rem;
   overflow: hidden;
+  background: rgba(9, 15, 21, 0.9);
+  border-color: rgba(219, 194, 139, 0.14);
 }
 
 .consciousness-head {
@@ -1530,7 +2214,7 @@ function handleAvatarChange(event) {
 
 .dialogue-entry {
   padding: 1rem 1.05rem;
-  border-radius: 16px;
+  border-radius: 8px;
   background: rgba(255, 255, 255, 0.025);
   border: 1px solid rgba(219, 194, 139, 0.06);
 }
@@ -1560,7 +2244,7 @@ function handleAvatarChange(event) {
 .question-prestart,
 .question-loading {
   height: 100%;
-  border-radius: 18px;
+  border-radius: 10px;
   padding: 1rem 1.1rem;
   background: rgba(8, 13, 19, 0.96);
   border: 1px solid rgba(219, 194, 139, 0.08);
@@ -1646,7 +2330,7 @@ function handleAvatarChange(event) {
 }
 
 .question-btn {
-  border-radius: 10px;
+  border-radius: 8px;
   border: 1px solid rgba(219, 194, 139, 0.2);
   background: rgba(224, 216, 201, 0.9);
   color: #2d2518;
@@ -1898,6 +2582,40 @@ function handleAvatarChange(event) {
   z-index: 12;
 }
 
+.phone-fab {
+  position: absolute;
+  right: 1rem;
+  bottom: 1rem;
+  display: inline-flex;
+  align-items: center;
+  gap: 0.45rem;
+  border: 1px solid rgba(219, 194, 139, 0.18);
+  border-radius: 999px;
+  padding: 0.7rem 1rem;
+  background: rgba(8, 16, 20, 0.94);
+  color: #ead9af;
+  z-index: 13;
+  font-family: inherit;
+}
+
+.phone-fab.consult {
+  bottom: 5.4rem;
+}
+
+.phone-badge {
+  min-width: 1.3rem;
+  height: 1.3rem;
+  padding: 0 0.3rem;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  border-radius: 999px;
+  background: #8a5938;
+  color: #f6e9cf;
+  font-size: 0.72rem;
+  line-height: 1;
+}
+
 .modal-overlay {
   display: flex;
   align-items: center;
@@ -1909,12 +2627,50 @@ function handleAvatarChange(event) {
 
 .modal-card {
   width: min(440px, calc(100vw - 2rem));
-  border-radius: 18px;
+  border-radius: 10px;
   padding: 1.5rem;
 }
 
 .profile-modal {
   width: min(620px, calc(100vw - 2rem));
+}
+
+.phone-modal {
+  width: min(520px, calc(100vw - 2rem));
+}
+
+.phone-message-list {
+  display: flex;
+  flex-direction: column;
+  gap: 0.8rem;
+  margin-top: 1rem;
+  max-height: min(60vh, 520px);
+  overflow-y: auto;
+  padding-right: 0.2rem;
+}
+
+.phone-message-item {
+  display: flex;
+  flex-direction: column;
+  gap: 0.4rem;
+  padding: 0.9rem 0.95rem;
+  border-radius: 12px;
+  background: rgba(255, 255, 255, 0.025);
+  border: 1px solid rgba(219, 194, 139, 0.08);
+}
+
+.phone-message-item.unread {
+  border-color: rgba(219, 194, 139, 0.22);
+  background: rgba(219, 194, 139, 0.05);
+}
+
+.phone-message-head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 1rem;
+  color: #d7c79d;
+  font-size: 0.8rem;
 }
 
 .profile-modal-head {
@@ -1962,6 +2718,8 @@ function handleAvatarChange(event) {
 }
 
 @media (max-width: 900px) {
+  .title-stage,
+  .intro-stage,
   .hub-stats-bar,
   .question-grid,
   .treatment-grid {
@@ -1969,7 +2727,6 @@ function handleAvatarChange(event) {
   }
 
   .phase-topbar,
-  .hub-topbar,
   .phase-topbar-actions,
   .hub-topbar-actions,
   .title-actions,
@@ -1986,8 +2743,48 @@ function handleAvatarChange(event) {
     flex-direction: column;
   }
 
+  .title-stage {
+    width: min(100%, calc(100vw - 2rem));
+    padding: 1rem 0;
+    gap: 1rem;
+  }
+
+  .title-panel {
+    min-height: auto;
+  }
+
+  .title-sidebar {
+    min-height: auto;
+    padding: 1.2rem;
+  }
+
   .hub-topbar-reframed {
-    grid-template-columns: repeat(3, minmax(0, 1fr));
+    gap: 0.7rem;
+  }
+
+  .hub-topbar-row {
+    grid-template-columns: auto 1fr 1fr;
+    align-items: center;
+  }
+
+  .hub-timeflow-row {
+    flex-direction: column;
+    align-items: stretch;
+    gap: 0.45rem;
+  }
+
+  .hub-topbar {
+    align-items: stretch;
+  }
+
+  .hub-topbar-text {
+    font-size: 0.92rem;
+    letter-spacing: 0.06em;
+  }
+
+  .topbar-action-btn {
+    padding-left: 0.85rem;
+    padding-right: 0.85rem;
   }
 
   .compact-stats {
@@ -2012,6 +2809,19 @@ function handleAvatarChange(event) {
   .treatment-main,
   .feedback-main {
     padding: 1rem;
+  }
+
+  .intro-stage {
+    padding: 1rem;
+    overflow-y: auto;
+  }
+
+  .intro-sidebar {
+    order: 2;
+  }
+
+  .intro-card {
+    order: 1;
   }
 
   .consult-main {

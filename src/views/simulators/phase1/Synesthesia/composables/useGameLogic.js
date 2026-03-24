@@ -10,11 +10,6 @@ import {
   DIAGNOSIS_LIMIT,
   ENVIRONMENT_PHASES,
   HUB_ACTIONS,
-  PATIENT_ATTACHMENT_POOL,
-  PATIENT_JOB_POOL,
-  PATIENT_NAME_POOL,
-  PATIENT_SPEECH_STYLE_POOL,
-  PATIENT_TONE_POOL,
   PLAYER_PROFILE,
   REAL_MS_PER_GAME_DAY,
   REVISIT_DELAY_DAYS,
@@ -31,6 +26,11 @@ import {
   buildTrackingSheetPrompt,
   buildTreatmentFeedbackPrompt
 } from '../prompts/promptBuilder'
+import {
+  buildEnvironmentGenerationPrompt,
+  buildPatientGenerationPrompt,
+  GENERATION_SYSTEM_PROMPT
+} from '../prompts/generationPrompts'
 import { SYSTEM_PROMPT } from '../prompts/systemPrompt'
 
 const SCRIPT_ID = 'synesthesia'
@@ -39,9 +39,11 @@ const VALID_PHASES = ['background_intro', 'hub', 'consult', 'treatment', 'patien
 const VALID_CONSULT_STAGES = ['arrival_intro', 'questioning']
 const VALID_CONSULT_ENTRY_STAGES = ['pre_consult', 'entering_consult', 'questioning']
 const AUTOSAVE_DELAY = 400
-const BASE_TREATMENT_FEE = 30
+const BASE_TREATMENT_FEE = 50
 const DEFAULT_SYMPTOM_LEVEL = 1
 const MAX_SYMPTOM_LEVEL = 4
+const DEBT_BORROW_PROBABILITY = 0.1
+const DEBT_REPAY_DAILY_PROBABILITY = 0.1
 
 function createEmptyMapping() {
   return Object.fromEntries(SENSE_CONFIGS.map(item => [item.id, []]))
@@ -162,11 +164,23 @@ function cloneEquipmentOverview(source = DEFAULT_EQUIPMENT_OVERVIEW) {
   }))
 }
 
+function cloneEnvironmentProfile(environment) {
+  if (!environment) return null
+
+  return {
+    ...environment
+  }
+}
+
 function clonePatient(patient) {
   if (!patient) return null
 
+  const { _initialMappingLevels, ...rest } = patient
+
   return {
-    ...patient,
+    ...rest,
+    environmentProfile: cloneEnvironmentProfile(patient.environmentProfile),
+    initialMappingLevels: { ...(patient.initialMappingLevels ?? {}) },
     hiddenMappings: cloneMapping(patient.hiddenMappings),
     originalMappings: cloneMapping(patient.originalMappings),
     trackingSheet: cloneTrackingSheet(patient.trackingSheet)
@@ -178,6 +192,22 @@ function cloneCompletedCase(record) {
 
   return {
     ...record
+  }
+}
+
+function cloneDebtRecord(record) {
+  if (!record) return null
+
+  return {
+    ...record
+  }
+}
+
+function clonePhoneMessage(message) {
+  if (!message) return null
+
+  return {
+    ...message
   }
 }
 
@@ -236,6 +266,60 @@ function computeEnvironmentPhase(gameDay) {
   return ENVIRONMENT_PHASES[index].phase
 }
 
+function createPatientSeedBase() {
+  return Date.now() + Math.floor(Math.random() * 1000000)
+}
+
+function shuffleArray(list = []) {
+  const next = [...list]
+
+  for (let index = next.length - 1; index > 0; index -= 1) {
+    const swapIndex = Math.floor(Math.random() * (index + 1))
+    ;[next[index], next[swapIndex]] = [next[swapIndex], next[index]]
+  }
+
+  return next
+}
+
+function createIndexPool(size, avoidFirstIndex = null) {
+  if (size <= 0) return []
+
+  const deck = shuffleArray(Array.from({ length: size }, (_, index) => index))
+
+  if (size > 1 && avoidFirstIndex !== null && deck[0] === avoidFirstIndex) {
+    const swapIndex = deck.findIndex(index => index !== avoidFirstIndex)
+    if (swapIndex > 0) {
+      ;[deck[0], deck[swapIndex]] = [deck[swapIndex], deck[0]]
+    }
+  }
+
+  return deck
+}
+
+function normalizeIndexPool(pool, size) {
+  const valid = Array.isArray(pool)
+    ? [...new Set(pool.filter(index => Number.isInteger(index) && index >= 0 && index < size))]
+    : []
+
+  return valid.length ? valid : createIndexPool(size)
+}
+
+function pickRandomEnvironmentPhase(excludedPhase = null) {
+  const candidates = ENVIRONMENT_PHASES
+    .map(item => item.phase)
+    .filter(phase => ENVIRONMENT_PHASES.length <= 1 || phase !== excludedPhase)
+
+  if (!candidates.length) {
+    return ENVIRONMENT_PHASES[0]?.phase ?? 1
+  }
+
+  return candidates[Math.floor(Math.random() * candidates.length)]
+}
+
+function getEnvironmentByPhase(phaseId) {
+  return ENVIRONMENT_PHASES.find(item => item.phase === phaseId) ?? ENVIRONMENT_PHASES[0]
+}
+
 function makeHistoryEntry({ speaker, label, text, type = 'dialogue' }) {
   return {
     id: `${Date.now()}-${Math.random().toString(36).slice(2, 8)}`,
@@ -243,6 +327,26 @@ function makeHistoryEntry({ speaker, label, text, type = 'dialogue' }) {
     label,
     text,
     type,
+    createdAt: Date.now()
+  }
+}
+
+function makePhoneMessage({
+  sender,
+  title,
+  text,
+  gameDay,
+  type = 'system',
+  read = false
+}) {
+  return {
+    id: `sms-${Date.now()}-${Math.random().toString(36).slice(2, 8)}`,
+    sender,
+    title,
+    text,
+    gameDay,
+    type,
+    read,
     createdAt: Date.now()
   }
 }
@@ -258,9 +362,12 @@ function buildDefaultGameState() {
     gameDay: DEFAULT_GAME_STATE.gameDay,
     lastTimeSyncAt: Date.now(),
     nextPatientSerial: DEFAULT_GAME_STATE.nextPatientSerial,
+    patientSeedBase: createPatientSeedBase(),
     environmentPhase: DEFAULT_GAME_STATE.environmentPhase,
+    currentEnvironmentProfile: null,
     playerProfile: { ...PLAYER_PROFILE },
     equipmentOverview: cloneEquipmentOverview(),
+    earnedCreditsTotal: 0,
     waitingPatients: [],
     lastQueueRollAt: Date.now(),
     activePatient: null,
@@ -273,6 +380,8 @@ function buildDefaultGameState() {
     treatmentDraft: createEmptyMapping(),
     isConsultNarrativeReady: false,
     isConsultOptionsReady: false,
+    phoneMessages: [],
+    debtLedger: [],
     revisitQueue: [],
     completedCases: []
   }
@@ -299,6 +408,13 @@ function setMappingLevel(levelMap, sourceId, targetId, level) {
   }
 }
 
+function normalizeMappingLevelsForPairs(levelMap = {}, mapping = {}) {
+  return getMappingPairs(mapping).reduce((acc, pair) => {
+    acc[pair.key] = normalizeLevelValue(levelMap?.[pair.key] ?? DEFAULT_SYMPTOM_LEVEL)
+    return acc
+  }, createEmptyLevelMap())
+}
+
 function pickInitialMappingLevel(patient, sourceId, targetId) {
   const seed = (Number(patient?.serial || 1) * 19)
     + (Number(patient?.visitCount || 1) * 7)
@@ -308,12 +424,41 @@ function pickInitialMappingLevel(patient, sourceId, targetId) {
   return seed % 100 < 78 ? 1 : 2
 }
 
-function buildInitialMappingLevels(patient) {
+function buildInitialMappingLevels(patient, rule = null) {
+  if (patient?.initialMappingLevels && Object.keys(patient.initialMappingLevels).length > 0) {
+    return normalizeMappingLevelsForPairs(patient.initialMappingLevels, patient?.originalMappings ?? {})
+  }
+
   return getMappingPairs(patient?.originalMappings ?? {}).reduce((acc, pair) => {
-    acc[pair.key] = pickInitialMappingLevel(patient, pair.source, pair.target)
+    if (!rule) {
+      // 随机期：原有逻辑
+      acc[pair.key] = pickInitialMappingLevel(patient, pair.source, pair.target)
+      return acc
+    }
+
+    // 预设期：按规则决定等级
+    const { maxLevel, mustHaveLv2 } = rule
+    const pairIndex = Object.keys(acc).length
+
+    if (mustHaveLv2 && pairIndex === 0) {
+      // 第一个异常强制 Lv.2
+      acc[pair.key] = 2
+    } else {
+      const seed = (Number(patient?.serial || 1) * 19)
+        + (Number(patient?.visitCount || 1) * 7)
+        + pair.source.length
+        + pair.target.length
+        + pairIndex
+
+      acc[pair.key] = maxLevel === 1
+        ? 1
+        : 1 + (seed % maxLevel)
+    }
+
     return acc
   }, createEmptyLevelMap())
 }
+
 
 function buildFallbackTrackingSheet(patient, environment) {
   const estimatedIncome = buildEstimatedIncome(patient)
@@ -517,6 +662,59 @@ function normalizeNarrativeError(error) {
   return error?.message || '生成文本时出现问题。'
 }
 
+function stripCodeFence(text = '') {
+  return String(text || '')
+    .trim()
+    .replace(/^```json\s*/i, '')
+    .replace(/^```\s*/i, '')
+    .replace(/\s*```$/, '')
+}
+
+function stripStructuredMarkers(text = '') {
+  return String(text || '')
+    .replace(/^\s*---[A-Z_]+---\s*$/gm, '')
+    .replace(/\n{3,}/g, '\n\n')
+    .trim()
+}
+
+function looksLikePromptLeak(text = '') {
+  const cleaned = stripStructuredMarkers(stripCodeFence(text))
+
+  if (!cleaned) return false
+
+  return (
+    /生成\s*4\s*个下一步问诊选项/.test(cleaned)
+    || /只输出\s*JSON/.test(cleaned)
+    || /"doctorLine"\s*:/.test(cleaned)
+    || /"promptFocus"\s*:/.test(cleaned)
+    || /"patientProfile"\s*:/.test(cleaned)
+    || /"unresolvedMappings"\s*:/.test(cleaned)
+    || /【最近问诊历史】|【本轮医生提问】|【玩家当前记录】|【已知基础资料】/.test(cleaned)
+  )
+}
+
+function sanitizeNarrativeReply(text = '') {
+  const cleaned = stripStructuredMarkers(stripCodeFence(text))
+
+  if (!cleaned || looksLikePromptLeak(cleaned)) {
+    return ''
+  }
+
+  return cleaned
+}
+
+function sanitizeHistoryEntries(entries = []) {
+  if (!Array.isArray(entries)) return []
+
+  return entries
+    .filter(item => item && typeof item === 'object')
+    .map(item => ({
+      ...item,
+      text: sanitizeNarrativeReply(item.text)
+    }))
+    .filter(item => item.text)
+}
+
 function sanitizeDoctorLine(text = '', label = '') {
   return String(text || '')
     .replace(/^[—\-–\s]+/, '')
@@ -560,8 +758,28 @@ function buildFallbackOptions(recentDoctorLines = []) {
   return selected.slice(0, 4)
 }
 
+function buildFallbackArrivalText(patient, environment) {
+  return `${environment?.name || '夜色'}里的水声先贴着门边停了一瞬。你朝门口抬了抬手，示意对方先坐。${patient?.name || '患者'}进门时还带着外头潮气和金属味，坐下后安静了两秒，才低声开口：“这两天总有点不对劲，像是有些感觉会错到一块去。”`
+}
+
+function buildFallbackPatientReply(patient, option) {
+  const templates = {
+    symptom: '他停了一下，把最明显的那一下又重复了一遍，细节比刚才多了一点，但还是像隔着一层雾，没法说得特别准。',
+    trigger: '他想了想，把症状冒出来前后的动作和场景往前捋了一遍，提到那种不对劲往往不是平白出现的。',
+    impact: '他说最先受影响的还是手头的活，之后才一点点渗进吃东西、走路和休息这些日常里。',
+    environment: '他把门外的雨声、铁锈味和低频震动都回忆了一遍，但语气里还是分不清那到底只是环境，还是症状本身在串线。'
+  }
+
+  return templates[option?.id] || `${patient?.name || '患者'}沉默了一会儿，把刚才那种不对劲又补充得更细了一点，只是仍旧留着几处说不清的地方。`
+}
+
 function parseOptionPayload(text, recentDoctorLines = []) {
-  const cleaned = String(text || '').trim().replace(/^```json\s*/i, '').replace(/^```\s*/i, '').replace(/\s*```$/, '')
+  const normalized = stripCodeFence(text)
+  const arrayStart = normalized.indexOf('[')
+  const arrayEnd = normalized.lastIndexOf(']')
+  const cleaned = arrayStart !== -1 && arrayEnd !== -1 && arrayEnd > arrayStart
+    ? normalized.slice(arrayStart, arrayEnd + 1)
+    : normalized
   const parsed = JSON.parse(cleaned)
 
   if (!Array.isArray(parsed)) {
@@ -600,17 +818,49 @@ function parseOptionPayload(text, recentDoctorLines = []) {
   return selected.slice(0, 4)
 }
 
-function buildGeneratedMappings(seed) {
+function buildGeneratedMappings(seed, rule = null) {
   const next = createEmptyMapping()
-  const sources = rotateArray(SENSE_CONFIGS.map(item => item.id), seed).slice(0, seed % 2 === 0 ? 2 : 3)
 
-  sources.forEach((sourceId, index) => {
+  if (!rule) {
+    // 随机期：原有逻辑
+    const sources = rotateArray(
+      SENSE_CONFIGS.map(item => item.id), seed
+    ).slice(0, seed % 2 === 0 ? 2 : 3)
+
+    sources.forEach((sourceId, index) => {
+      const candidates = rotateArray(SENSE_TARGETS[sourceId], seed + index + 1)
+      next[sourceId] = candidates.slice(0, index % 2 === 0 ? 1 : 2)
+    })
+
+    return next
+  }
+
+  // 预设期：按规则生成
+  const {
+    minAbnormal,
+    maxAbnormal,
+    allowOneToMany,
+    maxTargetsPerSource = 1
+  } = rule
+
+  const abnormalCount = minAbnormal === maxAbnormal
+    ? minAbnormal
+    : minAbnormal + (seed % (maxAbnormal - minAbnormal + 1))
+
+  const shuffledSources = rotateArray(
+    SENSE_CONFIGS.map(item => item.id), seed
+  ).slice(0, abnormalCount)
+
+  shuffledSources.forEach((sourceId, index) => {
     const candidates = rotateArray(SENSE_TARGETS[sourceId], seed + index + 1)
-    next[sourceId] = candidates.slice(0, index % 2 === 0 ? 1 : 2)
+    next[sourceId] = allowOneToMany
+      ? candidates.slice(0, maxTargetsPerSource)
+      : candidates.slice(0, 1)
   })
 
   return next
 }
+
 
 export function useGameLogic() {
   const router = useRouter()
@@ -637,11 +887,14 @@ export function useGameLogic() {
 
   const backgroundPage = ref(0)
   const credits = ref(0)
+  const earnedCreditsTotal = ref(0)
   const patientCount = ref(0)
   const gameDay = ref(1)
   const lastTimeSyncAt = ref(Date.now())
   const nextPatientSerial = ref(1)
+  const patientSeedBase = ref(createPatientSeedBase())
   const environmentPhase = ref(1)
+  const currentEnvironmentProfile = ref(null)
   const nowTick = ref(Date.now())
   const playerProfile = ref({ ...PLAYER_PROFILE })
   const equipmentOverview = ref(cloneEquipmentOverview())
@@ -661,10 +914,13 @@ export function useGameLogic() {
   const revisitQueue = ref([])
   const completedCases = ref([])
   const archiveSaves = ref([])
+  const phoneMessages = ref([])
+  const debtLedger = ref([])
 
   let autosaveTimer = null
   let queueTimer = null
   let consultRequestToken = 0
+  let queueGenerationPromise = null
 
   function beginConsultRequest() {
     consultRequestToken += 1
@@ -688,28 +944,247 @@ export function useGameLogic() {
     }
   }
 
-  function createPatient(serial, envPhase) {
-    const job = pickFrom(PATIENT_JOB_POOL, serial * 7 + envPhase * 3)
-    const generatedMappings = buildGeneratedMappings(serial + envPhase)
+  function collectExistingPatientReferences() {
+    return [
+      ...waitingPatients.value,
+      ...completedCases.value,
+      ...revisitQueue.value,
+      activePatient.value
+    ].filter(Boolean).map(item => ({
+      name: item.name,
+      job: item.job
+    }))
+  }
+
+  function parseJsonObjectPayload(text, label = 'JSON') {
+    const cleaned = stripCodeFence(String(text || '').trim())
+    const objectStart = cleaned.indexOf('{')
+    const objectEnd = cleaned.lastIndexOf('}')
+    const payload = objectStart !== -1 && objectEnd !== -1
+      ? cleaned.slice(objectStart, objectEnd + 1)
+      : cleaned
+
+    const parsed = JSON.parse(payload)
+
+    if (!parsed || typeof parsed !== 'object' || Array.isArray(parsed)) {
+      throw new Error(`${label} 返回格式错误。`)
+    }
+
+    return parsed
+  }
+
+  function normalizeGeneratedEnvironment(rawEnvironment = {}, fallbackPhase = null) {
+    const name = String(rawEnvironment?.name || '').trim()
+    const description = String(rawEnvironment?.description || '').trim()
+
+    if (!name || !description) {
+      throw new Error('AI 生成的环境信息不完整。')
+    }
+
+    return {
+      id: `env-${Date.now()}-${Math.random().toString(36).slice(2, 8)}`,
+      phase: fallbackPhase ?? Date.now(),
+      name,
+      description
+    }
+  }
+
+  function normalizeGeneratedLevelMap(levelMap = {}, mapping = {}) {
+    return normalizeMappingLevelsForPairs(levelMap, mapping)
+  }
+
+  function normalizeGeneratedPatientPayload(rawPatient, { serial, globalEnvironment, seedBase = 0 }) {
+    const name = String(rawPatient?.name || '').trim()
+    const job = String(rawPatient?.job || '').trim()
+    const jobContext = String(rawPatient?.jobContext || '').trim()
+    const attachment = String(rawPatient?.attachment || '').trim()
+    const emotionalTone = String(rawPatient?.emotionalTone || '').trim()
+    const speechStyle = String(rawPatient?.speechStyle || '').trim()
+
+    if (!name || !job || !jobContext || !attachment || !emotionalTone || !speechStyle) {
+      throw new Error('AI 生成的患者基础资料不完整。')
+    }
+
+    const environmentProfile = normalizeGeneratedEnvironment(
+      rawPatient?.environment ?? globalEnvironment,
+      Date.now() + serial
+    )
+    const generatedMappings = normalizeMapping(rawPatient?.originalMappings)
+
+    if (isEmptyMapping(generatedMappings)) {
+      throw new Error('AI 生成的患者病症为空。')
+    }
 
     return {
       id: `synesthesia-patient-${serial}-${Date.now()}`,
       serial,
-      name: pickFrom(PATIENT_NAME_POOL, serial * 5 + envPhase * 2),
-      job: job.title,
-      jobContext: job.context,
-      attachment: pickFrom(PATIENT_ATTACHMENT_POOL, serial * 3 + envPhase),
-      emotionalTone: pickFrom(PATIENT_TONE_POOL, serial * 5 + envPhase),
-      speechStyle: pickFrom(PATIENT_SPEECH_STYLE_POOL, serial * 7 + envPhase),
+      name,
+      job,
+      jobContext,
+      attachment,
+      emotionalTone,
+      speechStyle,
       visitCount: 1,
-      environmentPhase: envPhase,
+      environmentPhase: environmentProfile.phase,
+      environmentProfile,
       diagnosisUsesLeft: DIAGNOSIS_LIMIT,
       hiddenMappings: cloneMapping(generatedMappings),
       originalMappings: cloneMapping(generatedMappings),
+      initialMappingLevels: normalizeGeneratedLevelMap(rawPatient?.mappingLevels, generatedMappings),
       trackingSheet: null,
-      trackingSheetReady: false
+      trackingSheetReady: false,
+      forceDebt: false,
+      patientSeedBase: seedBase
     }
   }
+
+  async function generateStructuredReply(prompt, label) {
+    const reply = await aiService.generateReply(prompt, GENERATION_SYSTEM_PROMPT)
+    return parseJsonObjectPayload(reply, label)
+  }
+
+  async function generateCurrentEnvironmentProfile(previousEnvironmentName = '') {
+    const payload = await generateStructuredReply(
+      buildEnvironmentGenerationPrompt({ previousEnvironmentName }),
+      '环境信息'
+    )
+    return normalizeGeneratedEnvironment(payload, Date.now())
+  }
+
+  async function generatePatient(serial) {
+    const existingPatients = collectExistingPatientReferences()
+    const globalEnvironment = currentEnvironmentProfile.value ?? getEnvironmentByPhase(environmentPhase.value)
+    let lastError = null
+
+    for (let attempt = 0; attempt < 3; attempt += 1) {
+      try {
+        const payload = await generateStructuredReply(
+          buildPatientGenerationPrompt({
+            serial,
+            gameDay: gameDay.value,
+            globalEnvironment,
+            existingPatients
+          }),
+          '患者信息'
+        )
+        const patient = normalizeGeneratedPatientPayload(payload, {
+          serial,
+          globalEnvironment,
+          seedBase: patientSeedBase.value
+        })
+        const hasDuplicate = existingPatients.some(item => item.name === patient.name || item.job === patient.job)
+
+        if (hasDuplicate) {
+          throw new Error('AI 生成了重复的名字或职业。')
+        }
+
+        return patient
+      } catch (error) {
+        lastError = error
+      }
+    }
+
+    throw lastError || new Error('AI 生成患者失败。')
+  }
+
+  async function ensurePatientQueue(targetCount = 1) {
+    const safeTarget = clamp(Number(targetCount) || 1, 1, 3)
+
+    if (waitingPatients.value.length >= safeTarget) return
+
+    if (!queueGenerationPromise) {
+      queueGenerationPromise = (async () => {
+        while (waitingPatients.value.length < safeTarget && waitingPatients.value.length < 3) {
+          const patient = await generatePatient(nextPatientSerial.value)
+          waitingPatients.value = [...waitingPatients.value, patient].slice(0, 3)
+          nextPatientSerial.value += 1
+        }
+      })()
+        .finally(() => {
+          queueGenerationPromise = null
+        })
+    }
+
+    await queueGenerationPromise
+
+    if (waitingPatients.value.length < safeTarget) {
+      await ensurePatientQueue(safeTarget)
+    }
+  }
+
+  function drawFromPool(poolRef, sourceList) {
+    if (!Array.isArray(sourceList) || !sourceList.length) return null
+
+    const pool = normalizeIndexPool(poolRef.value, sourceList.length)
+    const [nextIndex, ...rest] = pool
+
+    poolRef.value = rest.length
+      ? rest
+      : createIndexPool(sourceList.length, nextIndex)
+
+    return sourceList[nextIndex] ?? sourceList[0]
+  }
+
+  function drawPatientName() {
+    return drawFromPool(availablePatientNameIndexes, PATIENT_NAME_POOL) || PATIENT_NAME_POOL[0]
+  }
+
+  function drawPatientJob() {
+    return drawFromPool(availablePatientJobIndexes, PATIENT_JOB_POOL) || PATIENT_JOB_POOL[0]
+  }
+
+  function drawPatientEnvironmentPhase() {
+    const environment = drawFromPool(availablePatientEnvironmentIndexes, ENVIRONMENT_PHASES)
+    return environment?.phase ?? ENVIRONMENT_PHASES[0]?.phase ?? 1
+  }
+
+  function createPatient(serial, envPhase, seedBase = 0) {
+  // ✅ 查预设规则表
+  const rule = getPresetRule(serial)
+
+  const nextEnvironmentPhase = ENVIRONMENT_PHASES.some(item => item.phase === envPhase)
+    ? envPhase
+    : drawPatientEnvironmentPhase()
+  const variantOffset  = Math.abs(Number(seedBase) || 0) + Math.floor(Math.random() * 1000000)
+  const attachmentSeed = variantOffset + (serial * 11) + (nextEnvironmentPhase * 5)
+  const toneSeed       = variantOffset + (serial * 3)  + (nextEnvironmentPhase * 7)
+  const speechSeed     = variantOffset + (serial * 2)  + (nextEnvironmentPhase * 11) + Math.floor(serial / 2)
+  const job            = drawPatientJob()
+  const name           = drawPatientName()
+
+  // ✅ 传入 rule，预设期按规则生成，随机期走原有逻辑
+  const generatedMappings = buildGeneratedMappings(
+    variantOffset + (serial * 11) + (nextEnvironmentPhase * 13),
+    rule
+  )
+
+  const patient = {
+    id:               `synesthesia-patient-${serial}-${Date.now()}`,
+    serial,
+    name,
+    job:              job.title,
+    jobContext:       job.context,
+    attachment:       pickFrom(PATIENT_ATTACHMENT_POOL, attachmentSeed),
+    emotionalTone:    pickFrom(PATIENT_TONE_POOL, toneSeed),
+    speechStyle:      pickFrom(PATIENT_SPEECH_STYLE_POOL, speechSeed),
+    visitCount:       1,
+    environmentPhase: nextEnvironmentPhase,
+    diagnosisUsesLeft: DIAGNOSIS_LIMIT,
+    hiddenMappings:   cloneMapping(generatedMappings),
+    originalMappings: cloneMapping(generatedMappings),
+    trackingSheet:    null,
+    trackingSheetReady: false,
+
+    // ✅ 预设期专属字段
+    isPreset:           !!rule,
+    isUpgradeTutorial:  rule?.isUpgradeTutorial ?? false,
+    forceDebt:          rule?.forceDebt ?? false
+  }
+
+  // ✅ 提前生成等级表，追踪表生成时使用
+  return patient
+}
+
 
   function maybeShiftEnvironment(daysPassed = 1) {
     let nextPhase = environmentPhase.value
@@ -717,49 +1192,29 @@ export function useGameLogic() {
     for (let index = 0; index < daysPassed; index += 1) {
       const seed = gameDay.value + index + nextPatientSerial.value
       if (seed % 100 < 42) {
-        nextPhase = computeEnvironmentPhase(gameDay.value + index + 1)
+        nextPhase = pickRandomEnvironmentPhase(nextPhase)
       }
     }
 
     environmentPhase.value = nextPhase
   }
 
-  function refreshPatientQueue() {
-    const now = Date.now()
-    const elapsed = Math.max(0, now - lastQueueRollAt.value)
-    const refreshTurns = Math.max(1, Math.floor(elapsed / (15 * 60 * 1000)))
-    let added = 0
-
-    for (let turn = 0; turn < refreshTurns; turn += 1) {
-      if (waitingPatients.value.length >= 3) break
-
-      const seed = nextPatientSerial.value + gameDay.value + turn + waitingPatients.value.length
-      if (seed % 100 < 48) {
-        waitingPatients.value = [
-          ...waitingPatients.value,
-          createPatient(nextPatientSerial.value, environmentPhase.value)
-        ].slice(0, 3)
-        nextPatientSerial.value += 1
-        added += 1
-      }
-    }
-
-    if (!waitingPatients.value.length && added === 0) {
-      waitingPatients.value = [createPatient(nextPatientSerial.value, environmentPhase.value)]
-      nextPatientSerial.value += 1
-    }
-
-    lastQueueRollAt.value = now
-    nowTick.value = now
+  async function refreshPatientQueue(targetCount = 3) {
+    await ensurePatientQueue(targetCount)
+    lastQueueRollAt.value = Date.now()
+    nowTick.value = Date.now()
   }
 
   function ensureQueueTimer() {
     if (queueTimer) clearInterval(queueTimer)
 
     queueTimer = setInterval(() => {
-      if (phase.value === 'consult' || phase.value === 'treatment' || phase.value === 'patient_feedback') return
-      refreshPatientQueue()
-      scheduleProgressSave()
+      if (phase.value === 'title' || phase.value === 'consult' || phase.value === 'treatment' || phase.value === 'patient_feedback') return
+      refreshPatientQueue(3)
+        .then(() => scheduleProgressSave())
+        .catch(error => {
+          console.warn('Synesthesia 患者队列生成失败:', error)
+        })
     }, 60000)
   }
 
@@ -768,7 +1223,9 @@ export function useGameLogic() {
 
     const [nextPatient, ...rest] = waitingPatients.value
     waitingPatients.value = rest
-    refreshPatientQueue()
+    refreshPatientQueue(3).catch(error => {
+      console.warn('Synesthesia 患者补位失败:', error)
+    })
     return clonePatient(nextPatient)
   }
 
@@ -787,6 +1244,8 @@ export function useGameLogic() {
       trackingSheet: cloneTrackingSheet(activePatient.value.trackingSheet),
       settlementItems: Array.isArray(extras.settlementItems) ? extras.settlementItems.map(item => ({ ...item })) : [],
       settlementTotal: Number(extras.settlementTotal || 0),
+      collectedTotal: Number(extras.collectedTotal ?? extras.settlementTotal ?? 0),
+      paymentMode: extras.paymentMode || 'paid',
       feedbackText: extras.feedbackText || ''
     }
 
@@ -812,6 +1271,104 @@ export function useGameLogic() {
     if (!record) return
 
     completedCases.value = [record, ...completedCases.value].slice(0, 8)
+  }
+
+  function pushPhoneMessage(message) {
+    if (!message) return
+
+    phoneMessages.value = [message, ...phoneMessages.value].slice(0, 40)
+  }
+
+  function markPhoneMessagesRead() {
+    phoneMessages.value = phoneMessages.value.map(item => ({ ...item, read: true }))
+    scheduleProgressSave()
+  }
+
+  function maybeCreateDebtRecord(patient, amount) {
+    if (!patient || amount <= 0) return null
+    if (Math.random() >= DEBT_BORROW_PROBABILITY) return null
+
+    const record = {
+      id: `debt-${patient.id}-${Date.now()}`,
+      patientId: patient.id,
+      patientName: patient.name,
+      amount,
+      createdDay: gameDay.value,
+      lastCheckedDay: gameDay.value,
+      paidDay: null,
+      status: 'pending'
+    }
+
+    debtLedger.value = [record, ...debtLedger.value]
+    pushPhoneMessage(makePhoneMessage({
+      sender: patient.name,
+      title: '赊账申请',
+      text: `我这边今天只能先记账。这次诊疗先欠你 ${amount} 信用点，等手头缓过来会补上。`,
+      gameDay: gameDay.value,
+      type: 'debt'
+    }))
+
+    return record
+  }
+
+  function createForcedDebtRecord(patient, amount) {
+  if (!patient || amount <= 0) return null
+
+  const record = {
+    id:              `debt-${patient.id}-${Date.now()}`,
+    patientId:       patient.id,
+    patientName:     patient.name,
+    amount,
+    createdDay:      gameDay.value,
+    lastCheckedDay:  gameDay.value,
+    paidDay:         null,
+    status:          'pending'
+  }
+
+  debtLedger.value = [record, ...debtLedger.value]
+  pushPhoneMessage(makePhoneMessage({
+    sender:  patient.name,
+    title:   '赊账申请',
+    text:    `手头实在紧，今天先欠你 ${amount} 信用点。不会不还的。`,
+    gameDay: gameDay.value,
+    type:    'debt'
+  }))
+
+  return record
+}
+
+  function processDebtRepaymentForDay(targetDay) {
+    let repaidCount = 0
+
+    debtLedger.value = debtLedger.value.map(record => {
+      if (!record || record.status !== 'pending') return record
+      if (targetDay <= Number(record.lastCheckedDay || record.createdDay || 0)) return record
+
+      const nextRecord = {
+        ...record,
+        lastCheckedDay: targetDay
+      }
+
+      if (Math.random() < DEBT_REPAY_DAILY_PROBABILITY) {
+        nextRecord.status = 'paid'
+        nextRecord.paidDay = targetDay
+        credits.value += Number(record.amount || 0)
+        earnedCreditsTotal.value += Number(record.amount || 0)
+        repaidCount += 1
+
+        pushPhoneMessage(makePhoneMessage({
+          sender: '下城区支付终端',
+          title: '到账提醒',
+          text: `${record.patientName} 已补付之前欠下的 ${record.amount} 信用点。款项已经打进诊所账户。`,
+          gameDay: targetDay,
+          type: 'payment'
+        }))
+      }
+
+      return nextRecord
+    })
+
+    return repaidCount
   }
 
   function resetCaseState() {
@@ -844,11 +1401,14 @@ export function useGameLogic() {
       consultEntryStage: consultEntryStage.value,
       backgroundPage: backgroundPage.value,
       credits: credits.value,
+      earnedCreditsTotal: earnedCreditsTotal.value,
       patientCount: patientCount.value,
       gameDay: gameDay.value,
       lastTimeSyncAt: lastTimeSyncAt.value,
       nextPatientSerial: nextPatientSerial.value,
+      patientSeedBase: patientSeedBase.value,
       environmentPhase: environmentPhase.value,
+      currentEnvironmentProfile: cloneEnvironmentProfile(currentEnvironmentProfile.value),
       playerProfile: { ...playerProfile.value },
       equipmentOverview: cloneEquipmentOverview(equipmentOverview.value),
       waitingPatients: waitingPatients.value.map(item => clonePatient(item)),
@@ -859,6 +1419,8 @@ export function useGameLogic() {
       consultNotes: consultNotes.value,
       isConsultNarrativeReady: isConsultNarrativeReady.value,
       isConsultOptionsReady: isConsultOptionsReady.value,
+      phoneMessages: phoneMessages.value.map(item => clonePhoneMessage(item)),
+      debtLedger: debtLedger.value.map(item => cloneDebtRecord(item)),
       diagnosisDraft: cloneMapping(diagnosisDraft.value),
       confirmedDiagnosis: cloneMapping(confirmedDiagnosis.value),
       diagnosisUsesLeft: diagnosisUsesLeft.value,
@@ -901,13 +1463,20 @@ export function useGameLogic() {
     consultEntryStage.value = nextConsultEntryStage
     backgroundPage.value = clamp(Number(rawState.backgroundPage ?? fallback.backgroundPage), 0, BACKGROUND_PAGES.length - 1)
     credits.value = Number.isFinite(rawState.credits) ? rawState.credits : fallback.credits
+    earnedCreditsTotal.value = Number.isFinite(rawState.earnedCreditsTotal)
+      ? rawState.earnedCreditsTotal
+      : (Array.isArray(rawState.completedCases)
+        ? rawState.completedCases.reduce((sum, item) => sum + Number(item?.settlementTotal || 0), 0)
+        : 0)
     patientCount.value = Number.isFinite(rawState.patientCount) ? rawState.patientCount : fallback.patientCount
     gameDay.value = Math.max(1, Number(rawState.gameDay ?? fallback.gameDay) || 1)
     lastTimeSyncAt.value = Number.isFinite(rawState.lastTimeSyncAt) ? rawState.lastTimeSyncAt : fallback.lastTimeSyncAt
     nextPatientSerial.value = Math.max(1, Number(rawState.nextPatientSerial ?? fallback.nextPatientSerial) || 1)
+    patientSeedBase.value = Number.isFinite(rawState.patientSeedBase) ? rawState.patientSeedBase : fallback.patientSeedBase
     environmentPhase.value = ENVIRONMENT_PHASES.some(item => item.phase === rawState.environmentPhase)
       ? rawState.environmentPhase
-      : computeEnvironmentPhase(gameDay.value)
+      : fallback.environmentPhase
+    currentEnvironmentProfile.value = cloneEnvironmentProfile(rawState.currentEnvironmentProfile)
 
     playerProfile.value = {
       ...PLAYER_PROFILE,
@@ -924,18 +1493,24 @@ export function useGameLogic() {
 
     activePatient.value = clonePatient(rawState.activePatient)
     if (activePatient.value && !activePatient.value.trackingSheet) {
-      const patientEnvironment = ENVIRONMENT_PHASES.find(item => item.phase === (activePatient.value.environmentPhase ?? environmentPhase.value)) ?? ENVIRONMENT_PHASES[0]
+      const patientEnvironment = cloneEnvironmentProfile(activePatient.value.environmentProfile)
+        ?? cloneEnvironmentProfile(currentEnvironmentProfile.value)
+        ?? getEnvironmentByPhase(activePatient.value.environmentPhase ?? environmentPhase.value)
       activePatient.value.trackingSheet = buildFallbackTrackingSheet(activePatient.value, patientEnvironment)
     }
-    consultationHistory.value = Array.isArray(rawState.consultationHistory)
-      ? rawState.consultationHistory.map(item => ({ ...item }))
-      : []
+    consultationHistory.value = sanitizeHistoryEntries(rawState.consultationHistory)
     consultOptions.value = Array.isArray(rawState.consultOptions) && rawState.consultOptions.length
       ? rawState.consultOptions.map(item => ({ ...item }))
       : getConsultOptions()
     consultNotes.value = typeof rawState.consultNotes === 'string' ? rawState.consultNotes : ''
     isConsultNarrativeReady.value = Boolean(rawState.isConsultNarrativeReady)
     isConsultOptionsReady.value = Boolean(rawState.isConsultOptionsReady)
+    phoneMessages.value = Array.isArray(rawState.phoneMessages)
+      ? rawState.phoneMessages.map(item => clonePhoneMessage(item)).filter(Boolean)
+      : []
+    debtLedger.value = Array.isArray(rawState.debtLedger)
+      ? rawState.debtLedger.map(item => cloneDebtRecord(item)).filter(Boolean)
+      : []
     diagnosisDraft.value = normalizeMapping(rawState.diagnosisDraft)
     confirmedDiagnosis.value = normalizeMapping(rawState.confirmedDiagnosis)
     updateDiagnosisUses(rawState.diagnosisUsesLeft ?? activePatient.value?.diagnosisUsesLeft ?? DIAGNOSIS_LIMIT)
@@ -945,7 +1520,9 @@ export function useGameLogic() {
         ? rawState.revisitQueue.map(item => {
           const patient = clonePatient(item)
           if (patient && !patient.trackingSheet) {
-            const patientEnvironment = ENVIRONMENT_PHASES.find(env => env.phase === (patient.environmentPhase ?? environmentPhase.value)) ?? ENVIRONMENT_PHASES[0]
+            const patientEnvironment = cloneEnvironmentProfile(patient.environmentProfile)
+              ?? cloneEnvironmentProfile(currentEnvironmentProfile.value)
+              ?? getEnvironmentByPhase(patient.environmentPhase ?? environmentPhase.value)
             patient.trackingSheet = buildFallbackTrackingSheet(patient, patientEnvironment)
           }
           return patient
@@ -974,7 +1551,6 @@ export function useGameLogic() {
 
     if (!previousSyncAt) {
       lastTimeSyncAt.value = Date.now()
-      environmentPhase.value = computeEnvironmentPhase(gameDay.value)
       return 0
     }
 
@@ -982,9 +1558,11 @@ export function useGameLogic() {
     const passedDays = Math.floor(elapsed / REAL_MS_PER_GAME_DAY)
 
     if (passedDays > 0) {
+      const startDay = gameDay.value
       gameDay.value += passedDays
-      maybeShiftEnvironment(passedDays)
-      refreshPatientQueue()
+      for (let offset = 1; offset <= passedDays; offset += 1) {
+        processDebtRepaymentForDay(startDay + offset)
+      }
     }
 
     lastTimeSyncAt.value = Date.now()
@@ -1009,12 +1587,15 @@ export function useGameLogic() {
   }
 
   async function executeStartNewGame() {
+    const previousEnvironmentName = currentEnvironmentProfile.value?.name || ''
     const snapshot = buildDefaultGameState()
     applyGameState(snapshot)
     phase.value = 'background_intro'
     lastTimeSyncAt.value = Date.now()
-    environmentPhase.value = computeEnvironmentPhase(gameDay.value)
-    refreshPatientQueue()
+    waitingPatients.value = []
+    currentEnvironmentProfile.value = await generateCurrentEnvironmentProfile(previousEnvironmentName)
+    environmentPhase.value = currentEnvironmentProfile.value.phase
+    await refreshPatientQueue(3)
     statusNotice.value = ''
     await saveProgress()
   }
@@ -1050,7 +1631,17 @@ export function useGameLogic() {
 
     const passedDays = settleElapsedGameTime(saved)
     narrativeError.value = ''
-    refreshPatientQueue()
+    if (waitingPatients.value.some(patient => !patient?.environmentProfile || !patient?.initialMappingLevels)) {
+      waitingPatients.value = []
+    }
+    if (!currentEnvironmentProfile.value) {
+      currentEnvironmentProfile.value = await generateCurrentEnvironmentProfile('')
+      environmentPhase.value = currentEnvironmentProfile.value.phase
+    } else if (passedDays > 0) {
+      currentEnvironmentProfile.value = await generateCurrentEnvironmentProfile(currentEnvironmentProfile.value.name)
+      environmentPhase.value = currentEnvironmentProfile.value.phase
+    }
+    await refreshPatientQueue(3)
 
     if (passedDays > 0) {
       statusNotice.value = `离线期间过去了 ${passedDays} 个游戏日。`
@@ -1242,11 +1833,13 @@ export function useGameLogic() {
         throw new Error('AI 返回了空白内容。')
       }
 
+      const safeText = sanitizeNarrativeReply(trimmed) || buildFallbackArrivalText(activePatient.value, activeEnvironment.value)
+
       consultationHistory.value = [
         makeHistoryEntry({
           speaker: 'narrator',
           label: activePatient.value.visitCount > 1 ? '复诊来访' : '到诊记录',
-          text: trimmed,
+          text: safeText,
           type: 'arrival'
         })
       ]
@@ -1265,14 +1858,16 @@ export function useGameLogic() {
 
     const [patient] = revisitQueue.value.splice(dueIndex, 1)
     let revisitingPatient = clonePatient(patient)
+    const revisitEnvironment = cloneEnvironmentProfile(currentEnvironmentProfile.value) ?? getEnvironmentByPhase(environmentPhase.value)
 
     revisitingPatient.visitCount = Number(revisitingPatient.visitCount || 1) + 1
-    revisitingPatient.environmentPhase = environmentPhase.value
+    revisitingPatient.environmentPhase = revisitEnvironment.phase
+    revisitingPatient.environmentProfile = cloneEnvironmentProfile(revisitEnvironment)
     revisitingPatient.returnDay = null
     if (revisitingPatient.trackingSheet) {
       revisitingPatient.trackingSheet.patientProfile.visitCount = revisitingPatient.visitCount
     }
-    revisitingPatient = applyRevisitMutation(revisitingPatient, activeEnvironment.value, gameDay.value)
+    revisitingPatient = applyRevisitMutation(revisitingPatient, revisitEnvironment, gameDay.value)
 
     return revisitingPatient
   }
@@ -1290,7 +1885,9 @@ export function useGameLogic() {
     resetCaseState()
 
     const revisitingPatient = pullDueRevisitPatient()
-    refreshPatientQueue()
+    if (!revisitingPatient) {
+      await refreshPatientQueue(1)
+    }
     const nextPatient = revisitingPatient || popWaitingPatient()
 
     if (!nextPatient) {
@@ -1301,7 +1898,10 @@ export function useGameLogic() {
 
     nextPatient.trackingSheet = revisitingPatient?.trackingSheet
       ? cloneTrackingSheet(revisitingPatient.trackingSheet)
-      : buildFallbackTrackingSheet(nextPatient, activeEnvironment.value)
+      : buildFallbackTrackingSheet(
+        nextPatient,
+        cloneEnvironmentProfile(nextPatient.environmentProfile) ?? currentEnvironment.value
+      )
     nextPatient.trackingSheetReady = Boolean(revisitingPatient?.trackingSheet)
     activePatient.value = nextPatient
     updateDiagnosisUses(nextPatient.diagnosisUsesLeft)
@@ -1454,13 +2054,15 @@ export function useGameLogic() {
         throw new Error('AI 返回了空白内容。')
       }
 
+      const safeText = sanitizeNarrativeReply(trimmed) || buildFallbackPatientReply(activePatient.value, option)
+
       consultationHistory.value = [
         ...historyBeforeChoice,
         doctorEntry,
         makeHistoryEntry({
           speaker: 'patient',
           label: activePatient.value.name,
-          text: trimmed,
+          text: safeText,
           type: 'answer'
         })
       ]
@@ -1574,12 +2176,13 @@ export function useGameLogic() {
       })
       const reply = await aiService.generateReply(prompt, SYSTEM_PROMPT)
       const trimmed = reply?.trim()
+      const safeText = sanitizeNarrativeReply(trimmed)
 
-      if (!trimmed) {
+      if (!safeText) {
         throw new Error('AI 返回了空白内容。')
       }
 
-      patientFeedbackText.value = trimmed
+      patientFeedbackText.value = safeText
     } catch (error) {
       narrativeError.value = normalizeNarrativeError(error)
       patientFeedbackText.value = ''
@@ -1597,6 +2200,11 @@ export function useGameLogic() {
     const remainingMappings = subtractMappings(referenceMappings, resolvedMappings)
     const settlementItems = buildSettlementItems(resolvedMappings, equipmentOverview.value)
     const settlementTotal = settlementItems.reduce((sum, item) => sum + item.fee, 0)
+    const debtRecord = activePatient.value?.forceDebt
+  ? createForcedDebtRecord(activePatient.value, settlementTotal)
+  : maybeCreateDebtRecord(activePatient.value, settlementTotal)
+
+    const collectedTotal = debtRecord ? 0 : settlementTotal
 
     activePatient.value = {
       ...activePatient.value,
@@ -1621,7 +2229,9 @@ export function useGameLogic() {
         )
         appendTrackingLog(
           activePatient.value.trackingSheet,
-          `本轮治愈：${formatPairList(resolvedMappings)}；结算 ${settlementTotal} 信用点`
+          debtRecord
+            ? `本轮治愈：${formatPairList(resolvedMappings)}；应收 ${settlementTotal} 信用点，已记入赊账`
+            : `本轮治愈：${formatPairList(resolvedMappings)}；已收 ${settlementTotal} 信用点`
         )
       }
     }
@@ -1630,7 +2240,10 @@ export function useGameLogic() {
     treatmentDraft.value = cloneMapping(confirmedDiagnosis.value)
     patientFeedbackOutcome.value = 'partial'
     phase.value = 'patient_feedback'
-    credits.value += settlementTotal
+    if (!debtRecord) {
+      credits.value += settlementTotal
+      earnedCreditsTotal.value += settlementTotal
+    }
 
     if (isEmptyMapping(remainingMappings)) {
       patientFeedbackOutcome.value = 'complete'
@@ -1661,12 +2274,16 @@ export function useGameLogic() {
       pushCompletedCase(buildCompletedCaseRecord('complete', {
         settlementItems,
         settlementTotal,
+        collectedTotal,
+        paymentMode: debtRecord ? 'credit' : 'paid',
         feedbackText: patientFeedbackText.value
       }))
     } else if (patientFeedbackOutcome.value === 'revisit') {
       pushCompletedCase(buildCompletedCaseRecord('revisit', {
         settlementItems,
         settlementTotal,
+        collectedTotal,
+        paymentMode: debtRecord ? 'credit' : 'paid',
         feedbackText: patientFeedbackText.value
       }))
     }
@@ -1766,12 +2383,11 @@ export function useGameLogic() {
   })
 
   const currentEnvironment = computed(() => {
-    return ENVIRONMENT_PHASES.find(item => item.phase === environmentPhase.value) ?? ENVIRONMENT_PHASES[0]
+    return cloneEnvironmentProfile(currentEnvironmentProfile.value) ?? getEnvironmentByPhase(environmentPhase.value)
   })
 
   const activeEnvironment = computed(() => {
-    const phaseId = activePatient.value?.environmentPhase ?? environmentPhase.value
-    return ENVIRONMENT_PHASES.find(item => item.phase === phaseId) ?? currentEnvironment.value
+    return cloneEnvironmentProfile(activePatient.value?.environmentProfile) ?? currentEnvironment.value
   })
 
   const pendingRevisitCount = computed(() => revisitQueue.value.length)
@@ -1915,9 +2531,11 @@ export function useGameLogic() {
 
   const latestCompletedCase = computed(() => completedCases.value[0] ?? null)
   const curedArchives = computed(() => completedCases.value.filter(item => item.outcome === 'complete'))
-  const totalEarnings = computed(() => completedCases.value.reduce((sum, item) => sum + Number(item.settlementTotal || 0), 0))
+  const totalEarnings = computed(() => earnedCreditsTotal.value)
   const totalCuredCount = computed(() => completedCases.value.filter(item => item.outcome === 'complete').length)
   const totalEquipmentLevel = computed(() => equipmentOverview.value.reduce((sum, item) => sum + Number(item.level || 0), 0))
+  const unreadPhoneCount = computed(() => phoneMessages.value.filter(item => !item.read).length)
+  const pendingDebtCount = computed(() => debtLedger.value.filter(item => item.status === 'pending').length)
   const latestArchiveLabel = computed(() => {
     if (!archiveSaves.value.length) return '暂无可读取的归档'
     const latest = archiveSaves.value[0]
@@ -1947,7 +2565,6 @@ export function useGameLogic() {
   onMounted(() => {
     syncSaveStatus()
     syncResponsiveState()
-    refreshPatientQueue()
     ensureQueueTimer()
     window.addEventListener('resize', syncResponsiveState)
   })
@@ -2000,6 +2617,8 @@ export function useGameLogic() {
     treatmentDraft,
     revisitQueue,
     completedCases,
+    phoneMessages,
+    debtLedger,
     currentBackgroundPage,
     currentEnvironment,
     activeEnvironment,
@@ -2024,11 +2643,14 @@ export function useGameLogic() {
     totalEarnings,
     totalCuredCount,
     totalEquipmentLevel,
+    unreadPhoneCount,
+    pendingDebtCount,
     latestArchiveLabel,
     currentFeedbackActionLabel,
     feedbackOutcomeLabel,
     activePatientSummary,
     diagnosisAttemptLabel,
+    backgroundPages: BACKGROUND_PAGES,
     backgroundTotal: BACKGROUND_PAGES.length,
     titleContent: TITLE_CONTENT,
     hubActions: HUB_ACTIONS,
@@ -2047,6 +2669,7 @@ export function useGameLogic() {
     toggleProfilePanel,
     updatePlayerName,
     updatePlayerAvatar,
+    markPhoneMessagesRead,
     upgradeEquipmentModule,
     goHome,
     returnToHub,
@@ -2071,4 +2694,3 @@ export function useGameLogic() {
     toggleNotesDrawer
   }
 }
-

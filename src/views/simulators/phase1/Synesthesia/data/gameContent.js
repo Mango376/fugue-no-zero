@@ -259,3 +259,189 @@ export const DEFAULT_GAME_STATE = {
   revisitQueue: [],
   completedCases: []
 }
+
+// ================================================================
+// 前10个患者的症状规则表
+// 只约束症状等级上限、异常数量、是否允许一对多
+// 不约束患者姓名、职业、牵挂、性格（全部从上方数据池随机生成）
+// 不约束环境因素（使用当前 environmentPhase 的实际环境）
+// 第11个患者起进入随机期，不再查这张表
+// ================================================================
+
+export const PRESET_PATIENT_RULES = [
+
+  // 患者1：一个感官，一个Lv.1异常
+  // 最简单，帮助玩家熟悉基本问诊和诊断流程
+  {
+    serial:              1,
+    maxLevel:            1,
+    minAbnormal:         1,
+    maxAbnormal:         1,
+    allowOneToMany:      false,
+    maxTargetsPerSource: 1,
+    mustHaveLv2:         false,
+    isUpgradeTutorial:   false,
+    forceDebt:           false
+  },
+
+  // 患者2：两个独立的一对一Lv.1异常
+  // 开始学习同时追踪多个症状
+  {
+    serial:              2,
+    maxLevel:            1,
+    minAbnormal:         2,
+    maxAbnormal:         2,
+    allowOneToMany:      false,
+    maxTargetsPerSource: 1,
+    mustHaveLv2:         false,
+    isUpgradeTutorial:   false,
+    forceDebt:           false
+  },
+
+  // 患者3：一个感官，一对多Lv.1异常首次出现
+  // 让玩家理解一个感官可以同时接收多种错误信号
+  {
+    serial:              3,
+    maxLevel:            1,
+    minAbnormal:         1,
+    maxAbnormal:         1,
+    allowOneToMany:      true,
+    maxTargetsPerSource: 2,
+    mustHaveLv2:         false,
+    isUpgradeTutorial:   false,
+    forceDebt:           false
+  },
+
+  // 患者4：两个独立的一对一Lv.1异常
+  // 练习同时追踪两个不相关的感官问题
+  {
+    serial:              4,
+    maxLevel:            1,
+    minAbnormal:         2,
+    maxAbnormal:         2,
+    allowOneToMany:      false,
+    maxTargetsPerSource: 1,
+    mustHaveLv2:         false,
+    isUpgradeTutorial:   false,
+    forceDebt:           false
+  },
+
+  // 患者5：三个独立的一对一Lv.1异常
+  // 练手期最复杂，为过渡期做准备
+  {
+    serial:              5,
+    maxLevel:            1,
+    minAbnormal:         3,
+    maxAbnormal:         3,
+    allowOneToMany:      false,
+    maxTargetsPerSource: 1,
+    mustHaveLv2:         false,
+    isUpgradeTutorial:   false,
+    forceDebt:           false
+  },
+
+  // 患者6：Lv.2首次出现，触发升级教程
+  // 两个异常，至少一个Lv.2
+  {
+    serial:              6,
+    maxLevel:            2,
+    minAbnormal:         2,
+    maxAbnormal:         2,
+    allowOneToMany:      false,
+    maxTargetsPerSource: 1,
+    mustHaveLv2:         true,
+    isUpgradeTutorial:   true,
+    forceDebt:           false
+  },
+
+  // 患者7：一对多 + Lv.2，难度进一步提升
+  // 2-3个异常，含一对多和Lv.2
+  {
+    serial:              7,
+    maxLevel:            2,
+    minAbnormal:         2,
+    maxAbnormal:         3,
+    allowOneToMany:      true,
+    maxTargetsPerSource: 2,
+    mustHaveLv2:         true,
+    isUpgradeTutorial:   false,
+    forceDebt:           false
+  },
+
+  // 患者8：强制赊账，3个异常，含Lv.2
+  // 玩家第一次面对"治好了但收不到钱"的处境
+  {
+    serial:              8,
+    maxLevel:            2,
+    minAbnormal:         3,
+    maxAbnormal:         3,
+    allowOneToMany:      false,
+    maxTargetsPerSource: 1,
+    mustHaveLv2:         true,
+    isUpgradeTutorial:   false,
+    forceDebt:           true
+  },
+
+  // 患者9：一对多 + Lv.2，2-3个异常
+  // 一个感官接收两种不同等级的错误信号
+  {
+    serial:              9,
+    maxLevel:            2,
+    minAbnormal:         2,
+    maxAbnormal:         3,
+    allowOneToMany:      true,
+    maxTargetsPerSource: 2,
+    mustHaveLv2:         true,
+    isUpgradeTutorial:   false,
+    forceDebt:           false
+  },
+
+  // 患者10：预设期最复杂，3-4个异常，含Lv.2
+  // 多感官、多映射，为随机期做最后热身
+  {
+    serial:              10,
+    maxLevel:            2,
+    minAbnormal:         3,
+    maxAbnormal:         4,
+    allowOneToMany:      true,
+    maxTargetsPerSource: 2,
+    mustHaveLv2:         true,
+    isUpgradeTutorial:   false,
+    forceDebt:           false
+  }
+]
+
+// ================================================================
+// 工具函数：查规则表
+// ================================================================
+
+/**
+ * 根据序号获取预设规则
+ * 第11个患者及以后返回 null，进入随机期
+ */
+export function getPresetRule(serial) {
+  if (serial > 10) return null
+  return PRESET_PATIENT_RULES.find(rule => rule.serial === serial) ?? null
+}
+
+/**
+ * 判断是否处于预设期
+ */
+export function isPresetPeriod(serial) {
+  return serial <= 10
+}
+
+/**
+ * 判断是否触发升级教程
+ */
+export function shouldTriggerUpgradeTutorial(serial) {
+  return getPresetRule(serial)?.isUpgradeTutorial ?? false
+}
+
+/**
+ * 判断是否强制赊账
+ */
+export function shouldForceDebt(serial) {
+  return getPresetRule(serial)?.forceDebt ?? false
+}
+

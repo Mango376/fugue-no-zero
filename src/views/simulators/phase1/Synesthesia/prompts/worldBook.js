@@ -1,30 +1,37 @@
 export const WORLD_BOOK = [
   {
     id: 'world_core',
-    title: '世界观核心',
+    title: '世界背景',
     content:
-      '2157 年，“共觉”恶意代码在仿生人神经网络中扩散。它不会摧毁肉体，却会错乱感官映射，使视觉、听觉、触觉、味觉、嗅觉彼此串线。'
+      '时间是公元 2157 年。“共觉”恶意代码正在仿生人神经网络中扩散。它不会摧毁肉体，却会打乱感官映射，让视觉、听觉、触觉、味觉、嗅觉彼此串线。'
   },
   {
     id: 'clinic_position',
     title: '诊所位置',
     content:
-      '玩家经营的维修店位于下城区边缘，设备不算先进，但愿意接待那些去不起上城区诊所的人。'
+      '诊所位于下城区边缘的夹缝地带，设备陈旧，证照缺失，却愿意接待那些去不起上城区正规诊所的仿生人。'
   },
   {
-    id: 'tone',
-    title: '情绪基调',
+    id: 'doctor_role',
+    title: '玩家身份',
     content:
-      '整体基调潮湿、冷硬、节制，但人物关系里要保留温情、牵挂和对生活的执拗。'
+      '你曾在上城区从事仿生人神经研究，后来流落下城，如今靠修复感官错乱维生。'
   },
   {
-    id: 'environment',
-    title: '环境干扰',
+    id: 'bioroid_perspective',
+    title: '仿生人设定',
     content:
-      '雨夜、蒸汽、低频震动、油烟、霓虹和施工噪音都会对问诊造成额外误导，但不要把它们直接解释成标准答案。'
+      '仿生人不是机器，是用另一种方式活着的人。他们有名字、职业、牵挂和尊严，每一个推门进来的人都值得被认真对待。'
   }
 ]
 
-export function buildWorldBookInjection() {
-  return WORLD_BOOK.map(entry => `【${entry.title}】\n${entry.content}`).join('\n\n')
+export function buildWorldBookInjection(ids = []) {
+  const requestedIds = Array.isArray(ids) && ids.length > 0
+    ? new Set(ids)
+    : null
+
+  return WORLD_BOOK
+    .filter(entry => !requestedIds || requestedIds.has(entry.id))
+    .map(entry => `【${entry.title}】\n${entry.content}`)
+    .join('\n\n')
 }
