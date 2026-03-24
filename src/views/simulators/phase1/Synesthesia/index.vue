@@ -1,468 +1,396 @@
 ﻿<template>
   <div class="synesthesia-shell">
+
+    <!-- ========== 标题页 ========== -->
+    <Transition name="fade">
     <section v-if="phase === 'title'" class="screen screen-title">
-      <div class="title-veil"></div>
-      <div class="title-grid"></div>
-      <div class="title-scanlines"></div>
-      <div class="title-orbs" aria-hidden="true">
-        <div class="title-orb orb-1"></div>
-        <div class="title-orb orb-2"></div>
-        <div class="title-orb orb-3"></div>
-        <div class="title-orb orb-4"></div>
+      <div class="title-bg-layer" aria-hidden="true">
+        <div class="title-grid"></div>
+        <div class="title-circle-outer"></div>
+        <div class="title-circle-inner"></div>
+        <div class="title-orbs">
+          <div class="orb orb-1"></div>
+          <div class="orb orb-2"></div>
+          <div class="orb orb-3"></div>
+          <div class="orb orb-4"></div>
+        </div>
       </div>
 
-      <div class="title-stage">
-        <div class="title-panel">
-          <div class="title-panel-line"></div>
-          <div class="title-eyebrow">{{ titleContent.eyebrow }}</div>
-          <h1 class="title-main">{{ titleContent.title }}</h1>
-          <div class="title-sub">{{ titleContent.subtitle }}</div>
-          <p class="title-tagline">{{ titleContent.tagline }}</p>
-          <div class="title-divider"></div>
-          <div class="title-copy">
-            <p>{{ titleContent.summary }}</p>
-            <p>{{ titleContent.detail }}</p>
-          </div>
+      <div class="title-center">
+        <div class="title-eyebrow">SYNESTHESIA CLINIC · 2157</div>
+        <h1 class="title-main">共觉之境</h1>
+        <p class="title-sub">仿生人感官修复模拟器</p>
+        <div class="title-tag">
+          <span class="tag-bracket">[ </span>Subject · 感官与温情<span class="tag-bracket"> ]</span>
+        </div>
+        <div class="title-divider"></div>
 
-          <div class="title-actions">
-            <button class="title-btn primary title-btn-large" @click="startNewGame">开始新游戏</button>
-            <button
-              class="title-btn secondary"
-              :class="{ disabled: !hasSave || isCheckingSave }"
-              :disabled="!hasSave || isCheckingSave"
-              @click="continueGame"
-            >
-              继续游戏
-            </button>
-            <button
-              class="title-btn secondary"
-              :class="{ disabled: !hasArchiveSave || isCheckingSave }"
-              :disabled="!hasArchiveSave || isCheckingSave"
-              @click="loadArchivedGame"
-            >
-              读取存档
-            </button>
-          </div>
-          <div class="title-archive-hint">{{ latestArchiveLabel }}</div>
-          <button class="text-link" @click="goHome">返回主界面</button>
+        <div class="title-actions">
+          <button class="title-btn-primary" @click="startNewGame">
+            <span class="btn-icon">▶</span>开始新游戏
+          </button>
+          <button
+            class="title-btn-secondary"
+            :class="{ disabled: !hasSave || isCheckingSave }"
+            :disabled="!hasSave || isCheckingSave"
+            @click="continueGame"
+          >继续游戏</button>
+          <button
+            class="title-btn-secondary"
+            :class="{ disabled: !hasArchiveSave || isCheckingSave }"
+            :disabled="!hasArchiveSave || isCheckingSave"
+            @click="loadArchivedGame"
+          >读取存档</button>
         </div>
 
-        <aside class="title-sidebar">
-          <div class="title-sidebar-kicker">诊所入口 / 校准前夜</div>
-          <div class="title-sidebar-block">
-            <div class="title-sidebar-label">接诊原则</div>
-            <p>先听见异常如何进入生活，再判断感官错位究竟发生在何处。</p>
-          </div>
-          <div class="title-sidebar-block">
-            <div class="title-sidebar-label">诊疗环境</div>
-            <p>下城区边缘诊所，设备旧、空间窄、噪声重，但依旧有人在这里等一个被认真听见的机会。</p>
-          </div>
-          <div class="title-sidebar-block title-sidebar-senses">
-            <div class="title-sidebar-label">五感回路</div>
-            <div class="title-sense-row">
-              <span>视觉</span>
-              <span>听觉</span>
-              <span>触觉</span>
-              <span>味觉</span>
-              <span>嗅觉</span>
-            </div>
-          </div>
-        </aside>
+        <div class="title-archive-hint">{{ latestArchiveLabel }}</div>
+        <button class="title-back-link" @click="goHome">‹ 返回主界面</button>
       </div>
     </section>
+    </Transition>
 
-    <section v-else-if="phase === 'background_intro'" class="screen screen-intro">
-      <header class="phase-topbar intro-topbar">
-        <button class="text-link" @click="goToPrevBackgroundPage">返回</button>
-        <div class="phase-topbar-actions">
-          <div class="progress-label">背景介绍 {{ backgroundPage + 1 }} / {{ backgroundTotal }}</div>
-          <button class="btn-secondary compact" @click="goHome">主界面</button>
+    <!-- ========== 背景介绍页 ========== -->
+    <Transition name="fade">
+    <section v-if="phase === 'background_intro'" class="screen screen-intro">
+      <header class="intro-topbar">
+        <button class="back-btn" @click="goToPrevBackgroundPage">
+          ‹ {{ backgroundPage === 0 ? '返回' : '上一章' }}
+        </button>
+        <div class="intro-chapter-indicator">
+          <span
+            v-for="n in backgroundTotal"
+            :key="n"
+            class="chapter-dot"
+            :class="{ active: n - 1 === backgroundPage }"
+          ></span>
         </div>
       </header>
 
-      <div class="intro-stage">
-        <aside class="intro-sidebar">
-          <div class="intro-sidebar-header">
-            <div class="intro-sidebar-kicker">世界档案</div>
-            <div class="intro-sidebar-title">联觉失序记录</div>
-          </div>
-
-          <div class="intro-page-list">
-            <button
-              v-for="page in backgroundPages"
-              :key="page.id"
-              type="button"
-              class="intro-page-tab"
-              :class="{ active: page.id === currentBackgroundPage.id }"
-            >
-              <span>{{ page.kicker }}</span>
-              <strong>{{ page.title }}</strong>
-            </button>
-          </div>
-
-          <div class="intro-sidebar-note">
-            门铃响起之前，你会先看见这个世界是如何一步步失去正常感官秩序的。
-          </div>
-        </aside>
-
-        <div class="intro-card">
-          <div class="intro-card-topline"></div>
-          <div class="intro-kicker">{{ currentBackgroundPage.kicker }}</div>
-          <h2 class="intro-title">{{ currentBackgroundPage.title }}</h2>
-          <div class="intro-metadata">
-            <span>下城区病例输入</span>
-            <span>神经映射异常</span>
-            <span>人工校准流程</span>
-          </div>
-          <div class="intro-divider"></div>
+      <div class="intro-scroll-area">
+        <div class="intro-reading-column">
+          <div class="intro-chapter-tag">{{ currentBackgroundPage.kicker }}</div>
+          <h2 class="intro-lead">{{ currentBackgroundPage.title }}</h2>
 
           <div class="intro-body">
-            <p v-for="(paragraph, index) in currentBackgroundPage.paragraphs" :key="index">
-              {{ paragraph }}
-            </p>
+            <template v-for="(paragraph, index) in currentBackgroundPage.paragraphs" :key="index">
+              <blockquote
+                v-if="paragraph.startsWith('「') || paragraph.startsWith('&quot;')"
+                class="intro-blockquote"
+              >{{ paragraph }}</blockquote>
+              <p v-else class="intro-paragraph">{{ paragraph }}</p>
+            </template>
           </div>
 
-          <div class="intro-footer">
-            <div class="intro-progress-track">
-              <div class="intro-progress-fill" :style="{ width: `${((backgroundPage + 1) / backgroundTotal) * 100}%` }"></div>
-            </div>
-
-            <div class="intro-actions">
-              <button class="btn-secondary" @click="goToPrevBackgroundPage">
-                {{ backgroundPage === 0 ? '回到标题' : '上一页' }}
-              </button>
-              <button class="btn-primary" @click="goToNextBackgroundPage">
-                {{ backgroundPage + 1 === backgroundTotal ? '进入诊所' : '下一页' }}
-              </button>
-            </div>
+          <div class="intro-footer-nav">
+            <button class="intro-next-btn" @click="goToNextBackgroundPage">
+              {{ backgroundPage + 1 === backgroundTotal ? '进入诊所 ›' : '下一章 ›' }}
+            </button>
           </div>
         </div>
       </div>
     </section>
+    </Transition>
 
-    <section v-else-if="phase === 'hub'" class="screen screen-hub">
-      <header class="hub-topbar hub-topbar-reframed">
-        <div class="hub-topbar-row">
-          <button class="btn-secondary compact topbar-action-btn" @click="returnToTitle">返回</button>
-          <div class="hub-topbar-text">信用点 {{ credits }}</div>
-          <div class="hub-topbar-text">第 {{ gameDay }} 天</div>
+    <!-- ========== 主界面 Hub ========== -->
+    <Transition name="fade">
+    <section v-if="phase === 'hub'" class="screen screen-hub">
+      <header class="hub-topbar">
+        <button class="back-btn" @click="returnToTitle">‹ 返回</button>
+        <div class="hub-topbar-center">
+          <span class="hub-credits">💳 {{ credits }}</span>
+          <span class="hub-day">第 {{ gameDay }} 天</span>
         </div>
-        <div class="hub-timeflow-row">
-          <div class="hub-timeflow-label">时间条</div>
-          <div class="timeflow-strip topbar-timeflow">
-            <div class="timeflow-fill" :style="{ width: `${timeProgressPercent}%` }"></div>
-          </div>
-        </div>
+        <div class="hub-system-tag">CLINIC · READY</div>
       </header>
-      <main class="hub-main hub-main-reframed">
-        <section class="hub-identity-card clickable-card" @click="toggleProfilePanel">
-          <div class="profile-kicker">玩家信息</div>
-          <div class="profile-card-row">
-            <img v-if="playerProfile.avatar" :src="playerProfile.avatar" alt="avatar" class="profile-avatar">
-            <div v-else class="profile-avatar placeholder">{{ (playerProfile.title || '调').slice(0, 1) }}</div>
-            <div class="profile-name">{{ playerProfile.title }}</div>
+
+      <div class="hub-scroll-area">
+        <div class="hub-card hub-profile-card" @click="toggleProfilePanel">
+          <div class="hub-profile-avatar">
+            <img v-if="playerProfile.avatar" :src="playerProfile.avatar" class="avatar-img" />
+            <span v-else>{{ (playerProfile.title || '维').slice(-1) }}</span>
           </div>
-        </section>
-        <section class="hub-environment-card">
-          <div class="environment-title">当前环境 —— {{ currentEnvironment.name }}</div>
-          <div class="environment-copy">{{ currentEnvironment.description }}</div>
-        </section>
-        <section class="hub-folders">
-          <article class="hub-folder-card primary-item">
-            <div class="folder-inline">
-              <div>
-                <div class="folder-title">{{ hubActions.primaryLabel }}</div>
-                <div class="folder-copy">当前候诊 {{ waitingPatientCount }} / 3，患者会随时间到达。</div>
-              </div>
-              <button
-                class="btn-primary compact hub-inline-btn"
-                :disabled="!activePatient && waitingPatientCount === 0"
-                @click="startPatientFlow"
-              >
-                {{ activePatient ? '继续接诊' : (waitingPatientCount > 0 ? '开始接待' : '暂无到诊') }}
-              </button>
-            </div>
-          </article>
-          <article class="hub-folder-card collapsible">
-            <div class="folder-title">待复诊患者</div>
-            <div class="folder-copy">到期复诊 {{ dueRevisitCount }} · 排队中 {{ pendingRevisitCount }}</div>
-          </article>
-          <article class="hub-folder-card collapsible">
-            <div class="folder-inline">
-              <div>
-                <div class="folder-title">设备总览</div>
-                <div class="folder-copy">查看五感设备等级与模块</div>
-              </div>
-              <button class="mini-toggle" type="button" @click.stop="toggleEquipmentSection">
-                {{ equipmentExpanded ? '收起' : '展开' }}
-              </button>
-            </div>
-          </article>
-        </section>
-        <div v-if="equipmentExpanded" class="hub-expand-panel">
-          <div v-for="item in equipmentModuleRows" :key="item.id" class="equipment-module-card">
-            <div class="equipment-name">{{ item.name }}</div>
-            <div class="equipment-module-list">
-              <div v-for="module in item.modules" :key="module.id" class="equipment-module-row">
-                <span>{{ module.label }}</span>
-                <strong>Lv.{{ module.level }}</strong>
-                <button
-                  class="btn-secondary compact equipment-upgrade-btn"
-                  type="button"
-                  :disabled="module.level >= 4"
-                  @click="upgradeEquipmentModule(item.id, module.targetId)"
-                >
-                  {{ module.level >= 4 ? '满级' : `升级 ${module.upgradeCost}` }}
-                </button>
-              </div>
-            </div>
+          <div class="hub-profile-info">
+            <div class="hub-profile-name">{{ playerProfile.title }}</div>
+            <div class="hub-profile-meta">诊所维修师</div>
           </div>
+          <div class="hub-profile-arrow">›</div>
         </div>
-        <section class="hub-menu">
-          <article class="hub-menu-item primary-item" @click="startPatientFlow">
-            <div class="menu-main">
+
+        <div class="hub-card hub-environment-card">
+  <div class="hub-env-label">当前环境</div>
+
+  <!-- 加载中 -->
+  <template v-if="isEnvironmentLoading && !currentEnvironment?.description">
+    <div class="env-loading">
+      <div class="env-loading-bars">
+        <span></span><span></span><span></span><span></span><span></span>
+      </div>
+      <div class="env-loading-text">正在感知环境……</div>
+    </div>
+  </template>
+
+  <!-- 已加载 -->
+  <template v-else>
+    <div class="hub-env-desc">{{ currentEnvironmentDescription }}</div>
+  </template>
+</div>
+
+
+        <div class="hub-menu-list">
+          <div
+            class="hub-menu-item hub-menu-primary"
+            :class="{ disabled: !canStartPatientFlow }"
+            @click="startPatientFlow"
+          >
+            <div class="menu-icon-wrap primary-icon">▶</div>
+            <div class="menu-content">
               <div class="menu-title">{{ hubActions.primaryLabel }}</div>
-              <div class="menu-sub">进入今天的问诊与治疗流程。</div>
+              <div class="menu-sub">{{ patientArrivalStatusText }}</div>
             </div>
-            <div class="menu-state">进入</div>
-          </article>
-
-          <article class="hub-menu-item">
-            <div class="menu-main">
-              <div class="menu-title">待复诊患者</div>
-              <div class="menu-sub">
-                当前共 {{ pendingRevisitCount }} 名患者在排队，{{ dueRevisitCount }} 名已经到约定时间。
-              </div>
-            </div>
-            <div class="menu-state">{{ pendingRevisitCount }}</div>
-          </article>
-
-          <article v-if="curedArchives.length" class="hub-menu-item archive-intro">
-            <div class="menu-main">
-              <div class="menu-title">患者病历</div>
-              <div class="menu-sub">查看已经治愈的患者档案、问诊记录与治疗反馈。</div>
-            </div>
-            <div class="menu-state">{{ curedArchives.length }}</div>
-          </article>
-
-          <div v-if="curedArchives.length" class="archive-list">
-            <details v-for="archive in curedArchives" :key="archive.id" class="archive-item">
-              <summary class="archive-summary">
-                <div>
-                  <div class="archive-name">{{ archive.name }} · {{ archive.job }}</div>
-                  <div class="archive-meta">第 {{ archive.gameDay }} 天 · 收入 {{ archive.settlementTotal || 0 }} 信用点</div>
-                </div>
-              </summary>
-
-              <div class="archive-body">
-                <div class="archive-block">
-                  <div class="archive-block-title">病例追踪</div>
-                  <div class="archive-copy">{{ archive.trackingSheet?.symptomSummary || '暂无摘要' }}</div>
-                  <div class="archive-copy">核心牵挂：{{ archive.trackingSheet?.coreConcern || '暂无' }}</div>
-                  <div class="archive-copy">变更记录：{{ archive.trackingSheet?.changeLog?.join(' / ') || '暂无' }}</div>
-                </div>
-
-                <div class="archive-block">
-                  <div class="archive-block-title">问诊记录</div>
-                  <div
-                    v-for="entry in archive.consultationHistory"
-                    :key="entry.id"
-                    class="archive-entry"
-                  >
-                    <div class="archive-entry-label">{{ entry.label }}</div>
-                    <div class="archive-entry-text">{{ entry.text }}</div>
-                  </div>
-                </div>
-
-                <div class="archive-block">
-                  <div class="archive-block-title">治疗反馈</div>
-                  <div class="archive-copy">{{ archive.feedbackText || '暂无' }}</div>
-                </div>
-              </div>
-            </details>
+            <div class="menu-arrow">›</div>
           </div>
 
-          <article class="hub-menu-item collapsible">
-            <div class="menu-main">
-              <div class="menu-title">设备概览</div>
-              <div class="menu-sub">查看五感治疗仪与可升级模块。</div>
+          <div class="hub-menu-item">
+            <div class="menu-icon-wrap">◈</div>
+            <div class="menu-content">
+              <div class="menu-title">待复诊患者</div>
+              <div class="menu-sub">到期复诊 {{ dueRevisitCount }} 名 · 排队中 {{ pendingRevisitCount }} 名</div>
             </div>
-            <button class="mini-toggle" type="button" @click.stop="toggleEquipmentSection">
-              {{ equipmentExpanded ? '收起' : '展开' }}
-            </button>
-          </article>
+            <div class="menu-arrow">›</div>
+          </div>
+
+          <div class="hub-menu-item" @click="toggleEquipmentSection">
+            <div class="menu-icon-wrap">⚙</div>
+            <div class="menu-content">
+              <div class="menu-title">设备概览</div>
+              <div class="menu-sub">查看五感治疗仪与可升级模块</div>
+            </div>
+            <div class="menu-arrow">{{ equipmentExpanded ? '▾' : '›' }}</div>
+          </div>
 
           <div v-if="equipmentExpanded" class="hub-expand-panel">
-            <div v-for="item in equipmentModuleRows" :key="item.id" class="equipment-module-card">
-              <div class="equipment-name">{{ item.name }}</div>
-              <div class="equipment-desc">可分别升级另外四种感官的治疗等级，默认 Lv.1，最高 Lv.4。</div>
+            <div v-for="item in equipmentModuleRows" :key="item.id" class="equipment-group">
+              <div class="equipment-group-name">{{ item.name }}</div>
               <div class="equipment-module-list">
-                <div v-for="module in item.modules" :key="module.id" class="equipment-module-row">
-                  <span>{{ module.label }}</span>
-                  <strong>Lv.{{ module.level }}</strong>
+                <div v-for="module in item.modules" :key="module.id" class="equipment-row">
+                  <span class="eq-label">{{ module.label }}</span>
+                  <span class="eq-level">Lv.{{ module.level }}</span>
                   <button
-                    class="btn-secondary compact equipment-upgrade-btn"
-                    type="button"
+                    class="eq-upgrade-btn"
                     :disabled="module.level >= 4"
-                    @click="upgradeEquipmentModule(item.id, module.targetId)"
-                  >
-                    {{ module.level >= 4 ? '满级' : `升级 ${module.upgradeCost}` }}
-                  </button>
+                    @click.stop="upgradeEquipmentModule(item.id, module.targetId)"
+                  >{{ module.level >= 4 ? '满级' : `升级 ${module.upgradeCost}💳` }}</button>
                 </div>
               </div>
             </div>
           </div>
 
-          <article v-if="latestCompletedCase" class="hub-menu-item">
-            <div class="menu-main">
-              <div class="menu-title">最近病例</div>
-              <div class="menu-sub">
-                {{ latestCompletedCase.name }} · {{ latestCompletedCase.outcomeLabel }} · {{ latestCompletedCase.summary }}
-              </div>
+          <div v-if="archiveCases.length" class="hub-menu-item" @click="openArchivePanel()">
+            <div class="menu-icon-wrap">📋</div>
+            <div class="menu-content">
+              <div class="menu-title">患者档案库</div>
+              <div class="menu-sub">已归档 {{ archiveCases.length }} 份病例记录</div>
             </div>
-            <div class="menu-state">第 {{ latestCompletedCase.gameDay }} 天</div>
-          </article>
+            <div class="menu-arrow">›</div>
+          </div>
 
-          <article class="hub-menu-item collapsible">
-            <div class="menu-main">
+          <div class="hub-menu-item" @click="toggleSnapshotSection">
+            <div class="menu-icon-wrap">◎</div>
+            <div class="menu-content">
               <div class="menu-title">系统快照</div>
-              <div class="menu-sub">查看当前版本已经接入的主流程节点。</div>
+              <div class="menu-sub">查看当前版本已接入的主流程节点</div>
             </div>
-            <button class="mini-toggle" type="button" @click.stop="toggleSnapshotSection">
-              {{ snapshotExpanded ? '收起' : '展开' }}
-            </button>
-          </article>
+            <div class="menu-arrow">{{ snapshotExpanded ? '▾' : '›' }}</div>
+          </div>
 
           <div v-if="snapshotExpanded" class="hub-expand-panel">
-            <div v-for="item in systemSnapshot" :key="item" class="snapshot-row">
-              {{ item }}
-            </div>
+            <div v-for="item in systemSnapshot" :key="item" class="snapshot-row">{{ item }}</div>
           </div>
-        </section>
+        </div>
 
-        <div v-if="statusNotice" class="status-notice">{{ statusNotice }}</div>
-      </main>
+        <div class="hub-footer-hint">诊所已就绪 · 随时可以开始接诊</div>
+      </div>
+
+      <button class="phone-fab" @click="togglePhonePanel">
+        手机
+        <span v-if="unreadPhoneCount" class="phone-badge">{{ unreadPhoneCount }}</span>
+      </button>
     </section>
+    </Transition>
 
-    <section v-else-if="phase === 'consult'" class="screen screen-consult">
-      <header class="phase-topbar consult-topbar">
-        <div class="consult-topbar-left">
-          <button class="text-link consult-back-link" @click="returnToHub">← 返回主界面</button>
-          <div class="diagnosis-chip">{{ diagnosisAttemptLabel }}</div>
+    <!-- ========== 问诊页 ========== -->
+    <Transition name="fade">
+    <section v-if="phase === 'consult'" class="screen screen-consult">
+
+      <header class="consult-topbar">
+        <button class="back-btn" @click="returnToHub">‹ 返回主界面</button>
+        <div class="diagnosis-chip">
+          诊断仪剩余 {{ diagnosisAttemptsLeft }} / {{ diagnosisAttemptsTotal }} 次
         </div>
       </header>
 
-      <main class="consult-main">
-        <section class="consult-panel">
-          <article class="dialogue-card">
-            <div class="card-head consciousness-head">问诊记录</div>
-            <div class="consult-context">
-              <div class="consult-patient-line">
-                {{ activePatient?.name }} · {{ activePatient?.job }} · 第 {{ activePatient?.visitCount || 1 }} 次来诊
-              </div>
-              <div class="consult-environment-line">
-                当前室外环境：{{ activeEnvironment.name }}。{{ activeEnvironment.description }}
-              </div>
-            </div>
+      <div class="consult-frame">
 
-            <div v-if="narrativeError" class="error-box">{{ narrativeError }}</div>
+        <div class="frame-header">
+          <span class="frame-orn">·</span>
+          <span class="frame-title">问诊记录</span>
+          <span class="frame-orn">·</span>
+        </div>
 
-            <button
-              v-if="collapsedHistoryCount > 0"
-              class="history-toggle"
-              type="button"
-              @click="showFullHistory = !showFullHistory"
-            >
-              {{ showFullHistory ? `收起历史记录（${collapsedHistoryCount}）` : `展开历史记录（${collapsedHistoryCount}）` }}
-            </button>
+        <div class="patient-info-bar">
+          <div class="patient-name-row">
+            <span class="patient-name">{{ activePatient?.name }}</span>
+            <span class="patient-sep">·</span>
+            <span class="patient-job">{{ activePatient?.job }}</span>
+            <span class="patient-sep">·</span>
+            <span class="patient-visit">第 {{ activePatient?.visitCount || 1 }} 次来诊</span>
+          </div>
+          <div class="patient-env-row">
+            {{ activeEnvironment?.description || '环境信息暂不可用' }}
+          </div>
+        </div>
 
-            <div class="dialogue-list" :class="{ compact: !showFullHistory && collapsedHistoryCount > 0 }">
-              <div
-                v-for="entry in visibleConsultationHistory"
-                :key="entry.id"
-                class="dialogue-entry"
-                :class="`entry-${entry.speaker}`"
-              >
-                <div class="entry-label">{{ entry.label }}</div>
-                <div class="entry-body">
-                  <template v-if="typingEntryId === entry.id">
-                    <Typewriter :text="entry.text" :speed="22" @done="handleTypingDone" />
-                  </template>
-                  <template v-else>
-                    <p v-for="(paragraph, idx) in splitParagraphs(entry.text)" :key="idx">
-                      {{ paragraph }}
-                    </p>
-                  </template>
-                </div>
-              </div>
-            </div>
-          </article>
-        </section>
+        <!-- 历史折叠按钮 -->
+        <button
+          v-if="collapsedHistoryCount > 0"
+          class="history-toggle-btn"
+          @click="showFullHistory = !showFullHistory"
+        >
+          <span class="toggle-icon">{{ showFullHistory ? '▴' : '▾' }}</span>
+          <span>{{ showFullHistory
+            ? '收起历史记录'
+            : `查看历史记录（${collapsedHistoryCount}条）`
+          }}</span>
+        </button>
 
-        <section class="question-panel">
-          <div v-if="consultEntryStage === 'pre_consult'" class="question-prestart">
-            <div class="question-bar-title">准备开始</div>
-            <div class="question-loading-copy">患者已经到诊，点击下方按钮进入诊断室。</div>
-            <button class="btn-primary compact consult-start-btn" @click="continueConsultFlow">
-              开始诊断
-            </button>
+        <!-- 对话内容区 -->
+        <div class="frame-content" ref="contentEl">
+
+          <!-- 折叠时的分割线 -->
+          <div v-if="!showFullHistory && collapsedHistoryCount > 0" class="history-divider">
+            <span class="hd-line"></span>
+            <span class="hd-text">以上为历史记录</span>
+            <span class="hd-line"></span>
           </div>
 
-          <div v-else-if="consultEntryStage === 'entering_consult' || isGeneratingText" class="question-loading">
-            <div class="consult-loading-animation" aria-hidden="true">
-              <span></span>
-              <span></span>
-              <span></span>
+          <!-- 对话条目 -->
+          <template v-for="entry in visibleEntries" :key="entry.id">
+
+            <div v-if="entry.speaker === 'narration' || entry.speaker === 'system'" class="entry-narration">
+              <p v-for="(para, i) in splitParagraphs(entry.text)" :key="i">{{ para }}</p>
             </div>
-            <div class="question-bar-title">{{ consultationHistory.length ? '正在整理新的问诊回应' : '正在进入诊断室' }}</div>
-            <div class="question-loading-copy">
-              {{ consultationHistory.length ? '病人的这一轮回应正在生成，请稍候。' : '诊断室门锁已经落下，记录正在同步。' }}
+
+            <div v-else-if="entry.speaker === 'patient'" class="entry-patient">
+              <template v-if="isGeneratingText && entry.id === typingEntryId">
+                <Typewriter :text="entry.text" :speed="24" />
+              </template>
+              <template v-else>
+                <p v-for="(para, i) in splitParagraphs(entry.text)" :key="i">{{ para }}</p>
+              </template>
             </div>
+
+            <div v-else-if="entry.speaker === 'doctor'" class="entry-doctor">
+              <span class="entry-doctor-arrow">▷</span>
+              <span>{{ entry.text }}</span>
+            </div>
+
+            <div v-else class="entry-patient">
+              <p v-for="(para, i) in splitParagraphs(entry.text)" :key="i">{{ para }}</p>
+            </div>
+
+          </template>
+
+          <!-- 空状态 -->
+          <div v-if="safeConsultationHistory.length === 0 && !isGeneratingText" class="frame-empty">
+            等待患者进入诊断室……
           </div>
 
-          <div v-else-if="canShowConsultChoices && !isTypingNarrative" class="question-bar separated">
-            <div class="question-bar-title">做出选择</div>
-            <div class="question-grid">
-              <button
-                v-for="option in currentConsultOptions"
-                :key="option.id"
-                class="question-btn"
-                :disabled="isGeneratingText"
-                @click="chooseConsultOption(option)"
-              >
-                <span class="question-title">{{ option.label }}</span>
-                <small class="question-line">{{ option.doctorLine }}</small>
-              </button>
+        </div>
+
+        <div class="frame-status-bar">
+          <div class="status-item">
+            <span class="status-label">诊断次数</span>
+            <div class="status-pips">
+              <span
+                v-for="n in diagnosisAttemptsTotal"
+                :key="n"
+                class="pip"
+                :class="{ used: n > diagnosisAttemptsLeft }"
+              ></span>
             </div>
+            <span class="status-num">{{ diagnosisAttemptsLeft }}</span>
+          </div>
+          <div class="status-divider"></div>
+          <div class="status-item">
+            <span class="status-label">今日患者</span>
+            <span class="status-num">{{ activePatient?.visitCount || 1 }}</span>
+          </div>
+        </div>
+
+      </div>
+
+      <!-- 加载中 -->
+      <div v-if="isGeneratingText" class="consult-loading-area">
+        <div class="loading-wave">
+          <span></span><span></span><span></span><span></span><span></span>
+        </div>
+        <div class="loading-text">正在整理新的问诊回应</div>
+      </div>
+
+      <!-- 选项区 -->
+      <div
+        v-if="!isGeneratingText && canShowConsultChoices && currentConsultOptions.length > 0"
+        class="consult-choices-area"
+      >
+        <div class="choices-label">做出选择</div>
+        <div class="choices-list">
+          <button
+            v-for="option in currentConsultOptions"
+            :key="option.id"
+            class="choice-btn"
+            @click="chooseConsultOption(option)"
+          >
+            <span class="choice-title">{{ option.label }}</span>
+            <span class="choice-line">{{ option.doctorLine }}</span>
+          </button>
+        </div>
+      </div>
+
+      <!-- 浮动按钮组 -->
+      <div class="consult-fabs">
+        <button class="fab-btn" @click="togglePhonePanel">
+          手机
+          <span v-if="unreadPhoneCount" class="fab-badge">{{ unreadPhoneCount }}</span>
+        </button>
+        <button class="fab-btn" @click="toggleNotesDrawer">病历记录</button>
+      </div>
+
+      <!-- 病历记录抽屉 -->
+      <Transition name="drawer-fade">
+      <aside v-if="showNotesDrawer" class="notes-drawer">
+        <div class="notes-backdrop" @click="toggleNotesDrawer"></div>
+        <div class="notes-card">
+
+          <div class="notes-head">
+            <div class="notes-head-left">
+              <div class="notes-doc-tag">◇ 病历记录 ◇</div>
+              <div class="notes-doc-title">病历记录</div>
+              <div class="notes-sub">先记笔记，再把结构化诊断提交给诊断仪。</div>
+            </div>
+            <button class="notes-close-btn" @click="toggleNotesDrawer">›</button>
           </div>
 
-          <div v-else class="question-hidden-state"></div>
-        </section>
+          <div class="notes-scroll-body">
 
-        <div
-          v-if="isMobileLayout && showNotesDrawer"
-          class="notes-backdrop"
-          @click="toggleNotesDrawer"
-        ></div>
-
-        <aside v-if="!isMobileLayout || showNotesDrawer" class="notes-sidebar" :class="{ mobile: isMobileLayout }">
-          <div class="notes-card">
-            <div class="notes-head">
-              <div>
-                <div class="notes-doc-tag">◇ 病历记录 ◇</div>
-                <div class="notes-doc-title">病历记录</div>
-                <div class="notes-sub">先记笔记，再把结构化诊断提交给诊断仪。</div>
-              </div>
-              <button v-if="isMobileLayout" class="text-link" @click="toggleNotesDrawer">关闭</button>
+            <div>
+              <label class="notes-label">自由笔记</label>
+              <textarea
+                v-model="consultNotes"
+                class="notes-textarea"
+                placeholder="随时记录患者提到的关键词、触发场景和你对环境干扰的怀疑。"
+                @input="handleConsultNotesInput"
+              ></textarea>
             </div>
-
-            <label class="notes-label">自由笔记</label>
-            <textarea
-              v-model="consultNotes"
-              class="notes-textarea"
-              placeholder="随时记录患者提到的关键词、触发场景和你对环境干扰的怀疑。"
-              @input="handleConsultNotesInput"
-            ></textarea>
 
             <div class="mapping-board">
               <div v-for="sense in senseConfigs" :key="sense.id" class="mapping-group">
@@ -496,45 +424,48 @@
               <div class="summary-meta">{{ diagnosisAttemptLabel }}</div>
             </div>
 
-            <div class="notes-actions">
-              <button class="btn-secondary" :disabled="!canSubmitDiagnosis" @click="submitDiagnosis">
-                提交至诊断仪
-              </button>
-              <button class="btn-primary" :disabled="!canEnterTreatment" @click="openTreatmentScreen">
-                前往治疗仪
-              </button>
-            </div>
           </div>
-        </aside>
-      </main>
 
-      <button v-if="isMobileLayout" class="floating-note-btn" @click="toggleNotesDrawer">
-        {{ showNotesDrawer ? '收起记录' : '病历记录' }}
-      </button>
+          <div class="notes-actions">
+            <button class="btn-secondary" :disabled="!canSubmitDiagnosis" @click="submitDiagnosis">
+              提交至诊断仪
+            </button>
+            <button class="btn-primary" :disabled="!canEnterTreatment" @click="openTreatmentScreen">
+              前往治疗仪
+            </button>
+          </div>
+
+        </div>
+      </aside>
+      </Transition>
+
     </section>
+    </Transition>
 
-    <section v-else-if="phase === 'treatment'" class="screen screen-treatment">
+    <!-- ========== 治疗页 ========== -->
+    <Transition name="fade">
+    <section v-if="phase === 'treatment'" class="screen screen-treatment">
       <header class="phase-topbar">
-        <div>
+        <button class="back-btn" @click="returnToConsult">‹ 返回问诊</button>
+        <div class="phase-topbar-center">
           <div class="phase-title">治疗仪设置</div>
           <div class="phase-sub">{{ activePatient?.name }} · {{ activePatientSummary }}</div>
         </div>
         <div class="phase-topbar-actions">
-          <button class="btn-secondary compact" @click="returnToConsult">返回问诊</button>
           <button class="btn-secondary compact" @click="saveManualProgress">保存</button>
           <button class="btn-secondary compact" @click="goHome">主界面</button>
         </div>
       </header>
 
-      <main class="treatment-main">
-        <section class="treatment-summary-card">
-          <div class="card-head">当前确认结果</div>
+      <div class="treatment-scroll-area">
+        <div class="treatment-summary-card">
+          <div class="card-section-label">当前确认结果</div>
           <div class="summary-copy">{{ confirmedDiagnosisSummary }}</div>
           <div v-if="narrativeError" class="error-box">{{ narrativeError }}</div>
-        </section>
+        </div>
 
-        <section class="treatment-grid">
-          <article v-for="sense in senseConfigs" :key="sense.id" class="treatment-card">
+        <div class="treatment-grid">
+          <div v-for="sense in senseConfigs" :key="sense.id" class="treatment-card">
             <div class="treatment-card-title">{{ sense.label }}</div>
             <div class="mapping-options">
               <label
@@ -549,2309 +480,2376 @@
                   @change="toggleTreatmentTarget(sense.id, targetId)"
                 />
                 <span>{{ senseLabels[targetId] }} · Lv.{{ getTreatmentOptionMeta(sense.id, targetId).level }}</span>
-                <small>{{ getTreatmentOptionMeta(sense.id, targetId).reason }}</small>
               </label>
             </div>
-          </article>
-        </section>
+          </div>
+        </div>
 
-        <section class="treatment-submit-card">
-          <div class="summary-title">治疗方向总览</div>
+        <div class="treatment-submit-card">
+          <div class="card-section-label">治疗方向总览</div>
           <div class="summary-copy">{{ treatmentDraftSummary }}</div>
-          <div class="notes-actions">
+          <div class="treatment-actions">
             <button class="btn-secondary" @click="returnToConsult">继续补问诊</button>
             <button class="btn-primary" :disabled="!canSubmitTreatment" @click="submitTreatment">
               提交治疗
             </button>
           </div>
-        </section>
-      </main>
+        </div>
+      </div>
     </section>
+    </Transition>
 
-    <section v-else-if="phase === 'patient_feedback'" class="screen screen-feedback">
+    <!-- ========== 反馈页 ========== -->
+    <Transition name="fade">
+    <section v-if="phase === 'patient_feedback'" class="screen screen-feedback">
       <header class="phase-topbar">
-        <div>
+        <button class="back-btn" @click="goHome">‹ 主界面</button>
+        <div class="phase-topbar-center">
           <div class="phase-title">{{ feedbackOutcomeLabel }}</div>
-          <div class="phase-sub">{{ activePatient?.name }} · {{ activePatientSummary }}</div>
+          <div class="phase-sub">{{ activePatient?.name }}</div>
         </div>
-        <div class="phase-topbar-actions">
-          <button class="btn-secondary compact" @click="saveManualProgress">保存</button>
-          <button class="btn-secondary compact" @click="goHome">主界面</button>
-        </div>
+        <button class="btn-secondary compact" @click="saveManualProgress">保存</button>
       </header>
 
-      <main class="feedback-main">
-        <article class="feedback-card">
-          <div class="card-head">患者反馈</div>
+      <div class="feedback-scroll-area">
+        <div class="feedback-card">
+          <div class="card-section-label">患者反馈</div>
           <div class="feedback-chip" :class="patientFeedbackOutcome">{{ feedbackOutcomeLabel }}</div>
-
           <div v-if="narrativeError" class="error-box">{{ narrativeError }}</div>
-
           <div class="feedback-body">
-            <p v-for="(paragraph, index) in splitParagraphs(patientFeedbackText)" :key="index">
-              {{ paragraph }}
-            </p>
+            <p v-for="(para, i) in splitParagraphs(patientFeedbackText)" :key="i">{{ para }}</p>
           </div>
-
           <div v-if="patientFeedbackOutcome === 'revisit' && activePatient?.returnDay" class="feedback-schedule">
             已为这位患者预约第 {{ activePatient.returnDay }} 天后的复诊。
           </div>
-
           <div class="feedback-actions">
             <button class="btn-primary" @click="advanceFromFeedback">{{ currentFeedbackActionLabel }}</button>
           </div>
-        </article>
-      </main>
+        </div>
+      </div>
     </section>
+    </Transition>
 
-    <button
-      v-if="['hub', 'consult', 'treatment', 'patient_feedback'].includes(phase)"
-      class="phone-fab"
-      :class="{ consult: phase === 'consult' }"
-      @click="togglePhonePanel"
-    >
-      手机
-      <span v-if="unreadPhoneCount" class="phone-badge">{{ unreadPhoneCount }}</span>
-    </button>
+    <Transition name="fade">
+    <section v-if="phase === 'settlement' && currentSettlementRecord" class="screen screen-settlement">
+      <header class="phase-topbar">
+        <button class="back-btn" @click="goHome">‹ 主界面</button>
+        <div class="phase-topbar-center">
+          <div class="phase-title">诊疗结算</div>
+          <div class="phase-sub">{{ currentSettlementRecord.name }}</div>
+        </div>
+        <button class="btn-secondary compact" @click="saveManualProgress">保存</button>
+      </header>
 
-    <Transition name="modal-fade">
-      <div v-if="showPhonePanel" class="modal-overlay" @click.self="togglePhonePanel">
-        <div class="modal-card phone-modal">
-          <div class="modal-kicker">诊所手机</div>
-          <div class="modal-title">短信息</div>
-          <p class="modal-text">待回款 {{ pendingDebtCount }} 笔</p>
-
-          <div v-if="phoneMessages.length" class="phone-message-list">
-            <article
-              v-for="message in phoneMessages"
-              :key="message.id"
-              class="phone-message-item"
-              :class="{ unread: !message.read }"
-            >
-              <div class="phone-message-head">
-                <strong>{{ message.sender }}</strong>
-                <span>第 {{ message.gameDay }} 天</span>
+      <div class="feedback-scroll-area">
+        <div class="feedback-card settlement-page-card">
+          <div class="card-section-label">结案记录</div>
+          <div class="feedback-chip" :class="patientFeedbackOutcome">{{ currentSettlementRecord.outcomeLabel }}</div>
+          <div class="feedback-body">
+            <p v-for="(para, i) in splitParagraphs(currentSettlementRecord.closingNarrative || currentSettlementRecord.feedbackText)" :key="`settlement-${i}`">{{ para }}</p>
+          </div>
+          <div class="settlement-summary">
+            <div class="settlement-stat">
+              <div class="settlement-stat-label">成功治愈</div>
+              <div class="settlement-stat-value">
+                {{ settlementLevelSummary.length ? settlementLevelSummary.map(item => item.label).join('，') : '无' }}
               </div>
-              <div class="archive-block-title">{{ message.title }}</div>
-              <div class="archive-copy">{{ message.text }}</div>
-            </article>
+            </div>
+            <div class="settlement-stat">
+              <div class="settlement-stat-label">获得信用点</div>
+              <div class="settlement-stat-value">{{ currentSettlementRecord.collectedTotal }}</div>
+            </div>
           </div>
-
-          <div v-else class="archive-block">
-            <div class="archive-copy">暂时没有新的短信息。</div>
-          </div>
-
-          <div class="modal-actions">
-            <button class="btn-secondary" @click="togglePhonePanel">关闭</button>
+          <div class="feedback-actions">
+            <button class="btn-primary" @click="confirmSettlementAndReturn">返回主界面</button>
           </div>
         </div>
       </div>
+    </section>
+    </Transition>
+
+    <!-- ========== 手机弹窗 ========== -->
+    <Transition name="modal-fade">
+    <div v-if="showPhonePanel" class="modal-overlay" @click.self="togglePhonePanel">
+      <div class="modal-card phone-modal">
+        <div class="modal-kicker">诊所手机</div>
+        <div class="modal-title">短信息</div>
+        <p class="modal-text">待回款 {{ pendingDebtCount }} 笔</p>
+        <div v-if="phoneMessages.length" class="phone-message-list">
+          <div
+            v-for="message in phoneMessages"
+            :key="message.id"
+            class="phone-message-item"
+            :class="{ unread: !message.read }"
+          >
+            <div class="phone-message-head">
+              <strong>{{ message.sender }}</strong>
+              <span>第 {{ message.gameDay }} 天</span>
+            </div>
+            <div class="phone-message-body">{{ message.text }}</div>
+          </div>
+        </div>
+        <div v-else class="modal-empty">暂时没有新的短信息。</div>
+        <div class="modal-actions">
+          <button class="btn-secondary" @click="togglePhonePanel">关闭</button>
+        </div>
+      </div>
+    </div>
+    </Transition>
+
+    <!-- ========== 确认覆盖弹窗 ========== -->
+    <Transition name="modal-fade">
+    <div v-if="showConfirmNewGameModal" class="modal-overlay" @click.self="cancelStartNewGame">
+      <div class="modal-card">
+        <div class="modal-kicker">覆盖确认</div>
+        <div class="modal-title">检测到现有存档</div>
+        <p class="modal-text">开始新游戏会覆盖当前进度，并从背景介绍第一页重新开始。</p>
+        <div class="modal-actions">
+          <button class="btn-secondary" @click="cancelStartNewGame">取消</button>
+          <button class="btn-primary" @click="confirmStartNewGame">确认覆盖</button>
+        </div>
+      </div>
+    </div>
+    </Transition>
+
+    <!-- ========== 升级失败弹窗 ========== -->
+    <Transition name="modal-fade">
+    <div v-if="showUpgradeFailureModal" class="modal-overlay" @click.self="closeUpgradeFailureModal">
+      <div class="modal-card">
+        <div class="modal-kicker">升级失败</div>
+        <div class="modal-title">当前无法完成升级</div>
+        <p class="modal-text">{{ upgradeFailureMessage }}</p>
+        <div class="modal-actions">
+          <button class="btn-primary" @click="closeUpgradeFailureModal">知道了</button>
+        </div>
+      </div>
+    </div>
+    </Transition>
+
+    <!-- ========== 玩家档案弹窗 ========== -->
+    <Transition name="modal-fade">
+    <div v-if="showProfilePanel" class="modal-overlay" @click.self="toggleProfilePanel">
+      <div class="modal-card profile-modal">
+        <div class="modal-kicker">玩家档案</div>
+        <div class="profile-modal-head">
+          <div class="profile-avatar-wrap" @click="triggerAvatarUpload">
+            <img v-if="playerProfile.avatar" :src="playerProfile.avatar" class="profile-avatar-img" />
+            <span v-else>{{ (playerProfile.title || '维').slice(-1) }}</span>
+          </div>
+          <div class="profile-modal-meta">
+            <label class="notes-label">代号</label>
+            <input
+              :value="playerProfile.title"
+              class="profile-input"
+              type="text"
+              placeholder="输入玩家名字"
+              @change="handlePlayerNameChange"
+            />
+          </div>
+        </div>
+        <div class="modal-stats-row">
+          <div class="modal-stat">
+            <div class="modal-stat-label">已治愈</div>
+            <div class="modal-stat-val">{{ totalCuredCount }}</div>
+          </div>
+          <div class="modal-stat">
+            <div class="modal-stat-label">累计收入</div>
+            <div class="modal-stat-val">{{ totalEarnings }}</div>
+          </div>
+          <div class="modal-stat">
+            <div class="modal-stat-label">设备等级</div>
+            <div class="modal-stat-val">{{ totalEquipmentLevel }}</div>
+          </div>
+        </div>
+        <div class="modal-actions">
+          <button class="btn-secondary" @click="toggleProfilePanel">关闭</button>
+        </div>
+      </div>
+    </div>
     </Transition>
 
     <Transition name="modal-fade">
-      <div v-if="showConfirmNewGameModal" class="modal-overlay" @click.self="cancelStartNewGame">
-        <div class="modal-card">
-          <div class="modal-kicker">覆盖确认</div>
-          <div class="modal-title">检测到现有存档。</div>
-          <p class="modal-text">
-            开始新游戏会覆盖当前《共觉之境》的进度，并从背景介绍第一页重新开始。
-          </p>
-          <div class="modal-actions">
-            <button class="btn-secondary" @click="cancelStartNewGame">取消</button>
-            <button class="btn-primary" @click="confirmStartNewGame">确认覆盖</button>
+    <div v-if="showArchivePanel" class="modal-overlay" @click.self="closeArchivePanel">
+      <div class="modal-card archive-modal">
+        <div class="modal-kicker">患者档案库</div>
+        <div class="archive-panel-intro">按病例索引查看过往患者的诊断记录与背景故事。</div>
+        <div class="archive-layout">
+          <div class="archive-list">
+            <button
+              v-for="record in archiveCases"
+              :key="record.id"
+              class="archive-list-item"
+              :class="{ active: selectedArchiveCase?.id === record.id }"
+              @click="selectArchiveCase(record.id)"
+            >
+              <div class="archive-list-row">
+                <div class="archive-list-name">{{ record.name }}</div>
+                <div class="archive-list-outcome" :class="record.outcome">{{ record.outcomeLabel }}</div>
+              </div>
+              <div class="archive-list-job">{{ record.job }}</div>
+              <div class="archive-list-date">{{ formatArchiveDate(record) }}</div>
+            </button>
+          </div>
+
+          <div v-if="selectedArchiveCase" class="archive-detail">
+            <div class="archive-detail-head">
+              <div>
+                <div class="archive-detail-title">{{ selectedArchiveCase.name }}</div>
+                <div class="archive-detail-sub">{{ selectedArchiveCase.job }}</div>
+              </div>
+              <div class="archive-detail-meta">
+                <span class="archive-detail-pill">{{ formatArchiveDate(selectedArchiveCase) }}</span>
+                <span class="archive-detail-pill">第 {{ selectedArchiveCase.visitCount }} 次来诊</span>
+              </div>
+            </div>
+
+            <div class="archive-detail-layout">
+              <div class="archive-section archive-section-history">
+                <div class="archive-section-label">诊断记录</div>
+                <div class="archive-history">
+                  <div
+                    v-for="entry in selectedArchiveCase.consultationHistory"
+                    :key="entry.id"
+                    class="archive-history-item"
+                    :class="`is-${entry.type || 'dialogue'}`"
+                  >
+                    <div class="archive-history-head">
+                      <strong>{{ entry.label || entry.speaker || '记录' }}</strong>
+                      <span>{{ getArchiveEntryTypeLabel(entry) }}</span>
+                    </div>
+                    <p>{{ entry.text }}</p>
+                  </div>
+                </div>
+              </div>
+
+              <div class="archive-side-column">
+                <div class="archive-section">
+                  <div class="archive-section-label">病例摘要</div>
+                  <div class="archive-section-text">{{ selectedArchiveCase.summary }}</div>
+                </div>
+
+                <div class="archive-section">
+                  <div class="archive-section-label">核心牵挂</div>
+                  <div class="archive-section-text">{{ selectedArchiveCase.coreConcern || '暂无记录' }}</div>
+                </div>
+
+                <div class="archive-section">
+                  <div class="archive-section-label">背景故事</div>
+                  <div class="archive-story">
+                    <p
+                      v-for="(para, i) in splitParagraphs(selectedArchiveCase.archiveStory || selectedArchiveCase.closingNarrative)"
+                      :key="`archive-story-${i}`"
+                    >{{ para }}</p>
+                  </div>
+                </div>
+              </div>
+            </div>
           </div>
         </div>
-      </div>
-    </Transition>
-
-    <Transition name="modal-fade">
-      <div v-if="showUpgradeFailureModal" class="modal-overlay" @click.self="closeUpgradeFailureModal">
-        <div class="modal-card">
-          <div class="modal-kicker">升级失败</div>
-          <div class="modal-title">当前无法完成升级。</div>
-          <p class="modal-text">{{ upgradeFailureMessage }}</p>
-          <div class="modal-actions">
-            <button class="btn-primary" @click="closeUpgradeFailureModal">知道了</button>
-          </div>
+        <div class="modal-actions">
+          <button class="btn-secondary" @click="closeArchivePanel">关闭</button>
         </div>
       </div>
+    </div>
     </Transition>
 
-    <Transition name="modal-fade">
-      <div v-if="showProfilePanel" class="modal-overlay" @click.self="toggleProfilePanel">
-        <div class="modal-card profile-modal">
-          <div class="modal-kicker">玩家档案</div>
-          <div class="profile-modal-head">
-            <img v-if="playerProfile.avatar" :src="playerProfile.avatar" alt="avatar" class="profile-avatar large">
-            <div v-else class="profile-avatar large placeholder">{{ (playerProfile.title || '调').slice(0, 1) }}</div>
-            <div class="profile-modal-meta">
-              <label class="notes-label">名字</label>
-              <input
-                :value="playerProfile.title"
-                class="profile-input"
-                type="text"
-                placeholder="输入玩家名字"
-                @change="handlePlayerNameChange"
-              >
-              <label class="btn-secondary compact profile-upload">
-                上传头像
-                <input type="file" accept="image/*" class="hidden-file" @change="handleAvatarChange">
-              </label>
-            </div>
-          </div>
-
-          <div class="archive-block">
-            <div class="archive-block-title">生平</div>
-            <div class="archive-copy">{{ playerProfile.brief }}</div>
-            <div class="archive-copy">{{ playerProfile.creed }}</div>
-          </div>
-
-          <div class="hub-stats-bar compact-stats">
-            <div class="hub-stat-item">
-              <div class="hub-stat-name">已治愈人数</div>
-              <div class="hub-stat-value">{{ totalCuredCount }}</div>
-            </div>
-            <div class="hub-stat-item">
-              <div class="hub-stat-name">累计收入</div>
-              <div class="hub-stat-value">{{ totalEarnings }}</div>
-            </div>
-            <div class="hub-stat-item">
-              <div class="hub-stat-name">设备总等级</div>
-              <div class="hub-stat-value">{{ totalEquipmentLevel }}</div>
-            </div>
-          </div>
-
-          <div class="modal-actions">
-            <button class="btn-secondary" @click="toggleProfilePanel">关闭</button>
-          </div>
-        </div>
-      </div>
-    </Transition>
   </div>
 </template>
 
 <script setup>
-import { computed, ref, watch } from 'vue'
+import { ref, computed, watch, nextTick } from 'vue'
 import Typewriter from '@/components/common/Typewriter.vue'
 import { useGameLogic } from './composables/useGameLogic'
 
-const {
-  phase,
-  consultStage,
-  consultEntryStage,
-  hasSave,
-  hasArchiveSave,
-  isCheckingSave,
-  showConfirmNewGameModal,
-  showUpgradeFailureModal,
-  upgradeFailureMessage,
-  showProfilePanel,
-  isMobileLayout,
-  equipmentExpanded,
-  snapshotExpanded,
-  showNotesDrawer,
-  isGeneratingText,
-  statusNotice,
-  narrativeError,
-  patientFeedbackText,
-  patientFeedbackOutcome,
-  backgroundPage,
-  credits,
-  gameDay,
-  playerProfile,
-  activePatient,
-  consultationHistory,
-  consultNotes,
-  isConsultNarrativeReady,
-  isConsultOptionsReady,
-  diagnosisDraft,
-  treatmentDraft,
-  currentBackgroundPage,
-  currentEnvironment,
-  activeEnvironment,
-  pendingRevisitCount,
-  dueRevisitCount,
-  waitingPatientCount,
-  phoneMessages,
-  hubStats,
-  equipmentSummary,
-  equipmentModuleRows,
-  timeProgressPercent,
-  currentConsultOptions,
-  canShowConsultChoices,
-  confirmedDiagnosisDetails,
-  confirmedDiagnosisSummary,
-  treatmentDraftSummary,
-  canSubmitDiagnosis,
-  canEnterTreatment,
-  canSubmitTreatment,
-  latestCompletedCase,
-  curedArchives,
-  totalEarnings,
-  totalCuredCount,
-  totalEquipmentLevel,
-  unreadPhoneCount,
-  pendingDebtCount,
-  latestArchiveLabel,
-  currentFeedbackActionLabel,
-  feedbackOutcomeLabel,
-  activePatientSummary,
-  diagnosisAttemptLabel,
-  backgroundPages,
-  backgroundTotal,
-  titleContent,
-  hubActions,
-  senseConfigs,
-  senseLabels,
-  senseTargets,
-  systemSnapshot,
-  startNewGame,
-  confirmStartNewGame,
-  cancelStartNewGame,
-  continueGame,
-  loadArchivedGame,
-  saveManualProgress,
-  toggleProfilePanel,
-  updatePlayerName,
-  updatePlayerAvatar,
-  markPhoneMessagesRead,
-  upgradeEquipmentModule,
-  goHome,
-  returnToHub,
-  returnToTitle,
-  goToNextBackgroundPage,
-  goToPrevBackgroundPage,
-  startPatientFlow,
-  continueConsultFlow,
-  chooseConsultOption,
-  handleConsultNotesInput,
-  toggleDiagnosisTarget,
-  toggleTreatmentTarget,
-  getTreatmentOptionMeta,
-  submitDiagnosis,
-  openTreatmentScreen,
-  returnToConsult,
-  submitTreatment,
-  advanceFromFeedback,
-  toggleEquipmentSection,
-  closeUpgradeFailureModal,
-  toggleSnapshotSection,
-  toggleNotesDrawer
-} = useGameLogic()
-
+const contentEl = ref(null)
 const showFullHistory = ref(false)
 const showPhonePanel = ref(false)
-const typingEntryId = ref('')
-const isTypingNarrative = ref(false)
 
-function cleanDisplayText(text = '') {
-  return String(text || '')
-    .replace(/^\s*---[A-Z_]+---\s*$/gm, '')
-    .replace(/\n{3,}/g, '\n\n')
-    .trim()
-}
+const {
+  phase,
+  hasSave, hasArchiveSave, isCheckingSave,
+  showConfirmNewGameModal, showUpgradeFailureModal, upgradeFailureMessage,
+  showProfilePanel, showArchivePanel, showSettlementModal, showNotesDrawer,
+  isGeneratingText, typingEntryId, isEnvironmentLoading, narrativeError,
+  patientFeedbackText, patientFeedbackOutcome, pendingSettlementRecord, currentSettlementRecord,
+  backgroundPage, backgroundTotal,
+  credits, gameDay,
+  playerProfile,
+  activePatient, activeEnvironment, currentEnvironment,
+  currentEnvironmentDescription,
+  consultationHistory, consultNotes,
+  diagnosisDraft, treatmentDraft,
+  currentBackgroundPage,
+  pendingRevisitCount, dueRevisitCount,
+  phoneMessages, unreadPhoneCount, pendingDebtCount,
+  equipmentModuleRows, systemSnapshot,
+  currentConsultOptions, canShowConsultChoices,
+  confirmedDiagnosisDetails, confirmedDiagnosisSummary,
+  treatmentDraftSummary,
+  canSubmitDiagnosis, canEnterTreatment, canSubmitTreatment,
+  archiveCases, selectedArchiveCase, settlementLevelSummary, curedArchives,
+  totalEarnings, totalCuredCount, totalEquipmentLevel,
+  latestArchiveLabel,
+  canStartPatientFlow, patientArrivalStatusText,
+  currentFeedbackActionLabel, feedbackOutcomeLabel,
+  activePatientSummary, diagnosisAttemptLabel,
+  diagnosisAttemptsLeft, diagnosisAttemptsTotal,
+  hubActions, senseConfigs, senseLabels, senseTargets,
+  equipmentExpanded, snapshotExpanded,
+  startNewGame, confirmStartNewGame, cancelStartNewGame,
+  continueGame, loadArchivedGame,
+  saveManualProgress, toggleProfilePanel, openArchivePanel, closeArchivePanel, selectArchiveCase,
+  updatePlayerName, updatePlayerAvatar,
+  markPhoneMessagesRead,
+  upgradeEquipmentModule, goHome,
+  returnToHub, returnToTitle,
+  goToNextBackgroundPage, goToPrevBackgroundPage,
+  startPatientFlow,
+  chooseConsultOption,
+  handleConsultNotesInput,
+  toggleDiagnosisTarget, toggleTreatmentTarget,
+  getTreatmentOptionMeta,
+  submitDiagnosis, openTreatmentScreen,
+  returnToConsult, submitTreatment,
+  advanceFromFeedback, confirmSettlementAndReturn,
+  toggleEquipmentSection, toggleSnapshotSection,
+  closeUpgradeFailureModal, toggleNotesDrawer,
+} = useGameLogic()
 
-function isPromptLeakText(text = '') {
-  const cleaned = cleanDisplayText(text)
-
-  return (
-    /生成\s*4\s*个下一步问诊选项/.test(cleaned)
-    || /只输出\s*JSON/.test(cleaned)
-    || /"doctorLine"\s*:/.test(cleaned)
-    || /"promptFocus"\s*:/.test(cleaned)
-    || /"patientProfile"\s*:/.test(cleaned)
-    || /"unresolvedMappings"\s*:/.test(cleaned)
-    || /【最近问诊历史】|【本轮医生提问】|【玩家当前记录】|【已知基础资料】/.test(cleaned)
-  )
-}
+// ---- 对话历史处理 ----
 
 const safeConsultationHistory = computed(() => {
-  return consultationHistory.value
-    .map(entry => ({
-      ...entry,
-      text: cleanDisplayText(entry?.text)
-    }))
-    .filter(entry => entry.text && !isPromptLeakText(entry.text))
+  return (consultationHistory.value || [])
+    .map(entry => ({ ...entry, text: String(entry?.text || '') }))
+    .filter(entry => entry.text && entry.text.trim())
 })
 
-const visibleConsultationHistory = computed(() => {
-  if (consultEntryStage.value === 'pre_consult') {
-    return []
-  }
-
-  if (showFullHistory.value) {
-    return safeConsultationHistory.value
-  }
-
-  if (consultStage.value === 'arrival_intro') {
-    return safeConsultationHistory.value.slice(-1)
-  }
-
+const visibleEntries = computed(() => {
+  if (showFullHistory.value) return safeConsultationHistory.value
   return safeConsultationHistory.value.slice(-2)
 })
 
-const collapsedHistoryCount = computed(() => {
-  return Math.max(0, safeConsultationHistory.value.length - visibleConsultationHistory.value.length)
+const collapsedHistoryCount = computed(() =>
+  Math.max(0, safeConsultationHistory.value.length - 2)
+)
+
+// 新消息来时收起历史，并自动滚到底部
+watch(() => safeConsultationHistory.value.length, () => {
+  showFullHistory.value = false
+  nextTick(() => {
+    if (contentEl.value) {
+      contentEl.value.scrollTop = contentEl.value.scrollHeight
+    }
+  })
 })
 
-watch(
-  () => safeConsultationHistory.value.length,
-  () => {
-    showFullHistory.value = false
-    const latestEntry = safeConsultationHistory.value.at(-1)
-    if (latestEntry && latestEntry.speaker !== 'doctor') {
-      typingEntryId.value = latestEntry.id
-      isTypingNarrative.value = true
-      return
-    }
-
-    typingEntryId.value = ''
-    isTypingNarrative.value = false
-  }
-)
-
-watch(
-  () => phase.value,
-  () => {
-    showPhonePanel.value = false
-  }
-)
-
-function handleTypingDone() {
-  typingEntryId.value = ''
-  isTypingNarrative.value = false
-}
+watch(() => phase.value, () => {
+  showPhonePanel.value = false
+})
 
 function togglePhonePanel() {
   showPhonePanel.value = !showPhonePanel.value
-
-  if (showPhonePanel.value) {
-    markPhoneMessagesRead()
-  }
+  if (showPhonePanel.value) markPhoneMessagesRead()
 }
 
 function splitParagraphs(text = '') {
-  return cleanDisplayText(text)
-    .split(/\n+/)
-    .map(item => item.trim())
-    .filter(Boolean)
+  return String(text).split(/\n+/).map(s => s.trim()).filter(Boolean)
+}
+
+function formatArchiveDate(record) {
+  const timestamp = Number(record?.resolvedAt || 0)
+
+  if (timestamp > 0) {
+    const formatter = new Intl.DateTimeFormat('zh-CN', {
+      year: 'numeric',
+      month: '2-digit',
+      day: '2-digit'
+    })
+    const dateText = formatter.format(timestamp).replace(/\//g, '.')
+    return record?.outcome === 'complete' ? `治愈日期 ${dateText}` : `归档日期 ${dateText}`
+  }
+
+  return record?.outcome === 'complete'
+    ? `治愈日期 第 ${record?.gameDay || '-'} 天`
+    : `归档日期 第 ${record?.gameDay || '-'} 天`
+}
+
+function getArchiveEntryTypeLabel(entry) {
+  const labelMap = {
+    arrival: '初诊',
+    question: '问诊',
+    answer: '患者反馈',
+    diagnosis: '诊断仪',
+    treatment_feedback: '治疗反馈'
+  }
+
+  return labelMap[entry?.type] || '记录'
 }
 
 function isChecked(mapping, sourceId, targetId) {
   return Array.isArray(mapping?.[sourceId]) && mapping[sourceId].includes(targetId)
 }
 
-function handlePlayerNameChange(event) {
-  updatePlayerName(event?.target?.value)
+function handlePlayerNameChange(e) {
+  updatePlayerName(e?.target?.value)
 }
 
-function handleAvatarChange(event) {
-  const file = event?.target?.files?.[0]
-  if (!file) return
-
-  const reader = new FileReader()
-  reader.onload = () => {
-    updatePlayerAvatar(typeof reader.result === 'string' ? reader.result : '')
+function triggerAvatarUpload() {
+  const input = document.createElement('input')
+  input.type = 'file'
+  input.accept = 'image/*'
+  input.onchange = (e) => {
+    const file = e.target.files?.[0]
+    if (!file) return
+    const reader = new FileReader()
+    reader.onload = () => updatePlayerAvatar(reader.result)
+    reader.readAsDataURL(file)
   }
-  reader.readAsDataURL(file)
-  event.target.value = ''
+  input.click()
 }
 </script>
 
 <style scoped>
+/* ============================================================
+   共觉之境 · 完整样式表
+============================================================ */
+
 .synesthesia-shell {
+  --bg-wall:       #1c1812;
+  --bg-paper:      #f0e6d2;
+  --bg-panel:      rgba(240, 230, 210, 0.95);
+  --bg-card:       rgba(248, 240, 224, 0.9);
+  --bg-card-hover: rgba(255, 250, 240, 0.98);
+  --bg-input:      rgba(255, 255, 255, 0.6);
+
+  --border-paper:  rgba(160, 130, 80, 0.2);
+  --border-warm:   rgba(180, 140, 70, 0.4);
+  --border-amber:  rgba(200, 130, 10, 0.6);
+  --border-cyan:   rgba(0, 180, 200, 0.35);
+
+  --text-dark:     #1e1810;
+  --text-main:     #3c3020;
+  --text-muted:    #7a6848;
+  --text-dim:      #b09060;
+
+  --amber:         #c8820a;
+  --amber-dim:     rgba(200, 130, 10, 0.1);
+  --cyan:          #1a8090;
+  --cyan-dim:      rgba(0, 180, 200, 0.08);
+
+  --shadow-sm:     0 2px 8px rgba(0, 0, 0, 0.08);
+  --shadow-md:     0 4px 16px rgba(0, 0, 0, 0.12);
+  --shadow-lg:     0 8px 28px rgba(0, 0, 0, 0.18);
+
+  font-family: 'KaiTi', 'STKaiti', 'Noto Serif SC', serif;
   width: 100vw;
   height: 100vh;
   overflow: hidden;
-  background:
-    radial-gradient(circle at top, rgba(35, 78, 96, 0.26), transparent 30%),
-    radial-gradient(circle at 85% 18%, rgba(164, 85, 55, 0.12), transparent 22%),
-    linear-gradient(180deg, #080c14 0%, #04070d 100%);
-  color: #ddd3c2;
-  font-family: 'KaiTi', 'STKaiti', serif;
+  background: var(--bg-wall);
+  color: var(--text-main);
+  position: relative;
+}
+
+.synesthesia-shell::before {
+  content: '';
+  position: fixed;
+  inset: 0;
+  z-index: 9999;
+  pointer-events: none;
+  background-image: url("data:image/svg+xml,%3Csvg viewBox='0 0 256 256' xmlns='http://www.w3.org/2000/svg'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.85' numOctaves='4' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23n)' opacity='0.035'/%3E%3C/svg%3E");
+  mix-blend-mode: multiply;
 }
 
 .screen {
   position: absolute;
   inset: 0;
-}
-
-.title-veil,
-.title-grid,
-.title-scanlines,
-.title-orbs {
-  position: absolute;
-  inset: 0;
-}
-
-.title-veil {
-  background:
-    radial-gradient(circle at 22% 18%, rgba(82, 133, 148, 0.22), transparent 28%),
-    radial-gradient(circle at 72% 72%, rgba(179, 103, 69, 0.14), transparent 24%);
-}
-
-.title-grid {
-  background-image:
-    linear-gradient(rgba(219, 194, 139, 0.035) 1px, transparent 1px),
-    linear-gradient(90deg, rgba(219, 194, 139, 0.035) 1px, transparent 1px);
-  background-size: 30px 30px;
-  mask-image: linear-gradient(180deg, rgba(0, 0, 0, 0.92), transparent);
-}
-
-.title-scanlines {
-  pointer-events: none;
-  background: linear-gradient(
-    180deg,
-    transparent 0%,
-    rgba(74, 142, 139, 0.025) 45%,
-    rgba(74, 142, 139, 0.09) 50%,
-    rgba(74, 142, 139, 0.025) 55%,
-    transparent 100%
-  );
-  transform: translateY(-30%);
-  animation: synesthesiaScan 8s cubic-bezier(0.4, 0, 0.6, 1) infinite alternate;
-}
-
-.title-orbs {
-  pointer-events: none;
-  overflow: hidden;
-}
-
-.title-orb {
-  position: absolute;
-  border-radius: 50%;
-  filter: blur(60px);
-  opacity: 0.28;
-}
-
-.title-orb.orb-1 {
-  width: 300px;
-  height: 300px;
-  top: -8%;
-  left: -10%;
-  background: radial-gradient(circle, rgba(184, 153, 71, 0.22), transparent 70%);
-  animation: synesthesiaOrbDrift1 18s ease-in-out infinite alternate;
-}
-
-.title-orb.orb-2 {
-  width: 260px;
-  height: 260px;
-  right: -8%;
-  bottom: -5%;
-  background: radial-gradient(circle, rgba(74, 142, 139, 0.18), transparent 70%);
-  animation: synesthesiaOrbDrift2 22s ease-in-out infinite alternate;
-}
-
-.title-orb.orb-3 {
-  width: 190px;
-  height: 190px;
-  right: 8%;
-  top: 25%;
-  background: radial-gradient(circle, rgba(184, 153, 71, 0.12), transparent 70%);
-  animation: synesthesiaOrbDrift3 16s ease-in-out infinite alternate;
-}
-
-.title-orb.orb-4 {
-  width: 160px;
-  height: 160px;
-  left: 12%;
-  bottom: 12%;
-  background: radial-gradient(circle, rgba(74, 142, 139, 0.14), transparent 70%);
-  animation: synesthesiaOrbDrift4 20s ease-in-out infinite alternate;
-}
-
-@keyframes synesthesiaScan {
-  0% {
-    transform: translateY(-28%);
-  }
-
-  100% {
-    transform: translateY(28%);
-  }
-}
-
-@keyframes synesthesiaOrbDrift1 {
-  0% { transform: translate(0, 0) scale(1); }
-  100% { transform: translate(16px, 20px) scale(1.05); }
-}
-
-@keyframes synesthesiaOrbDrift2 {
-  0% { transform: translate(0, 0) scale(1); }
-  100% { transform: translate(-14px, -16px) scale(1.08); }
-}
-
-@keyframes synesthesiaOrbDrift3 {
-  0% { transform: translate(0, 0) scale(1); }
-  100% { transform: translate(-8px, 12px) scale(0.94); }
-}
-
-@keyframes synesthesiaOrbDrift4 {
-  0% { transform: translate(0, 0) scale(1); }
-  100% { transform: translate(10px, -14px) scale(1.1); }
-}
-
-.screen-title,
-.screen-intro,
-.screen-hub,
-.screen-consult,
-.screen-treatment,
-.screen-feedback {
   display: flex;
   flex-direction: column;
 }
+
+/* ============================================================
+   通用组件
+============================================================ */
+
+.back-btn {
+  padding: 0.45rem 1rem;
+  background: transparent;
+  border: 1px solid var(--border-paper);
+  border-radius: 6px;
+  color: var(--text-muted);
+  font-family: inherit;
+  font-size: 0.78rem;
+  letter-spacing: 0.08em;
+  cursor: pointer;
+  transition: all 0.2s;
+  white-space: nowrap;
+  flex-shrink: 0;
+}
+.back-btn:hover {
+  border-color: var(--border-amber);
+  color: var(--amber);
+  background: var(--amber-dim);
+}
+
+.btn-primary {
+  padding: 0.7rem 1.4rem;
+  border-radius: 8px;
+  font-size: 0.85rem;
+  letter-spacing: 0.12em;
+  background: linear-gradient(180deg, #d49010, #a86808);
+  border: 1px solid rgba(200, 150, 20, 0.5);
+  color: #fff8e8;
+  font-family: inherit;
+  cursor: pointer;
+  box-shadow: 0 3px 10px rgba(150, 90, 0, 0.25), inset 0 1px 0 rgba(255,255,255,0.15);
+  transition: all 0.22s ease;
+}
+.btn-primary:hover {
+  background: linear-gradient(180deg, #e09a18, #b87808);
+  transform: translateY(-1px);
+  box-shadow: 0 5px 14px rgba(150, 90, 0, 0.35);
+}
+.btn-primary:active { transform: translateY(0); }
+.btn-primary:disabled { opacity: 0.38; cursor: not-allowed; transform: none; box-shadow: none; }
+
+.btn-secondary {
+  padding: 0.7rem 1.4rem;
+  border-radius: 8px;
+  font-size: 0.82rem;
+  letter-spacing: 0.08em;
+  background: transparent;
+  border: 1px solid var(--border-paper);
+  color: var(--text-muted);
+  font-family: inherit;
+  cursor: pointer;
+  transition: all 0.2s;
+}
+.btn-secondary:hover {
+  border-color: var(--border-amber);
+  color: var(--amber);
+  background: var(--amber-dim);
+}
+.btn-secondary.compact { padding: 0.42rem 0.85rem; font-size: 0.74rem; }
+.btn-secondary:disabled { opacity: 0.32; cursor: not-allowed; }
+
+.error-box {
+  padding: 0.7rem 0.9rem;
+  border-radius: 6px;
+  background: rgba(200, 64, 64, 0.06);
+  border: 1px solid rgba(200, 64, 64, 0.2);
+  color: #8a3030;
+  font-size: 0.82rem;
+  line-height: 1.8;
+}
+
+.card-section-label {
+  font-family: 'Courier New', monospace;
+  font-size: 0.62rem;
+  letter-spacing: 0.22em;
+  color: var(--amber);
+  margin-bottom: 0.4rem;
+}
+
+.summary-copy {
+  font-size: 0.82rem;
+  color: var(--text-muted);
+  line-height: 1.8;
+}
+
+/* ============================================================
+   页面切换动画
+============================================================ */
+
+.fade-enter-active {
+  transition: opacity 0.55s ease, transform 0.55s ease, filter 0.55s ease;
+}
+.fade-leave-active {
+  transition: opacity 0.32s ease, transform 0.32s ease, filter 0.32s ease;
+  position: absolute;
+  width: 100%;
+}
+.fade-enter-from { opacity: 0; transform: translateY(8px) scale(0.99); filter: blur(4px); }
+.fade-leave-to   { opacity: 0; transform: translateY(-5px) scale(1.01); filter: blur(2px); }
+
+.modal-fade-enter-active { transition: opacity 0.3s ease, transform 0.3s ease; }
+.modal-fade-leave-active { transition: opacity 0.2s ease, transform 0.2s ease; }
+.modal-fade-enter-from { opacity: 0; transform: scale(0.97); }
+.modal-fade-leave-to   { opacity: 0; transform: scale(1.02); }
+
+.drawer-fade-enter-active { transition: opacity 0.25s ease; }
+.drawer-fade-leave-active { transition: opacity 0.18s ease; }
+.drawer-fade-enter-from   { opacity: 0; }
+.drawer-fade-leave-to     { opacity: 0; }
+
+/* ============================================================
+   标题页
+============================================================ */
 
 .screen-title {
+  background:
+    radial-gradient(ellipse at 15% 25%, rgba(160, 48, 200, 0.05) 0%, transparent 40%),
+    radial-gradient(ellipse at 85% 75%, rgba(0, 180, 200, 0.05) 0%, transparent 35%),
+    linear-gradient(160deg, #221c14 0%, var(--bg-wall) 100%);
+  align-items: center;
   justify-content: center;
-  align-items: stretch;
-  position: relative;
   overflow: hidden;
 }
 
-.title-panel,
-.intro-card,
-.hub-profile,
-.hub-stats-bar,
-.hub-menu-item,
-.hub-expand-panel,
-.case-card,
-.dialogue-card,
-.notes-card,
-.treatment-summary-card,
-.treatment-card,
-.treatment-submit-card,
-.feedback-card,
-.modal-card {
-  background: rgba(8, 16, 20, 0.84);
-  border: 1px solid rgba(219, 194, 139, 0.14);
-  box-shadow:
-    inset 0 0 0 1px rgba(255, 255, 255, 0.02),
-    0 20px 52px rgba(0, 0, 0, 0.28);
+.title-bg-layer { position: absolute; inset: 0; pointer-events: none; z-index: 0; }
+
+.title-grid {
+  position: absolute; inset: 0;
+  background-image:
+    linear-gradient(rgba(200, 130, 10, 0.05) 1px, transparent 1px),
+    linear-gradient(90deg, rgba(200, 130, 10, 0.04) 1px, transparent 1px);
+  background-size: 36px 36px;
+  mask-image: radial-gradient(ellipse 70% 70% at 40% 45%, black 20%, transparent 75%);
+  -webkit-mask-image: radial-gradient(ellipse 70% 70% at 40% 45%, black 20%, transparent 75%);
 }
 
-.title-stage {
+.title-circle-outer {
+  position: absolute;
+  top: 50%; left: 50%;
+  transform: translate(-50%, -52%);
+  width: min(88vw, 430px); height: min(88vw, 430px);
+  border-radius: 50%;
+  border: 1px dashed rgba(160, 130, 80, 0.3);
+  animation: circleRotate 40s linear infinite;
+}
+.title-circle-inner {
+  position: absolute;
+  top: 50%; left: 50%;
+  transform: translate(-50%, -52%);
+  width: min(62vw, 295px); height: min(62vw, 295px);
+  border-radius: 50%;
+  border: 1px dotted rgba(160, 130, 80, 0.2);
+  animation: circleRotate 28s linear infinite reverse;
+}
+@keyframes circleRotate {
+  0%   { transform: translate(-50%, -52%) rotate(0deg); }
+  100% { transform: translate(-50%, -52%) rotate(360deg); }
+}
+
+.title-orbs { position: absolute; inset: 0; overflow: hidden; }
+.orb { position: absolute; border-radius: 50%; filter: blur(72px); opacity: 0.22; }
+.orb-1 {
+  width: 320px; height: 320px; top: -12%; left: -14%;
+  background: radial-gradient(circle, rgba(200, 130, 10, 0.4), transparent 65%);
+  animation: orbDrift 22s ease-in-out infinite alternate;
+}
+.orb-2 {
+  width: 260px; height: 260px; bottom: -8%; right: -10%;
+  background: radial-gradient(circle, rgba(0, 180, 200, 0.3), transparent 65%);
+  animation: orbDrift 28s ease-in-out infinite alternate reverse;
+}
+.orb-3 {
+  width: 190px; height: 190px; top: 22%; right: 6%;
+  background: radial-gradient(circle, rgba(160, 50, 200, 0.22), transparent 65%);
+  animation: orbDrift 18s ease-in-out infinite alternate;
+}
+.orb-4 {
+  width: 170px; height: 170px; bottom: 18%; left: 8%;
+  background: radial-gradient(circle, rgba(0, 180, 200, 0.18), transparent 65%);
+  animation: orbDrift 24s ease-in-out infinite alternate reverse;
+}
+@keyframes orbDrift {
+  0%   { transform: translate(0, 0) scale(1); }
+  50%  { transform: translate(14px, -9px) scale(1.05); }
+  100% { transform: translate(-7px, 16px) scale(0.95); }
+}
+
+.title-center {
   position: relative;
   z-index: 2;
-  width: min(1220px, calc(100vw - 3rem));
-  margin: auto;
-  display: grid;
-  grid-template-columns: minmax(0, 1.15fr) minmax(280px, 0.75fr);
-  gap: 1.4rem;
-  align-items: end;
-}
-
-.title-panel {
-  min-height: min(780px, calc(100vh - 4rem));
-  padding: clamp(2rem, 4vw, 3.2rem);
   display: flex;
   flex-direction: column;
-  justify-content: flex-end;
-  gap: 1rem;
-  border-radius: 28px;
-  background:
-    linear-gradient(180deg, rgba(4, 10, 14, 0.48), rgba(4, 10, 14, 0.88)),
-    radial-gradient(circle at top left, rgba(91, 159, 176, 0.16), transparent 36%),
-    radial-gradient(circle at 82% 78%, rgba(173, 98, 62, 0.16), transparent 28%);
-  border: 1px solid rgba(226, 206, 149, 0.15);
-  box-shadow:
-    inset 0 0 0 1px rgba(255, 255, 255, 0.03),
-    0 28px 80px rgba(0, 0, 0, 0.38);
+  align-items: center;
+  text-align: center;
+  gap: 0.65rem;
+  width: min(320px, calc(100vw - 3rem));
+  margin-top: -2.5rem;
 }
 
-.title-panel-line {
-  width: min(180px, 32vw);
-  height: 2px;
-  margin-bottom: 0.35rem;
-  background: linear-gradient(90deg, rgba(99, 162, 180, 0.9), rgba(232, 208, 151, 0.08));
-}
-
-.title-eyebrow,
-.intro-kicker,
-.card-head,
-.profile-kicker,
-.hub-title-tag,
-.phase-title,
-.modal-kicker,
-.progress-label,
-.case-kicker {
+.title-eyebrow {
   font-family: 'Courier New', monospace;
-  font-size: 0.68rem;
-  letter-spacing: 0.22em;
-  color: #9aa08b;
-}
-
-.title-main,
-.intro-title,
-.profile-name,
-.case-title {
-  margin: 0;
-  font-weight: normal;
-  color: #f0dfb1;
+  font-size: 0.5rem;
+  letter-spacing: 0.32em;
+  color: #a08050;
+  opacity: 0.75;
 }
 
 .title-main {
-  max-width: 7ch;
-  font-size: clamp(3.6rem, 8vw, 7rem);
-  line-height: 0.94;
-  letter-spacing: 0.12em;
-  text-shadow: 0 4px 18px rgba(184, 153, 71, 0.18);
+  margin: 0;
+  font-size: clamp(2.4rem, 10vw, 3.8rem);
+  font-weight: normal;
+  letter-spacing: 0.25em;
+  color: #f0e6d2;
+  line-height: 1;
+  text-shadow: 0 0 40px rgba(200, 130, 10, 0.2), 0 2px 12px rgba(0,0,0,0.4);
+  animation: titleGlow 6s ease-in-out infinite alternate;
+}
+@keyframes titleGlow {
+  0%   { text-shadow: 0 0 30px rgba(200,130,10,0.15), 0 2px 12px rgba(0,0,0,0.4); }
+  100% { text-shadow: 0 0 50px rgba(200,130,10,0.3), 0 2px 12px rgba(0,0,0,0.4); }
 }
 
-.title-sub,
-.profile-sub,
-.phase-sub,
-.case-meta,
-.hub-stat-name,
-.feedback-chip {
-  letter-spacing: 0.08em;
-}
-
-.title-sub,
-.profile-sub,
-.phase-sub,
-.case-meta {
-  color: #88a0a6;
-}
-
-.title-tagline {
-  max-width: 28rem;
-  margin: 0.1rem 0 0;
-  font-size: clamp(1rem, 2vw, 1.22rem);
-  line-height: 1.8;
-  color: #d7ccba;
-}
-
-.title-copy,
-.intro-body,
-.dialogue-list,
-.hub-menu,
-.feedback-body,
-.mapping-board,
-.notes-actions,
-.feedback-actions {
-  display: flex;
-  flex-direction: column;
-  gap: 0.85rem;
-}
-
-.title-copy,
-.notes-textarea,
-.summary-copy,
-.menu-sub,
-.profile-text,
-.profile-creed,
-.hub-stat-desc,
-.case-copy,
-.entry-body p,
-.feedback-body p,
-.snapshot-row,
-.equipment-desc,
-.notes-sub,
-.summary-meta,
-.status-notice,
-.error-box,
-.feedback-schedule {
-  line-height: 1.85;
-  color: #c0b4a2;
-}
-
-.title-actions,
-.modal-actions,
-.phase-topbar-actions,
-.intro-actions,
-.notes-actions,
-.feedback-actions {
-  display: flex;
-  gap: 0.8rem;
-  flex-wrap: wrap;
-}
-
-.title-panel .text-link {
-  align-self: flex-start;
-  margin-top: 0.55rem;
-  color: rgba(215, 199, 157, 0.72);
-}
-
-.title-archive-hint {
-  color: #8c897b;
+.title-sub {
+  margin: 0;
   font-size: 0.78rem;
-  line-height: 1.6;
+  color: #a08868;
+  letter-spacing: 0.22em;
+  margin-top: -0.2rem;
 }
+
+.title-tag {
+  font-size: 0.7rem;
+  color: #5a9080;
+  letter-spacing: 0.15em;
+  font-family: 'Courier New', monospace;
+}
+.tag-bracket { color: rgba(160, 130, 80, 0.45); }
 
 .title-divider {
-  width: min(220px, 42vw);
+  width: 44px;
   height: 1px;
-  margin: 0.2rem 0 0.35rem;
-  background: linear-gradient(90deg, rgba(219, 194, 139, 0.42), rgba(219, 194, 139, 0.04));
+  background: linear-gradient(90deg, transparent, rgba(200, 130, 10, 0.5), transparent);
+  margin: 0.05rem 0;
 }
 
-.title-btn,
-.btn-primary,
-.btn-secondary,
-.text-link,
-.question-btn,
-.mini-toggle,
-.floating-note-btn {
+.title-actions {
+  display: flex;
+  flex-direction: column;
+  gap: 0.5rem;
+  width: 100%;
+  margin-top: 0.2rem;
+}
+
+.title-btn-primary {
+  width: 100%;
+  padding: 0.95rem 1.5rem;
+  min-height: 56px;
+  border-radius: 14px;
+  background: linear-gradient(180deg, #ffffff, #f5edda);
+  border: 1px solid rgba(200, 150, 30, 0.45);
+  color: #c8820a;
   font-family: inherit;
+  font-size: 0.92rem;
+  font-weight: bold;
+  letter-spacing: 0.2em;
   cursor: pointer;
-  transition: all 0.2s ease;
-}
-
-.title-btn,
-.btn-primary,
-.btn-secondary {
-  border-radius: 8px;
-  padding: 0.78rem 1.3rem;
-  font-size: 0.84rem;
-  letter-spacing: 0.16em;
-}
-
-.title-btn.primary,
-.btn-primary {
-  border: 1px solid rgba(237, 211, 151, 0.34);
-  background: linear-gradient(180deg, rgba(151, 101, 63, 0.96), rgba(92, 57, 35, 0.96));
-  color: #f6e9cf;
-  box-shadow: 0 8px 20px rgba(110, 67, 40, 0.26);
-}
-
-.title-btn.secondary,
-.btn-secondary {
-  border: 1px solid rgba(219, 194, 139, 0.18);
-  background: rgba(255, 255, 255, 0.015);
-  color: #b9ac8e;
-}
-
-.title-btn-large {
-  min-height: 64px;
-}
-
-.title-sidebar {
-  min-height: min(620px, calc(100vh - 9rem));
-  padding: 1.6rem;
   display: flex;
-  flex-direction: column;
-  justify-content: flex-end;
-  gap: 1rem;
-  border-radius: 24px;
-  background:
-    linear-gradient(180deg, rgba(6, 11, 16, 0.46), rgba(6, 11, 16, 0.86)),
-    linear-gradient(135deg, rgba(110, 164, 176, 0.08), transparent 48%);
-  border: 1px solid rgba(226, 206, 149, 0.1);
-  backdrop-filter: blur(10px);
-}
-
-.title-sidebar-kicker,
-.intro-sidebar-kicker {
-  font-family: 'Courier New', monospace;
-  font-size: 0.72rem;
-  letter-spacing: 0.18em;
-  color: #98a8a7;
-}
-
-.title-sidebar-block {
-  display: flex;
-  flex-direction: column;
-  gap: 0.45rem;
-  padding-top: 0.95rem;
-  border-top: 1px solid rgba(219, 194, 139, 0.08);
-}
-
-.title-sidebar-label {
-  color: #ead9af;
-  letter-spacing: 0.08em;
-}
-
-.title-sidebar-block p,
-.intro-sidebar-note {
-  margin: 0;
-  line-height: 1.8;
-  color: #b9b1a1;
-}
-
-.title-sense-row {
-  display: flex;
-  flex-wrap: wrap;
-  gap: 0.55rem;
-}
-
-.title-sense-row span,
-.intro-metadata span {
-  display: inline-flex;
   align-items: center;
   justify-content: center;
-  padding: 0.38rem 0.72rem;
-  border-radius: 999px;
-  border: 1px solid rgba(219, 194, 139, 0.14);
-  background: rgba(255, 255, 255, 0.03);
-  color: #d9cba8;
-  font-size: 0.78rem;
+  gap: 0.6rem;
+  box-shadow: 0 4px 14px rgba(200,130,10,0.15), inset 0 1px 0 rgba(255,255,255,0.9);
+  transition: all 0.25s cubic-bezier(0.34, 1.56, 0.64, 1);
+}
+.title-btn-primary:hover {
+  background: #ffffff;
+  border-color: rgba(200, 150, 30, 0.7);
+  transform: translateY(-2px);
+  box-shadow: 0 6px 20px rgba(200,130,10,0.25), inset 0 1px 0 rgba(255,255,255,0.9);
+}
+.title-btn-primary:active { transform: translateY(0); }
+.btn-icon { font-size: 0.68rem; opacity: 0.8; }
+
+.title-btn-secondary {
+  width: 100%;
+  padding: 0.72rem 1.5rem;
+  border-radius: 10px;
+  background: rgba(255, 255, 255, 0.06);
+  border: 1px solid rgba(200, 180, 140, 0.22);
+  color: #c0a878;
+  font-family: inherit;
+  font-size: 0.82rem;
+  letter-spacing: 0.14em;
+  cursor: pointer;
+  transition: all 0.2s;
+}
+.title-btn-secondary:hover:not(.disabled):not(:disabled) {
+  background: rgba(255, 255, 255, 0.1);
+  border-color: rgba(200, 150, 30, 0.4);
+  color: #e0c090;
+}
+.title-btn-secondary.disabled,
+.title-btn-secondary:disabled { opacity: 0.28; cursor: not-allowed; }
+
+.title-archive-hint {
+  font-family: 'Courier New', monospace;
+  font-size: 0.62rem;
+  color: #786040;
+  letter-spacing: 0.1em;
+  margin-top: -0.15rem;
 }
 
-.title-btn.secondary.disabled,
-.title-btn.secondary:disabled,
-.btn-secondary:disabled {
-  opacity: 0.35;
-  cursor: not-allowed;
-}
-
-.btn-secondary.compact {
-  padding: 0.5rem 0.9rem;
-  font-size: 0.76rem;
-}
-
-.text-link,
-.mini-toggle {
-  border: none;
+.title-back-link {
   background: transparent;
-  color: #d7c79d;
-  padding: 0;
-  font-size: 0.8rem;
+  border: none;
+  color: #786040;
+  font-family: inherit;
+  font-size: 0.7rem;
+  letter-spacing: 0.12em;
+  cursor: pointer;
+  padding: 0.28rem;
+  transition: color 0.2s;
+  margin-top: 0.25rem;
 }
+.title-back-link:hover { color: var(--amber); }
 
-.phase-topbar,
-.hub-topbar {
+/* ============================================================
+   背景介绍页
+============================================================ */
+
+.screen-intro { background: var(--bg-paper); overflow: hidden; }
+
+.intro-topbar {
   display: flex;
   align-items: center;
   justify-content: space-between;
   padding: 1rem 1.4rem;
-  border-bottom: 1px solid rgba(219, 194, 139, 0.08);
-  background: rgba(5, 10, 15, 0.92);
+  flex-shrink: 0;
+  border-bottom: 1px solid var(--border-paper);
+  background: rgba(240, 230, 210, 0.95);
 }
 
-.consult-topbar {
+.intro-chapter-indicator { display: flex; gap: 7px; align-items: center; }
+.chapter-dot {
+  width: 20px; height: 2px;
+  border-radius: 1px;
+  background: rgba(160, 130, 80, 0.2);
+  transition: all 0.35s;
+}
+.chapter-dot.active { background: var(--amber); width: 26px; }
+
+.intro-scroll-area {
+  flex: 1;
+  overflow-y: auto;
+  -webkit-overflow-scrolling: touch;
+  scrollbar-width: none;
+}
+.intro-scroll-area::-webkit-scrollbar { display: none; }
+
+.intro-reading-column {
+  max-width: 560px;
+  margin: 0 auto;
+  padding: 2rem 1.8rem 3.5rem;
+  display: flex;
+  flex-direction: column;
+}
+
+.intro-chapter-tag {
+  font-family: 'Courier New', monospace;
+  font-size: 0.7rem;
+  letter-spacing: 0.3em;
+  color: var(--amber);
+  margin-bottom: 1rem;
+}
+
+.intro-lead {
+  margin: 0 0 1.8rem 0;
+  font-size: clamp(1.4rem, 5vw, 1.85rem);
+  font-weight: normal;
+  line-height: 1.55;
+  color: var(--text-dark);
+  letter-spacing: 0.05em;
+}
+
+.intro-body { display: flex; flex-direction: column; }
+
+.intro-paragraph {
+  margin: 0 0 1.1rem 0;
+  font-size: 0.94rem;
+  line-height: 2.1;
+  color: var(--text-main);
+  letter-spacing: 0.04em;
+  text-indent: 2em;
+}
+.intro-paragraph:last-of-type { margin-bottom: 0; }
+
+.intro-blockquote {
+  margin: 1.4rem 0;
+  padding: 0.85rem 0 0.85rem 1.2rem;
+  border-left: 3px solid var(--amber);
+  background: rgba(200, 130, 10, 0.04);
+  border-radius: 0 4px 4px 0;
+  font-size: 0.9rem;
+  line-height: 2;
+  color: #5a4820;
+  font-style: italic;
+  letter-spacing: 0.04em;
+  text-indent: 0;
+}
+
+.intro-footer-nav {
+  display: flex;
+  justify-content: flex-end;
+  margin-top: 2.5rem;
+  padding-top: 1.5rem;
+  border-top: 1px solid var(--border-paper);
+}
+
+.intro-next-btn {
+  padding: 0.68rem 1.8rem;
+  border-radius: 8px;
+  background: transparent;
+  border: 1px solid var(--border-amber);
+  color: var(--amber);
+  font-family: inherit;
+  font-size: 0.85rem;
+  letter-spacing: 0.18em;
+  cursor: pointer;
+  transition: all 0.25s;
+}
+.intro-next-btn:hover { background: var(--amber-dim); transform: translateX(4px); }
+
+/* ============================================================
+   主界面 Hub
+============================================================ */
+
+.screen-hub { background: var(--bg-wall); overflow: hidden; }
+
+.hub-topbar {
+  display: flex;
+  align-items: center;
   justify-content: space-between;
-  gap: 1rem;
+  padding: 0.85rem 1.2rem;
+  flex-shrink: 0;
+  background: rgba(240, 230, 210, 0.96);
+  border-bottom: 1px solid var(--border-paper);
+  box-shadow: 0 1px 0 rgba(200, 130, 10, 0.08);
+  gap: 0.8rem;
 }
 
-.consult-topbar-left {
+.hub-topbar-center {
+  display: flex;
+  align-items: center;
+  gap: 1rem;
+  flex: 1;
+  justify-content: center;
+}
+
+.hub-credits, .hub-day {
+  font-family: 'Courier New', monospace;
+  font-size: 0.9rem;
+  letter-spacing: 0.1em;
+  color: var(--amber);
+}
+
+.hub-system-tag {
+  font-family: 'Courier New', monospace;
+  font-size: 0.48rem;
+  letter-spacing: 0.2em;
+  color: #a08050;
+  opacity: 0.65;
+}
+
+.hub-scroll-area {
+  flex: 1;
+  overflow-y: auto;
+  -webkit-overflow-scrolling: touch;
+  scrollbar-width: none;
+  padding: 0.9rem 1.1rem 5rem;
+  display: flex;
+  flex-direction: column;
+  gap: 0.7rem;
+}
+.hub-scroll-area::-webkit-scrollbar { display: none; }
+
+.hub-card {
+  background: #ffffff;
+  border-radius: 14px;
+  border: 1px solid rgba(160, 130, 80, 0.15);
+  box-shadow: var(--shadow-sm);
+  transition: all 0.22s ease;
+}
+
+.hub-profile-card {
   display: flex;
   align-items: center;
   gap: 0.8rem;
-  flex-shrink: 0;
+  padding: 0.95rem 1.1rem;
+  cursor: pointer;
+}
+.hub-profile-card:hover {
+  transform: translateX(3px);
+  border-color: rgba(200, 130, 10, 0.28);
+  box-shadow: var(--shadow-md);
 }
 
-.consult-back-link {
-  flex-shrink: 0;
-}
-
-.diagnosis-chip {
-  border: 1px solid rgba(219, 194, 139, 0.16);
-  border-radius: 999px;
-  padding: 0.28rem 0.72rem;
-  color: #d8c89d;
-  background: rgba(255, 255, 255, 0.03);
-  white-space: nowrap;
-}
-
-.hub-main,
-.consult-main,
-.treatment-main,
-.feedback-main {
-  flex: 1;
-  overflow-y: auto;
-  padding: 1.2rem 1.4rem;
-}
-
-.screen-intro {
-  position: relative;
-  overflow: hidden;
-  background:
-    radial-gradient(circle at top right, rgba(112, 162, 172, 0.1), transparent 28%),
-    linear-gradient(180deg, rgba(5, 10, 14, 0.98), rgba(7, 12, 17, 0.96));
-}
-
-.intro-topbar {
-  position: relative;
-  z-index: 2;
-}
-
-.intro-stage {
-  position: relative;
-  z-index: 1;
-  flex: 1;
-  display: grid;
-  grid-template-columns: minmax(260px, 320px) minmax(0, 1fr);
-  gap: 1.2rem;
-  padding: 1.2rem 1.4rem 1.4rem;
-  min-height: 0;
-}
-
-.intro-sidebar {
+.hub-profile-avatar {
+  width: 44px; height: 44px;
+  border-radius: 50%;
+  border: 1.5px solid rgba(200, 130, 10, 0.35);
   display: flex;
-  flex-direction: column;
-  gap: 1rem;
-  padding: 1.2rem;
-  border-radius: 22px;
-  background: rgba(7, 12, 17, 0.72);
-  border: 1px solid rgba(219, 194, 139, 0.08);
+  align-items: center;
+  justify-content: center;
+  background: rgba(200, 130, 10, 0.07);
+  color: var(--amber);
+  font-size: 1rem;
+  flex-shrink: 0;
+  overflow: hidden;
 }
+.avatar-img { width: 100%; height: 100%; object-fit: cover; }
+.hub-profile-info { flex: 1; }
+.hub-profile-name { font-size: 1rem; color: var(--text-dark); letter-spacing: 0.06em; }
+.hub-profile-meta {
+  margin-top: 0.18rem;
+  font-size: 0.68rem;
+  color: var(--text-dim);
+  font-family: 'Courier New', monospace;
+  letter-spacing: 0.1em;
+}
+.hub-profile-arrow { color: #c0a060; font-size: 1rem; flex-shrink: 0; }
 
-.intro-sidebar-header {
+.hub-environment-card {
+  padding: 0.95rem 1.1rem;
   display: flex;
   flex-direction: column;
   gap: 0.25rem;
 }
-
-.intro-sidebar-title {
-  font-size: 1.3rem;
-  color: #eedfb6;
-}
-
-.intro-page-list {
-  display: flex;
-  flex-direction: column;
-  gap: 0.7rem;
-}
-
-.intro-page-tab {
-  width: 100%;
-  border: 1px solid rgba(219, 194, 139, 0.08);
-  border-radius: 16px;
-  padding: 0.9rem 0.95rem;
-  background: rgba(255, 255, 255, 0.02);
-  color: #9fa6a1;
-  text-align: left;
-  display: flex;
-  flex-direction: column;
-  gap: 0.35rem;
-  pointer-events: none;
-}
-
-.intro-page-tab span {
-  font-size: 0.72rem;
-  letter-spacing: 0.14em;
-}
-
-.intro-page-tab strong {
-  color: #cbc2b2;
-  font-weight: normal;
-  line-height: 1.65;
-}
-
-.intro-page-tab.active {
-  border-color: rgba(219, 194, 139, 0.2);
-  background:
-    linear-gradient(90deg, rgba(117, 166, 182, 0.12), transparent),
-    rgba(255, 255, 255, 0.025);
-}
-
-.intro-card {
-  width: 100%;
-  margin: 0;
-  border-radius: 24px;
-  padding: clamp(1.5rem, 3vw, 2.3rem);
-  display: flex;
-  flex-direction: column;
-  min-height: 0;
-  background:
-    linear-gradient(180deg, rgba(8, 15, 21, 0.9), rgba(8, 15, 21, 0.98)),
-    radial-gradient(circle at 86% 18%, rgba(118, 168, 176, 0.08), transparent 20%);
-}
-
-.intro-card-topline {
-  width: min(170px, 28vw);
-  height: 2px;
-  margin-bottom: 0.75rem;
-  background: linear-gradient(90deg, rgba(106, 167, 183, 0.92), rgba(233, 209, 152, 0.08));
-}
-
-.intro-title {
-  font-size: clamp(2rem, 4vw, 3rem);
-  line-height: 1.22;
-  max-width: 12ch;
-}
-
-.intro-metadata {
-  display: flex;
-  flex-wrap: wrap;
-  gap: 0.55rem;
-  margin-top: 0.3rem;
-}
-
-.intro-divider {
-  width: 100%;
-  height: 1px;
-  margin: 1rem 0 1.2rem;
-  background: linear-gradient(90deg, rgba(219, 194, 139, 0.26), rgba(219, 194, 139, 0.04));
-}
-
-.intro-footer {
-  margin-top: auto;
-  padding-top: 1.1rem;
-  display: flex;
-  flex-direction: column;
-  gap: 1rem;
-}
-
-.intro-progress-track {
-  width: 100%;
-  height: 8px;
-  border-radius: 999px;
-  background: rgba(255, 255, 255, 0.05);
-  overflow: hidden;
-}
-
-.intro-progress-fill {
-  height: 100%;
-  border-radius: inherit;
-  background: linear-gradient(90deg, rgba(99, 162, 180, 0.9), rgba(224, 198, 138, 0.86));
-}
-
-.hub-main {
-  display: flex;
-  flex-direction: column;
-  gap: 0.95rem;
-}
-
-.hub-topbar-reframed {
-  display: flex;
-  flex-direction: column;
-  gap: 0.8rem;
-  align-items: stretch;
-}
-
-.hub-topbar-row {
-  display: grid;
-  grid-template-columns: auto 1fr 1fr;
-  gap: 0.8rem;
-  align-items: center;
-}
-
-.topbar-action-btn {
-  justify-self: start;
-}
-
-.hub-credit-pill,
-.hub-time-pill,
-.hub-topbar-text {
-  text-align: center;
-  color: #e7d7ab;
-  justify-self: stretch;
-}
-
-.hub-topbar-text {
-  font-size: 1.1rem;
-  letter-spacing: 0.1em;
-}
-
-.hub-timeflow-row {
-  display: flex;
-  align-items: center;
-  gap: 0.9rem;
-  padding: 0.15rem 0;
-}
-
-.hub-timeflow-label {
-  flex-shrink: 0;
-  min-width: 4.2rem;
-  color: #d8c89d;
-  font-size: 0.9rem;
-  letter-spacing: 0.14em;
-}
-
-.topbar-timeflow {
-  flex: 1;
-  height: 16px;
-  border: 1px solid rgba(219, 194, 139, 0.12);
-  background: rgba(255, 255, 255, 0.035);
-  position: relative;
-  overflow: hidden;
-}
-
-.topbar-timeflow::before {
-  content: '';
-  position: absolute;
-  inset: 0;
-  background:
-    linear-gradient(
-      90deg,
-      transparent 0%,
-      rgba(255, 255, 255, 0.03) 20%,
-      rgba(255, 255, 255, 0.09) 50%,
-      rgba(255, 255, 255, 0.03) 80%,
-      transparent 100%
-    );
-  transform: translateX(-100%);
-  animation: timeflowSweep 3.8s ease-in-out infinite;
-  pointer-events: none;
-}
-
-.hub-main-reframed {
-  gap: 0.9rem;
-  position: relative;
-}
-
-.hub-main-reframed::after {
-  content: '诊断室已就绪 · 随时可以开始下一次接待';
-  display: block;
-  padding: 0.8rem 0 0.4rem;
-  text-align: center;
-  font-size: 0.68rem;
-  color: #8f8a7b;
+.hub-env-label {
+  font-family: 'Courier New', monospace;
+  font-size: 0.6rem;
   letter-spacing: 0.2em;
+  color: var(--text-dim);
 }
+.hub-env-desc { font-size: 0.8rem; color: var(--text-muted); line-height: 1.78; margin-top: 0.1rem; }
 
-.timeflow-head,
-.folder-inline,
-.equipment-module-row {
+.hub-menu-list { display: flex; flex-direction: column; gap: 0.5rem; }
+
+.hub-menu-item {
+  background: #ffffff;
+  border-radius: 14px;
+  border: 1px solid rgba(160, 130, 80, 0.13);
+  box-shadow: var(--shadow-sm);
+  padding: 0.9rem 1.05rem;
   display: flex;
   align-items: center;
-  justify-content: space-between;
   gap: 0.8rem;
-}
-
-.timeflow-strip {
-  height: 10px;
-  border-radius: 999px;
-  background: rgba(255, 255, 255, 0.05);
-  overflow: hidden;
-}
-
-.timeflow-fill {
-  height: 100%;
-  border-radius: inherit;
-  background: linear-gradient(90deg, #7ec4cf, #d3b06d);
-  position: relative;
-  overflow: hidden;
-  box-shadow:
-    0 0 12px rgba(126, 196, 207, 0.22),
-    0 0 18px rgba(211, 176, 109, 0.14);
-  transition: width 0.7s cubic-bezier(0.22, 1, 0.36, 1);
-  animation: timeflowPulse 2.8s ease-in-out infinite;
-}
-
-.timeflow-fill::after {
-  content: '';
-  position: absolute;
-  top: 0;
-  right: -18px;
-  width: 56px;
-  height: 100%;
-  background: linear-gradient(
-    90deg,
-    transparent 0%,
-    rgba(255, 255, 255, 0.2) 45%,
-    rgba(255, 255, 255, 0.5) 60%,
-    transparent 100%
-  );
-  transform: skewX(-20deg);
-  animation: timeflowShimmer 2.4s linear infinite;
-}
-
-@keyframes timeflowPulse {
-  0%,
-  100% {
-    filter: saturate(0.95) brightness(0.96);
-  }
-
-  50% {
-    filter: saturate(1.08) brightness(1.08);
-  }
-}
-
-@keyframes timeflowShimmer {
-  0% {
-    transform: translateX(-12px) skewX(-20deg);
-    opacity: 0.2;
-  }
-
-  50% {
-    opacity: 0.8;
-  }
-
-  100% {
-    transform: translateX(160px) skewX(-20deg);
-    opacity: 0.12;
-  }
-}
-
-@keyframes timeflowSweep {
-  0% {
-    transform: translateX(-100%);
-    opacity: 0;
-  }
-
-  20% {
-    opacity: 1;
-  }
-
-  100% {
-    transform: translateX(100%);
-    opacity: 0;
-  }
-}
-
-.hub-identity-card,
-.hub-environment-card,
-.hub-folder-card,
-.hub-secondary-actions {
-  border-radius: 10px;
-  padding: 1rem 1.1rem;
-  background: rgba(255, 255, 255, 0.02);
-  border: 1px solid rgba(219, 194, 139, 0.08);
-}
-
-.hub-folders {
-  display: none;
-}
-
-.hub-folder-card {
-  display: flex;
-  flex-direction: column;
-  gap: 0.35rem;
-}
-
-.hub-action-btn {
-  align-self: flex-start;
-  margin-top: 0.55rem;
-}
-
-.hub-inline-btn,
-.equipment-upgrade-btn {
-  white-space: nowrap;
-}
-
-.folder-title,
-.environment-title {
-  color: #ead9af;
-  font-size: 1rem;
-}
-
-.folder-copy,
-.environment-copy {
-  color: #c0b4a2;
-  line-height: 1.75;
-}
-
-.compact-stats {
-  grid-template-columns: repeat(2, minmax(0, 1fr));
-}
-
-.hub-secondary-actions {
-  display: flex;
-  gap: 0.8rem;
-}
-
-.clickable-card {
   cursor: pointer;
-}
-
-.profile-card-row {
-  display: flex;
-  align-items: center;
-  gap: 0.85rem;
-}
-
-.profile-avatar {
-  width: 48px;
-  height: 48px;
-  border-radius: 50%;
-  object-fit: cover;
-  border: 1px solid rgba(219, 194, 139, 0.16);
-}
-
-.profile-avatar.large {
-  width: 72px;
-  height: 72px;
-}
-
-.profile-avatar.placeholder {
-  display: inline-flex;
-  align-items: center;
-  justify-content: center;
-  background: rgba(255, 255, 255, 0.04);
-  color: #ead9af;
-}
-
-.hub-profile,
-.hub-stats-bar,
-.hub-expand-panel,
-.case-card,
-.dialogue-card,
-.notes-card,
-.treatment-summary-card,
-.treatment-submit-card,
-.feedback-card {
-  border-radius: 10px;
-  padding: 1.15rem 1.2rem;
-}
-
-.hub-profile {
-  display: flex;
-  justify-content: space-between;
-  gap: 1rem;
-  background: rgba(10, 18, 24, 0.78);
-  border-color: rgba(219, 194, 139, 0.16);
-  transition: all 0.28s ease;
-}
-
-.hub-profile:hover {
-  transform: translateX(4px);
-  border-color: rgba(219, 194, 139, 0.3);
-  box-shadow:
-    inset 0 0 0 1px rgba(255, 255, 255, 0.02),
-    0 16px 36px rgba(0, 0, 0, 0.3);
-}
-
-.hub-identity-card,
-.hub-environment-card {
-  background: rgba(10, 18, 24, 0.78);
-  border-color: rgba(219, 194, 139, 0.14);
-}
-
-.profile-name {
-  font-size: clamp(1.7rem, 4vw, 2.5rem);
-  margin-top: 0.35rem;
-}
-
-.profile-meta {
-  display: flex;
-  flex-direction: column;
-  gap: 0.6rem;
-  min-width: 160px;
-  align-items: flex-end;
-}
-
-.meta-chip,
-.feedback-chip {
-  padding: 0.45rem 0.8rem;
-  border-radius: 999px;
-  border: 1px solid rgba(219, 194, 139, 0.14);
-  background: rgba(255, 255, 255, 0.03);
-  text-align: center;
-}
-
-.meta-chip.hot,
-.feedback-chip.revisit {
-  border-color: rgba(179, 103, 69, 0.32);
-  color: #e3bf9b;
-}
-
-.feedback-chip.complete {
-  border-color: rgba(123, 156, 167, 0.34);
-  color: #c5dce2;
-}
-
-.hub-stats-bar {
-  display: flex;
-  gap: 0.8rem;
-  align-items: stretch;
-  background: rgba(9, 15, 21, 0.78);
-}
-
-.hub-stat-item,
-.hub-menu-item {
-  border-radius: 8px;
-  padding: 0.9rem 1rem;
-  background: rgba(255, 255, 255, 0.02);
-  border: 1px solid rgba(219, 194, 139, 0.08);
-}
-
-.hub-stat-value {
-  margin-top: 0.45rem;
-  font-size: 1.35rem;
-  color: #f0dfb1;
-}
-
-.hub-menu-item {
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-  gap: 1rem;
+  transition: all 0.25s cubic-bezier(0.34, 1.56, 0.64, 1);
   position: relative;
   overflow: hidden;
-  transition: all 0.28s cubic-bezier(0.34, 1.56, 0.64, 1);
 }
-
 .hub-menu-item::before {
   content: '';
   position: absolute;
-  left: 0;
-  top: 0;
-  bottom: 0;
+  left: 0; top: 0; bottom: 0;
   width: 3px;
-  background: rgba(219, 194, 139, 0.86);
+  background: var(--amber);
+  border-radius: 0 2px 2px 0;
   opacity: 0;
-  transition: opacity 0.28s ease;
+  transition: opacity 0.2s;
 }
+.hub-menu-item:hover { transform: translateX(4px); border-color: rgba(200, 130, 10, 0.22); box-shadow: var(--shadow-md); }
+.hub-menu-item:hover::before { opacity: 1; }
 
-.hub-menu-item:hover {
-  transform: translateX(5px);
-  border-color: rgba(219, 194, 139, 0.22);
-  background: rgba(255, 255, 255, 0.035);
+.hub-menu-primary {
+  border-color: rgba(200, 130, 10, 0.28);
+  background: linear-gradient(135deg, #ffffff, rgba(248, 240, 218, 0.7));
 }
+.hub-menu-primary:hover { border-color: rgba(200, 130, 10, 0.5); }
 
-.hub-menu-item:hover::before {
-  opacity: 1;
-}
+.hub-menu-item.disabled { opacity: 0.48; cursor: not-allowed; }
+.hub-menu-item.disabled:hover { transform: none; border-color: rgba(160,130,80,0.13); box-shadow: var(--shadow-sm); }
+.hub-menu-item.disabled:hover::before { opacity: 0; }
 
-.hub-menu-item.primary-item {
-  cursor: pointer;
-  border-color: rgba(219, 194, 139, 0.22);
-  background: rgba(219, 194, 139, 0.05);
-}
-
-.menu-item-left {
+.menu-icon-wrap {
+  width: 34px; height: 34px;
+  border-radius: 9px;
+  background: rgba(160, 130, 80, 0.07);
+  border: 1px solid rgba(160, 130, 80, 0.13);
   display: flex;
   align-items: center;
-  gap: 0.85rem;
-}
-
-.menu-icon {
-  width: 18px;
-  color: #d5c392;
-  font-size: 0.76rem;
-  text-align: center;
-}
-
-.menu-title {
-  color: #ead9af;
-  font-size: 1rem;
-}
-
-.menu-state {
+  justify-content: center;
+  font-size: 0.8rem;
+  color: #a08050;
   flex-shrink: 0;
-  color: #d8c89d;
+  transition: all 0.2s;
 }
+.primary-icon {
+  background: rgba(200, 130, 10, 0.08);
+  border-color: rgba(200, 130, 10, 0.22);
+  color: var(--amber);
+}
+
+.menu-content { flex: 1; }
+.menu-title { font-size: 0.9rem; color: var(--text-dark); letter-spacing: 0.04em; }
+.menu-sub { margin-top: 0.2rem; font-size: 0.74rem; color: var(--text-muted); line-height: 1.55; }
+.menu-arrow { color: #c0a060; font-size: 0.88rem; flex-shrink: 0; transition: transform 0.2s; }
+.hub-menu-item:hover .menu-arrow { transform: translateX(2px); }
 
 .hub-expand-panel {
+  background: rgba(235, 224, 202, 0.55);
+  border-radius: 10px;
+  border: 1px dashed var(--border-paper);
+  padding: 0.85rem 1rem;
   display: flex;
   flex-direction: column;
-  gap: 0.7rem;
-  border-radius: 8px;
-  background: rgba(8, 14, 20, 0.72);
+  gap: 0.65rem;
+  margin-top: -0.25rem;
 }
 
-.hub-folders + .hub-expand-panel {
-  display: none;
+.equipment-group { display: flex; flex-direction: column; gap: 0.45rem; }
+.equipment-group-name {
+  font-size: 0.78rem;
+  color: #5a4820;
+  font-weight: bold;
+  letter-spacing: 0.06em;
+  padding-bottom: 0.28rem;
+  border-bottom: 1px solid var(--border-paper);
+}
+.equipment-module-list { display: flex; flex-direction: column; gap: 0.32rem; }
+.equipment-row {
+  display: flex;
+  align-items: center;
+  gap: 0.65rem;
+  font-size: 0.78rem;
+  color: var(--text-muted);
+  padding: 0.22rem 0;
+}
+.eq-label { flex: 1; }
+.eq-level { font-family: 'Courier New', monospace; color: var(--cyan); min-width: 2.5rem; }
+.eq-upgrade-btn {
+  padding: 0.22rem 0.6rem;
+  border-radius: 6px;
+  border: 1px solid var(--border-amber);
+  background: transparent;
+  color: var(--amber);
+  font-family: inherit;
+  font-size: 0.68rem;
+  cursor: pointer;
+  white-space: nowrap;
+  transition: all 0.18s;
+}
+.eq-upgrade-btn:hover:not(:disabled) { background: var(--amber-dim); }
+.eq-upgrade-btn:disabled { opacity: 0.38; cursor: not-allowed; color: var(--text-muted); border-color: var(--border-paper); }
+
+.snapshot-row {
+  font-size: 0.76rem;
+  color: var(--text-muted);
+  line-height: 1.75;
+  padding: 0.25rem 0;
+  border-bottom: 1px solid var(--border-paper);
+  font-family: 'Courier New', monospace;
+}
+.snapshot-row:last-child { border-bottom: none; }
+
+.hub-footer-hint {
+  text-align: center;
+  font-family: 'Courier New', monospace;
+  font-size: 0.58rem;
+  color: var(--text-dim);
+  letter-spacing: 0.25em;
+  opacity: 0.55;
+  padding: 0.4rem 0;
 }
 
-.equipment-module-card {
-  padding: 0.9rem 0.95rem;
-  border-radius: 8px;
-  background: rgba(255, 255, 255, 0.025);
-  border: 1px solid rgba(219, 194, 139, 0.08);
+.phone-fab {
+  position: fixed;
+  right: 1.2rem;
+  bottom: 1.2rem;
+  display: inline-flex;
+  align-items: center;
+  gap: 0.4rem;
+  padding: 0.68rem 1.2rem;
+  border-radius: 18px;
+  background: rgba(240, 230, 210, 0.96);
+  border: 1px solid var(--border-warm);
+  color: var(--text-muted);
+  font-family: inherit;
+  font-size: 0.8rem;
+  letter-spacing: 0.06em;
+  cursor: pointer;
+  z-index: 50;
+  box-shadow: var(--shadow-md);
+  backdrop-filter: blur(8px);
+  transition: all 0.2s;
+}
+.phone-fab:hover { border-color: var(--border-amber); color: var(--amber); transform: translateY(-1px); }
+.phone-badge {
+  min-width: 16px; height: 16px;
+  padding: 0 3px;
+  border-radius: 6px;
+  background: var(--amber);
+  color: #fff8e8;
+  font-size: 0.6rem;
+  font-family: 'Courier New', monospace;
+  font-weight: bold;
+  display: flex;
+  align-items: center;
+  justify-content: center;
 }
 
-.equipment-module-list {
+/* 环境卡加载状态 */
+.env-loading {
   display: flex;
   flex-direction: column;
   gap: 0.55rem;
-  margin-top: 0.75rem;
+  padding: 0.2rem 0;
 }
 
-.equipment-row {
+/* 波形动画条（和问诊页加载动画同风格） */
+.env-loading-bars {
   display: flex;
-  justify-content: space-between;
-  gap: 1rem;
-  padding: 0.85rem 0.9rem;
-  border-radius: 14px;
-  background: rgba(255, 255, 255, 0.025);
-  border: 1px solid rgba(219, 194, 139, 0.08);
-}
-
-.equipment-name {
-  color: #e7d7ab;
-}
-
-.equipment-level {
-  display: flex;
-  flex-direction: column;
   align-items: flex-end;
-  gap: 0.2rem;
-  color: #d8c898;
+  gap: 3px;
+  height: 18px;
+}
+.env-loading-bars span {
+  display: block;
+  width: 3px;
+  border-radius: 2px;
+  background: linear-gradient(180deg, var(--amber), rgba(200, 130, 10, 0.15));
+  animation: envBarWave 1.4s cubic-bezier(0.4, 0, 0.6, 1) infinite;
+}
+.env-loading-bars span:nth-child(1) { animation-delay: 0s; }
+.env-loading-bars span:nth-child(2) { animation-delay: 0.12s; }
+.env-loading-bars span:nth-child(3) { animation-delay: 0.24s; }
+.env-loading-bars span:nth-child(4) { animation-delay: 0.36s; }
+.env-loading-bars span:nth-child(5) { animation-delay: 0.48s; }
+
+@keyframes envBarWave {
+  0%, 100% { height: 4px; opacity: 0.25; }
+  50%       { height: 18px; opacity: 0.9; }
 }
 
-.archive-list {
-  display: flex;
-  flex-direction: column;
-  gap: 0.8rem;
+.env-loading-text {
+  font-family: 'Courier New', monospace;
+  font-size: 0.65rem;
+  color: var(--text-dim);
+  letter-spacing: 0.2em;
+  animation: envTextBreathe 2.2s ease-in-out infinite;
 }
 
-.archive-item {
-  border-radius: 8px;
-  border: 1px solid rgba(219, 194, 139, 0.08);
-  background: rgba(255, 255, 255, 0.02);
-  overflow: hidden;
+@keyframes envTextBreathe {
+  0%, 100% { opacity: 0.4; }
+  50%       { opacity: 0.85; }
 }
 
-.archive-summary {
-  cursor: pointer;
-  list-style: none;
-  padding: 0.95rem 1rem;
-  color: #ead9af;
-}
-
-.archive-summary::-webkit-details-marker {
-  display: none;
-}
-
-.archive-name {
-  color: #ead9af;
-}
-
-.archive-meta {
-  margin-top: 0.3rem;
-  color: #9aa08b;
-  font-size: 0.82rem;
-}
-
-.archive-body {
-  display: flex;
-  flex-direction: column;
-  gap: 0.9rem;
-  padding: 0 1rem 1rem;
-}
-
-.archive-block {
-  display: flex;
-  flex-direction: column;
-  gap: 0.45rem;
-  padding: 0.8rem 0.85rem;
-  border-radius: 12px;
-  background: rgba(255, 255, 255, 0.025);
-  border: 1px solid rgba(219, 194, 139, 0.06);
-}
-
-.archive-block-title,
-.archive-entry-label {
-  color: #d7c79d;
+/* 环境内容出现时淡入 */
+.hub-env-desc {
   font-size: 0.8rem;
-  letter-spacing: 0.06em;
+  color: var(--text-muted);
+  line-height: 1.78;
+  margin-top: 0.1rem;
+  animation: envContentIn 0.5s ease;
 }
 
-.archive-copy,
-.archive-entry-text {
-  color: #c0b4a2;
-  line-height: 1.75;
-  white-space: pre-wrap;
+@keyframes envContentIn {
+  from { opacity: 0; transform: translateY(4px); }
+  to   { opacity: 1; transform: translateY(0); }
 }
 
-.archive-entry {
+/* ============================================================
+   问诊页
+============================================================ */
+
+.screen-consult { background: var(--bg-paper); overflow: hidden; }
+
+.consult-topbar {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 0.72rem 1.1rem;
+  flex-shrink: 0;
+  background: rgba(240, 230, 210, 0.96);
+  border-bottom: 1px solid var(--border-paper);
+  box-shadow: 0 1px 0 rgba(200, 130, 10, 0.06);
+  gap: 0.7rem;
+}
+
+.diagnosis-chip {
+  padding: 0.28rem 0.8rem;
+  border-radius: 18px;
+  border: 1px solid var(--border-cyan);
+  background: var(--cyan-dim);
+  color: var(--cyan);
+  font-family: 'Courier New', monospace;
+  font-size: 0.7rem;
+  letter-spacing: 0.08em;
+  white-space: nowrap;
+}
+
+.consult-frame {
+  flex: 1;
+  min-height: 0;
+  margin: 0.7rem 0.9rem 0;
+  border-radius: 10px;
+  border: 1px solid var(--border-warm);
+  background: #ffffff;
+  box-shadow: var(--shadow-md), inset 0 0 18px rgba(200, 180, 140, 0.05);
   display: flex;
   flex-direction: column;
+  overflow: hidden;
+}
+
+.frame-header {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 0.65rem;
+  padding: 0.52rem 1rem;
+  background: rgba(200, 130, 10, 0.05);
+  border-bottom: 1px solid rgba(160, 130, 80, 0.13);
+  flex-shrink: 0;
+}
+.frame-title {
+  font-family: 'Courier New', monospace;
+  font-size: 0.62rem;
+  letter-spacing: 0.3em;
+  color: var(--amber);
+}
+.frame-orn { font-size: 0.38rem; color: rgba(160, 130, 80, 0.45); }
+
+.patient-info-bar {
+  padding: 0.55rem 1.05rem 0.5rem;
+  border-bottom: 1px solid rgba(160, 130, 80, 0.1);
+  flex-shrink: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 0.18rem;
+}
+.patient-name-row {
+  display: flex;
+  align-items: center;
+  flex-wrap: wrap;
   gap: 0.28rem;
-  padding: 0.6rem 0;
-  border-top: 1px solid rgba(219, 194, 139, 0.06);
+  font-size: 0.8rem;
+}
+.patient-name { color: var(--amber); font-weight: bold; font-family: 'Courier New', monospace; }
+.patient-sep  { color: rgba(160, 130, 80, 0.35); }
+.patient-job  { color: #5a4820; }
+.patient-visit { color: var(--text-dim); font-family: 'Courier New', monospace; font-size: 0.72rem; }
+.patient-env-row {
+  font-size: 0.73rem;
+  color: #8a7050;
+  line-height: 1.6;
 }
 
-.archive-entry:first-of-type {
-  border-top: none;
-  padding-top: 0;
-}
-
-.consult-main {
-  display: grid;
-  grid-template-columns: minmax(0, 1.6fr) minmax(320px, 0.95fr);
-  grid-template-rows: minmax(0, 1fr) auto;
-  gap: 1rem;
-  position: relative;
-  height: calc(100vh - 88px);
-  overflow: hidden;
-}
-
-.consult-panel {
+.history-toggle-btn {
   display: flex;
-  min-height: 0;
-  overflow: hidden;
-}
-
-.dialogue-card {
-  display: flex;
-  flex-direction: column;
-  height: 100%;
-  min-height: 0;
-  padding-bottom: 1rem;
-  overflow: hidden;
-  background: rgba(9, 15, 21, 0.9);
-  border-color: rgba(219, 194, 139, 0.14);
-}
-
-.consciousness-head {
-  align-self: center;
-  color: #cbb37d;
-}
-
-.consult-context {
-  padding: 0.1rem 0 0.4rem;
-  border-bottom: 1px solid rgba(219, 194, 139, 0.08);
-  margin-bottom: 0.4rem;
-}
-
-.consult-patient-line,
-.consult-environment-line {
-  color: #9fc0cf;
-  letter-spacing: 0.06em;
-  line-height: 1.7;
-}
-
-.consult-environment-line {
-  color: #89a5af;
-  font-size: 0.84rem;
-}
-
-.history-toggle {
-  align-self: flex-start;
-  border: 1px solid rgba(219, 194, 139, 0.14);
-  border-radius: 999px;
-  padding: 0.36rem 0.74rem;
-  background: rgba(255, 255, 255, 0.03);
-  color: #cdbd95;
+  align-items: center;
+  gap: 0.38rem;
+  padding: 0.32rem 1.05rem;
+  background: rgba(240, 230, 210, 0.55);
+  border: none;
+  border-bottom: 1px dashed rgba(160, 130, 80, 0.16);
+  cursor: pointer;
+  color: var(--text-dim);
   font-family: inherit;
-  font-size: 0.78rem;
+  font-size: 0.68rem;
+  letter-spacing: 0.08em;
+  transition: all 0.18s;
+  flex-shrink: 0;
+  width: 100%;
+  text-align: left;
 }
+.history-toggle-btn:hover { color: var(--amber); background: rgba(200,130,10,0.04); }
+.toggle-icon { font-size: 0.62rem; color: var(--amber); }
 
-.dialogue-list {
+.frame-content {
   flex: 1;
   min-height: 0;
   overflow-y: auto;
-  padding-right: 0.2rem;
+  padding: 0.9rem 1.05rem;
+  display: flex;
+  flex-direction: column;
   gap: 0.95rem;
+  scrollbar-width: none;
+}
+.frame-content::-webkit-scrollbar { display: none; }
+
+.history-divider {
+  display: flex;
+  align-items: center;
+  gap: 0.55rem;
+  padding: 0.35rem 0;
+  flex-shrink: 0;
+}
+.hd-line { flex: 1; height: 1px; background: rgba(160, 130, 80, 0.18); }
+.hd-text {
+  font-size: 0.58rem;
+  color: var(--text-dim);
+  letter-spacing: 0.2em;
+  white-space: nowrap;
+  font-family: 'Courier New', monospace;
 }
 
-.dialogue-list.compact {
-  min-height: 220px;
+.entry-narration p {
+  margin: 0 0 0.38rem 0;
+  font-size: 0.86rem;
+  line-height: 1.95;
+  color: #8a7058;
+  font-style: italic;
+  letter-spacing: 0.03em;
 }
+.entry-narration p:last-child { margin-bottom: 0; }
 
-.dialogue-entry {
-  padding: 1rem 1.05rem;
-  border-radius: 8px;
-  background: rgba(255, 255, 255, 0.025);
-  border: 1px solid rgba(219, 194, 139, 0.06);
+.entry-patient p {
+  margin: 0 0 0.38rem 0;
+  font-size: 0.92rem;
+  line-height: 2;
+  color: #2e2210;
+  letter-spacing: 0.04em;
 }
-
-.entry-label {
-  font-size: 0.78rem;
-  color: #e2d2a8;
-  margin-bottom: 0.55rem;
-}
+.entry-patient p:last-child { margin-bottom: 0; }
 
 .entry-doctor {
-  border-color: rgba(123, 156, 167, 0.18);
-}
-
-.entry-system {
-  border-color: rgba(179, 103, 69, 0.2);
-}
-
-.question-bar.separated,
-.question-prestart,
-.question-loading,
-.question-panel {
-  min-height: 0;
-}
-
-.question-bar.separated,
-.question-prestart,
-.question-loading {
-  height: 100%;
-  border-radius: 10px;
-  padding: 1rem 1.1rem;
-  background: rgba(8, 13, 19, 0.96);
-  border: 1px solid rgba(219, 194, 139, 0.08);
-}
-
-.question-bar.separated {
+  font-size: 0.8rem;
+  color: #8a7050;
   display: flex;
-  flex-direction: column;
-  overflow: hidden;
-}
-
-.question-panel {
-  overflow: hidden;
-}
-
-.question-prestart,
-.question-loading {
-  display: flex;
-  flex-direction: column;
-  justify-content: center;
   align-items: flex-start;
-  gap: 0.9rem;
-}
-
-.question-bar-title {
-  margin-bottom: 0.8rem;
-  padding-bottom: 0.55rem;
-  font-size: 0.86rem;
-  letter-spacing: 0.12em;
-  color: #cbb37d;
-  background: none;
-}
-
-.question-grid {
-  display: grid;
-  grid-template-columns: 1fr;
-  gap: 0.72rem;
-  padding: 0.05rem 0.08rem 0.25rem 0;
-  min-height: 0;
-  overflow-y: auto;
-  overscroll-behavior: contain;
-}
-
-.question-loading-copy {
-  color: #a89c86;
+  gap: 0.38rem;
+  letter-spacing: 0.03em;
   line-height: 1.7;
 }
+.entry-doctor-arrow { color: var(--amber); flex-shrink: 0; font-size: 0.68rem; margin-top: 0.14rem; }
 
-.consult-start-btn {
-  min-width: 148px;
+.frame-empty {
+  flex: 1;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 0.75rem;
+  color: var(--text-dim);
+  letter-spacing: 0.2em;
+  font-family: 'Courier New', monospace;
 }
 
-.question-hidden-state {
-  height: 100%;
+.frame-status-bar {
+  display: flex;
+  align-items: center;
+  gap: 0.9rem;
+  padding: 0.5rem 1.05rem;
+  border-top: 1px solid rgba(160, 130, 80, 0.13);
+  background: rgba(240, 230, 210, 0.38);
+  flex-shrink: 0;
+}
+.status-item { display: flex; align-items: center; gap: 0.45rem; flex: 1; }
+.status-label {
+  font-size: 0.65rem;
+  color: var(--text-dim);
+  letter-spacing: 0.08em;
+  white-space: nowrap;
+  font-family: 'Courier New', monospace;
+  flex-shrink: 0;
+}
+.status-pips { display: flex; gap: 4px; flex: 1; }
+.pip {
+  width: 8px; height: 8px;
+  border-radius: 50%;
+  background: var(--amber);
+  box-shadow: 0 0 4px rgba(200,130,10,0.28);
+  transition: all 0.3s;
+}
+.pip.used { background: rgba(160,130,80,0.18); box-shadow: none; }
+.status-num {
+  font-family: 'Courier New', monospace;
+  font-size: 0.78rem;
+  color: var(--amber);
+  font-weight: bold;
+  white-space: nowrap;
+  flex-shrink: 0;
+}
+.status-divider { width: 1px; height: 13px; background: rgba(160,130,80,0.18); flex-shrink: 0; }
+
+.consult-loading-area {
+  flex-shrink: 0;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 0.42rem;
+  padding: 0.85rem 1rem;
 }
 
-.consult-loading-animation {
-  display: inline-flex;
-  align-items: flex-end;
-  gap: 0.35rem;
-  min-height: 28px;
+.loading-wave { display: flex; align-items: flex-end; gap: 3px; height: 20px; }
+.loading-wave span {
+  display: block;
+  width: 3px;
+  border-radius: 2px;
+  background: linear-gradient(180deg, var(--amber), rgba(200,130,10,0.2));
+  box-shadow: 0 0 5px rgba(200,130,10,0.22);
+  animation: waveBar 1.2s cubic-bezier(0.4,0,0.6,1) infinite;
+}
+.loading-wave span:nth-child(1) { animation-delay: 0s; }
+.loading-wave span:nth-child(2) { animation-delay: 0.1s; }
+.loading-wave span:nth-child(3) { animation-delay: 0.2s; }
+.loading-wave span:nth-child(4) { animation-delay: 0.3s; }
+.loading-wave span:nth-child(5) { animation-delay: 0.4s; }
+@keyframes waveBar {
+  0%, 100% { height: 4px; opacity: 0.3; }
+  50%       { height: 20px; opacity: 1; }
 }
 
-.consult-loading-animation span {
-  width: 6px;
-  border-radius: 999px;
-  background: rgba(219, 194, 139, 0.85);
-  animation: consultPulse 1.1s ease-in-out infinite;
+.loading-text {
+  font-family: 'Courier New', monospace;
+  font-size: 0.62rem;
+  color: var(--text-dim);
+  letter-spacing: 0.25em;
+  animation: breathe 2.5s ease-in-out infinite;
+}
+@keyframes breathe {
+  0%, 100% { opacity: 0.45; letter-spacing: 0.22em; }
+  50%       { opacity: 0.85; letter-spacing: 0.28em; }
 }
 
-.consult-loading-animation span:nth-child(1) {
-  height: 14px;
+.consult-choices-area {
+  flex-shrink: 0;
+  padding: 0.55rem 0.9rem 0.6rem;
+  display: flex;
+  flex-direction: column;
+  gap: 0.4rem;
 }
 
-.consult-loading-animation span:nth-child(2) {
-  height: 20px;
-  animation-delay: 0.16s;
+.choices-label {
+  font-family: 'Courier New', monospace;
+  font-size: 0.6rem;
+  letter-spacing: 0.22em;
+  color: var(--amber);
+  padding-bottom: 0.38rem;
+  border-bottom: 1px solid var(--border-paper);
+  margin-bottom: 0.08rem;
 }
 
-.consult-loading-animation span:nth-child(3) {
-  height: 26px;
-  animation-delay: 0.32s;
-}
+.choices-list { display: flex; flex-direction: column; gap: 0.38rem; }
 
-.question-btn {
-  border-radius: 8px;
-  border: 1px solid rgba(219, 194, 139, 0.2);
-  background: rgba(224, 216, 201, 0.9);
-  color: #2d2518;
-  padding: 0.78rem 0.92rem;
+.choice-btn {
+  width: 100%;
+  padding: 0.68rem 0.95rem;
+  border-radius: 10px;
+  border: 1px solid rgba(160, 130, 80, 0.18);
+  background: #ffffff;
   text-align: left;
   display: flex;
   flex-direction: column;
-  gap: 0.22rem;
-}
-
-.question-title {
-  display: block;
-  color: #32291b;
-  font-size: 0.88rem;
-}
-
-.question-line {
-  color: #5f5037;
-  line-height: 1.48;
-  font-size: 0.78rem;
-}
-
-@keyframes consultPulse {
-  0%,
-  100% {
-    transform: scaleY(0.72);
-    opacity: 0.42;
-  }
-
-  50% {
-    transform: scaleY(1);
-    opacity: 1;
-  }
-}
-
-.notes-sidebar {
+  gap: 0.14rem;
+  cursor: pointer;
+  font-family: inherit;
+  transition: all 0.2s ease;
+  box-shadow: var(--shadow-sm);
   position: relative;
-  min-height: 0;
-  grid-row: 1 / span 2;
+  overflow: hidden;
+}
+.choice-btn::before {
+  content: '';
+  position: absolute;
+  left: 0; top: 0; bottom: 0;
+  width: 2px;
+  background: var(--amber);
+  opacity: 0;
+  transition: opacity 0.18s;
+}
+.choice-btn:hover {
+  border-color: rgba(200, 130, 10, 0.32);
+  background: rgba(248, 240, 220, 0.8);
+  transform: translateX(3px);
+  box-shadow: var(--shadow-md);
+}
+.choice-btn:hover::before { opacity: 1; }
+.choice-title { display: block; font-size: 0.86rem; color: var(--text-dark); letter-spacing: 0.04em; }
+.choice-line  { display: block; font-size: 0.73rem; color: var(--text-muted); line-height: 1.5; }
+
+.consult-fabs {
+  position: fixed;
+  right: 1rem;
+  bottom: 1.1rem;
+  display: flex;
+  flex-direction: column;
+  align-items: flex-end;
+  gap: 0.45rem;
+  z-index: 50;
+}
+
+.fab-btn {
+  padding: 0.6rem 1.05rem;
+  border-radius: 16px;
+  background: rgba(240, 230, 210, 0.96);
+  border: 1px solid var(--border-warm);
+  color: var(--text-muted);
+  font-family: inherit;
+  font-size: 0.78rem;
+  letter-spacing: 0.06em;
+  cursor: pointer;
+  box-shadow: var(--shadow-md);
+  backdrop-filter: blur(8px);
+  transition: all 0.2s;
+  position: relative;
+}
+.fab-btn:hover { border-color: var(--border-amber); color: var(--amber); transform: translateY(-1px); }
+.fab-badge {
+  position: absolute;
+  top: -4px; right: -4px;
+  min-width: 15px; height: 15px;
+  padding: 0 3px;
+  border-radius: 7px;
+  background: var(--amber);
+  color: #fff8e8;
+  font-size: 0.56rem;
+  font-family: 'Courier New', monospace;
+  font-weight: bold;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+/* ============================================================
+   病历记录抽屉
+============================================================ */
+
+.notes-drawer {
+  position: fixed;
+  inset: 0;
+  z-index: 40;
+  display: flex;
+  justify-content: flex-end;
+}
+
+.notes-backdrop {
+  position: absolute;
+  inset: 0;
+  background: rgba(20, 15, 10, 0.42);
+  backdrop-filter: blur(3px);
 }
 
 .notes-card {
+  position: relative;
+  z-index: 1;
+  width: min(296px, 84vw);
+  height: 100%;
   display: flex;
   flex-direction: column;
-  gap: 0.9rem;
-  height: 100%;
-  min-height: 0;
-  background: rgba(7, 11, 18, 0.96);
-  border: 1px solid rgba(179, 156, 98, 0.24);
-  box-shadow:
-    0 24px 50px rgba(0, 0, 0, 0.28),
-    inset 0 0 0 1px rgba(255, 255, 255, 0.03);
+  overflow: hidden;
+  background: rgba(236, 224, 200, 0.99);
+  border-left: 1px solid var(--border-amber);
+  box-shadow: -6px 0 28px rgba(0, 0, 0, 0.18);
 }
 
 .notes-head {
   display: flex;
+  align-items: flex-start;
   justify-content: space-between;
-  gap: 1rem;
-  padding-bottom: 0.9rem;
-  border-bottom: 1px dashed rgba(96, 78, 50, 0.3);
+  gap: 0.55rem;
+  padding: 0.85rem 0.95rem 0.72rem;
+  border-bottom: 1px solid var(--border-paper);
+  flex-shrink: 0;
 }
-
+.notes-head-left { display: flex; flex-direction: column; gap: 0.12rem; flex: 1; min-width: 0; }
 .notes-doc-tag {
   font-family: 'Courier New', monospace;
-  font-size: 0.68rem;
-  letter-spacing: 0.18em;
-  color: #a78d59;
+  font-size: 0.56rem;
+  letter-spacing: 0.2em;
+  color: var(--amber);
+  opacity: 0.75;
 }
+.notes-doc-title { font-size: 0.92rem; color: var(--text-dark); letter-spacing: 0.1em; }
+.notes-sub { font-size: 0.66rem; color: var(--text-muted); line-height: 1.55; margin-top: 0.1rem; }
 
-.notes-doc-title {
-  margin-top: 0.2rem;
-  font-size: 1.35rem;
-  color: #ead9af;
-}
-
-.notes-sub {
-  color: #a89b84;
-}
-
-.notes-label,
-.summary-title,
-.mapping-title,
-.treatment-card-title {
-  color: #ceb37c;
-}
-
-.notes-textarea {
-  min-height: 110px;
-  border-radius: 12px;
-  border: 1px solid rgba(179, 156, 98, 0.14);
-  background: rgba(255, 255, 255, 0.03);
-  padding: 0.9rem;
-  resize: vertical;
-  color: #ddd3c2;
-  font-family: inherit;
-  box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.04);
-}
-
-.mapping-group {
+.notes-close-btn {
+  flex-shrink: 0;
+  width: 26px; height: 26px;
   display: flex;
-  flex-direction: column;
-  gap: 0.55rem;
+  align-items: center;
+  justify-content: center;
+  border-radius: 6px;
+  border: 1px solid var(--border-paper);
+  background: transparent;
+  color: var(--text-muted);
+  font-size: 0.9rem;
+  cursor: pointer;
+  font-family: inherit;
+  transition: all 0.18s;
+  margin-top: 1px;
+}
+.notes-close-btn:hover {
+  border-color: var(--border-amber);
+  color: var(--amber);
+  background: var(--amber-dim);
 }
 
-.mapping-board {
+.notes-scroll-body {
   flex: 1;
   min-height: 0;
   overflow-y: auto;
-  padding-right: 0.25rem;
+  padding: 0.72rem 0.95rem;
+  display: flex;
+  flex-direction: column;
+  gap: 0.72rem;
+  scrollbar-width: none;
+}
+.notes-scroll-body::-webkit-scrollbar { display: none; }
+
+.notes-label {
+  display: block;
+  font-family: 'Courier New', monospace;
+  font-size: 0.6rem;
+  letter-spacing: 0.18em;
+  color: var(--amber);
+  margin-bottom: 0.32rem;
 }
 
-.mapping-options {
-  display: flex;
-  flex-wrap: wrap;
-  gap: 0.55rem;
+.notes-textarea {
+  width: 100%;
+  min-height: 68px;
+  max-height: 100px;
+  border-radius: 6px;
+  border: 1px solid var(--border-paper);
+  background: rgba(255, 255, 255, 0.52);
+  padding: 0.58rem 0.72rem;
+  resize: vertical;
+  color: var(--text-main);
+  font-family: inherit;
+  font-size: 0.78rem;
+  line-height: 1.75;
+  transition: border-color 0.2s;
+  box-sizing: border-box;
 }
+.notes-textarea:focus { outline: none; border-color: var(--border-amber); }
+.notes-textarea::placeholder { color: #c0a870; }
+
+.mapping-board { display: flex; flex-direction: column; gap: 0.52rem; }
+.mapping-group { display: flex; flex-direction: column; gap: 0.28rem; }
+.mapping-title {
+  font-size: 0.66rem;
+  color: #5a4820;
+  letter-spacing: 0.1em;
+  font-family: 'Courier New', monospace;
+}
+.mapping-options { display: flex; flex-wrap: wrap; gap: 0.28rem; }
 
 .mapping-option {
   display: inline-flex;
   align-items: center;
-  gap: 0.35rem;
-  padding: 0.45rem 0.65rem;
-  border-radius: 999px;
-  background: rgba(255, 255, 255, 0.03);
-  border: 1px solid rgba(179, 156, 98, 0.14);
-  font-size: 0.86rem;
-  color: #ddd3c2;
+  gap: 0.22rem;
+  padding: 0.26rem 0.52rem;
+  border-radius: 12px;
+  background: rgba(255, 255, 255, 0.48);
+  border: 1px solid rgba(160, 130, 80, 0.18);
+  font-size: 0.74rem;
+  color: var(--text-muted);
+  cursor: pointer;
+  transition: all 0.18s;
+  user-select: none;
 }
-
-.mapping-option input {
-  accent-color: #8a5938;
+.mapping-option:hover {
+  border-color: var(--border-amber);
+  background: var(--amber-dim);
+  color: #5a3810;
 }
-
-.mapping-option small {
-  margin-left: auto;
-  color: #a89b84;
-  font-size: 0.72rem;
+.mapping-option input[type="checkbox"] {
+  width: 11px; height: 11px;
+  accent-color: var(--amber);
+  margin: 0; flex-shrink: 0;
 }
-
-.mapping-option:has(input:disabled) {
-  opacity: 0.58;
+.mapping-option:has(input:checked) {
+  border-color: var(--border-amber);
+  background: rgba(200, 130, 10, 0.1);
+  color: #5a3810;
 }
+.mapping-option:has(input:disabled) { opacity: 0.4; cursor: not-allowed; }
 
 .notes-summary {
-  padding: 0.85rem 0.9rem;
-  border-radius: 12px;
-  background: rgba(255, 255, 255, 0.03);
-  border: 1px solid rgba(179, 156, 98, 0.14);
-}
-
-.summary-detail-list {
+  padding: 0.58rem 0.72rem;
+  border-radius: 6px;
+  background: rgba(255, 255, 255, 0.42);
+  border: 1px solid var(--border-paper);
   display: flex;
   flex-direction: column;
-  gap: 0.45rem;
+  gap: 0.32rem;
 }
-
+.summary-title {
+  font-family: 'Courier New', monospace;
+  font-size: 0.58rem;
+  letter-spacing: 0.18em;
+  color: var(--amber);
+}
+.summary-detail-list { display: flex; flex-direction: column; gap: 0.25rem; }
 .summary-detail-item {
   display: flex;
   align-items: center;
   justify-content: space-between;
-  gap: 0.8rem;
-  color: #ddd3c2;
-  line-height: 1.55;
+  gap: 0.5rem;
+  font-size: 0.74rem;
+  color: var(--text-main);
 }
-
 .summary-detail-item strong {
-  color: #ead9af;
-  font-size: 0.8rem;
+  color: var(--cyan);
+  font-family: 'Courier New', monospace;
+  font-size: 0.7rem;
 }
-
-.summary-copy {
-  color: #ddd3c2;
-}
-
+.summary-copy { font-size: 0.74rem; color: var(--text-muted); line-height: 1.65; }
 .summary-meta {
-  color: #a89b84;
+  font-family: 'Courier New', monospace;
+  font-size: 0.58rem;
+  color: var(--text-dim);
+  letter-spacing: 0.1em;
 }
 
-.treatment-main {
+.notes-actions {
+  flex-shrink: 0;
   display: flex;
   flex-direction: column;
-  gap: 1rem;
+  gap: 0.38rem;
+  padding: 0.65rem 0.95rem 0.85rem;
+  border-top: 1px solid var(--border-paper);
+  background: rgba(236, 224, 200, 0.99);
+}
+.notes-actions .btn-secondary,
+.notes-actions .btn-primary {
+  width: 100%;
+  text-align: center;
+  padding: 0.62rem 1rem;
+  font-size: 0.8rem;
+  letter-spacing: 0.1em;
+  border-radius: 8px;
 }
 
-.treatment-grid {
-  display: grid;
-  grid-template-columns: repeat(2, minmax(0, 1fr));
-  gap: 1rem;
+/* ============================================================
+   通用顶栏（治疗页/反馈页）
+============================================================ */
+
+.phase-topbar {
+  display: flex;
+  align-items: center;
+  gap: 0.7rem;
+  padding: 0.78rem 1.1rem;
+  flex-shrink: 0;
+  background: rgba(240, 230, 210, 0.96);
+  border-bottom: 1px solid var(--border-paper);
+  box-shadow: 0 1px 0 rgba(200, 130, 10, 0.06);
 }
+.phase-topbar-center { flex: 1; }
+.phase-title { font-size: 0.88rem; letter-spacing: 0.14em; color: var(--amber); }
+.phase-sub { margin-top: 0.12rem; font-size: 0.68rem; color: var(--text-muted); }
+.phase-topbar-actions { display: flex; gap: 0.5rem; align-items: center; }
+
+/* ============================================================
+   治疗页
+============================================================ */
+
+.screen-treatment { background: var(--bg-paper); overflow: hidden; }
+
+.treatment-scroll-area {
+  flex: 1;
+  overflow-y: auto;
+  scrollbar-width: none;
+  padding: 0.9rem 1.1rem 2rem;
+  display: flex;
+  flex-direction: column;
+  gap: 0.8rem;
+}
+.treatment-scroll-area::-webkit-scrollbar { display: none; }
+
+.treatment-summary-card {
+  background: #ffffff;
+  border-radius: 10px;
+  border: 1px solid var(--border-warm);
+  padding: 0.95rem 1.05rem;
+  box-shadow: var(--shadow-sm);
+  display: flex;
+  flex-direction: column;
+  gap: 0.5rem;
+}
+
+.treatment-grid { display: grid; grid-template-columns: repeat(2, 1fr); gap: 0.7rem; }
 
 .treatment-card {
-  border-radius: 18px;
-  padding: 1.1rem 1.2rem;
+  background: #ffffff;
+  border-radius: 10px;
+  border: 1px solid var(--border-paper);
+  padding: 0.88rem 0.95rem;
+  box-shadow: var(--shadow-sm);
+  display: flex;
+  flex-direction: column;
+  gap: 0.6rem;
+  transition: border-color 0.2s;
+}
+.treatment-card:hover { border-color: var(--border-warm); }
+.treatment-card-title {
+  font-size: 0.78rem;
+  letter-spacing: 0.12em;
+  font-family: 'Courier New', monospace;
+  color: var(--amber);
+}
+
+.treatment-submit-card {
+  background: #ffffff;
+  border-radius: 10px;
+  border: 1px solid var(--border-amber);
+  padding: 0.95rem 1.05rem;
+  box-shadow: var(--shadow-md);
+  display: flex;
+  flex-direction: column;
+  gap: 0.65rem;
+}
+.treatment-actions { display: flex; gap: 0.6rem; }
+
+/* ============================================================
+   反馈页
+============================================================ */
+
+.screen-feedback,
+.screen-settlement { background: var(--bg-paper); overflow: hidden; }
+
+.feedback-scroll-area {
+  flex: 1;
+  overflow-y: auto;
+  scrollbar-width: none;
+  padding: 0.9rem 1.1rem 2rem;
+  display: flex;
+  align-items: flex-start;
+  justify-content: center;
+}
+.feedback-scroll-area::-webkit-scrollbar { display: none; }
+
+.feedback-card {
+  width: min(680px, 100%);
+  background: #ffffff;
+  border-radius: 10px;
+  border: 1px solid var(--border-warm);
+  padding: 1.2rem;
+  box-shadow: var(--shadow-lg);
   display: flex;
   flex-direction: column;
   gap: 0.85rem;
 }
-
-.feedback-main {
-  display: flex;
-  align-items: center;
-  justify-content: center;
+.settlement-page-card {
+  max-width: 680px;
 }
 
-.feedback-card {
-  width: min(780px, 100%);
-  display: flex;
-  flex-direction: column;
-  gap: 1rem;
+.feedback-chip {
+  display: inline-block;
+  padding: 0.26rem 0.72rem;
+  border-radius: 6px;
+  font-family: 'Courier New', monospace;
+  font-size: 0.68rem;
+  letter-spacing: 0.14em;
+  align-self: flex-start;
 }
+.feedback-chip.revisit { border: 1px solid var(--border-amber); background: var(--amber-dim); color: var(--amber); }
+.feedback-chip.complete { border: 1px solid var(--border-cyan); background: var(--cyan-dim); color: var(--cyan); }
 
-.status-notice,
-.error-box,
+.feedback-body { display: flex; flex-direction: column; gap: 0.8rem; }
+.feedback-body p { margin: 0; line-height: 1.95; color: var(--text-main); font-size: 0.9rem; }
+
 .feedback-schedule {
-  padding: 0.8rem 0.9rem;
-  border-radius: 12px;
-  background: rgba(123, 156, 167, 0.08);
-  border: 1px solid rgba(123, 156, 167, 0.18);
+  padding: 0.65rem 0.85rem;
+  border-radius: 6px;
+  background: var(--amber-dim);
+  border: 1px solid var(--border-amber);
+  font-size: 0.8rem;
+  color: var(--text-main);
+  line-height: 1.75;
 }
+.feedback-actions { display: flex; gap: 0.6rem; margin-top: 0.2rem; }
 
-.error-box {
-  background: rgba(179, 103, 69, 0.08);
-  border-color: rgba(179, 103, 69, 0.22);
-}
+/* ============================================================
+   弹窗
+============================================================ */
 
-.status-notice.subtle {
-  margin-top: 0.8rem;
-}
-
-.notes-backdrop,
 .modal-overlay {
-  position: absolute;
+  position: fixed;
   inset: 0;
-}
-
-.notes-backdrop {
-  background: rgba(0, 0, 0, 0.35);
-}
-
-.floating-note-btn {
-  position: absolute;
-  right: 1rem;
-  bottom: 1rem;
-  border: 1px solid rgba(219, 194, 139, 0.18);
-  border-radius: 999px;
-  padding: 0.7rem 1rem;
-  background: rgba(8, 16, 20, 0.92);
-  color: #ead9af;
-  z-index: 12;
-}
-
-.phone-fab {
-  position: absolute;
-  right: 1rem;
-  bottom: 1rem;
-  display: inline-flex;
-  align-items: center;
-  gap: 0.45rem;
-  border: 1px solid rgba(219, 194, 139, 0.18);
-  border-radius: 999px;
-  padding: 0.7rem 1rem;
-  background: rgba(8, 16, 20, 0.94);
-  color: #ead9af;
-  z-index: 13;
-  font-family: inherit;
-}
-
-.phone-fab.consult {
-  bottom: 5.4rem;
-}
-
-.phone-badge {
-  min-width: 1.3rem;
-  height: 1.3rem;
-  padding: 0 0.3rem;
-  display: inline-flex;
-  align-items: center;
-  justify-content: center;
-  border-radius: 999px;
-  background: #8a5938;
-  color: #f6e9cf;
-  font-size: 0.72rem;
-  line-height: 1;
-}
-
-.modal-overlay {
   display: flex;
   align-items: center;
   justify-content: center;
-  background: rgba(3, 6, 8, 0.76);
-  backdrop-filter: blur(4px);
-  z-index: 20;
+  background: rgba(18, 13, 8, 0.72);
+  backdrop-filter: blur(5px);
+  z-index: 60;
+  padding: 1rem;
 }
 
 .modal-card {
-  width: min(440px, calc(100vw - 2rem));
-  border-radius: 10px;
-  padding: 1.5rem;
+  width: min(400px, calc(100vw - 2rem));
+  border-radius: 12px;
+  padding: 1.4rem;
+  background: rgba(240, 230, 210, 0.99);
+  border: 1px solid var(--border-amber);
+  box-shadow: var(--shadow-lg);
+  display: flex;
+  flex-direction: column;
+  gap: 0.85rem;
 }
+.profile-modal { width: min(520px, calc(100vw - 2rem)); }
+.phone-modal   { width: min(460px, calc(100vw - 2rem)); }
 
-.profile-modal {
-  width: min(620px, calc(100vw - 2rem));
+.modal-kicker {
+  font-family: 'Courier New', monospace;
+  font-size: 0.6rem;
+  letter-spacing: 0.22em;
+  color: var(--text-dim);
 }
-
-.phone-modal {
-  width: min(520px, calc(100vw - 2rem));
-}
+.modal-title { font-size: 1.3rem; color: var(--text-dark); letter-spacing: 0.1em; }
+.modal-text  { margin: 0; font-size: 0.84rem; color: var(--text-muted); line-height: 1.88; }
+.modal-empty { font-size: 0.8rem; color: var(--text-dim); line-height: 1.75; }
+.modal-actions { display: flex; gap: 0.65rem; flex-wrap: wrap; margin-top: 0.2rem; }
 
 .phone-message-list {
   display: flex;
   flex-direction: column;
-  gap: 0.8rem;
-  margin-top: 1rem;
-  max-height: min(60vh, 520px);
+  gap: 0.62rem;
+  max-height: min(50vh, 450px);
   overflow-y: auto;
-  padding-right: 0.2rem;
+  scrollbar-width: none;
 }
+.phone-message-list::-webkit-scrollbar { display: none; }
 
 .phone-message-item {
   display: flex;
   flex-direction: column;
-  gap: 0.4rem;
-  padding: 0.9rem 0.95rem;
-  border-radius: 12px;
-  background: rgba(255, 255, 255, 0.025);
-  border: 1px solid rgba(219, 194, 139, 0.08);
+  gap: 0.3rem;
+  padding: 0.78rem 0.88rem;
+  border-radius: 8px;
+  background: rgba(255, 255, 255, 0.4);
+  border: 1px solid var(--border-paper);
+  transition: border-color 0.18s;
 }
-
-.phone-message-item.unread {
-  border-color: rgba(219, 194, 139, 0.22);
-  background: rgba(219, 194, 139, 0.05);
-}
-
+.phone-message-item.unread { border-color: var(--border-amber); background: var(--amber-dim); }
 .phone-message-head {
   display: flex;
   align-items: center;
   justify-content: space-between;
   gap: 1rem;
-  color: #d7c79d;
-  font-size: 0.8rem;
+  font-family: 'Courier New', monospace;
+  font-size: 0.68rem;
 }
+.phone-message-head strong { color: var(--amber); }
+.phone-message-head span  { color: var(--text-dim); }
+.phone-message-body { font-size: 0.8rem; color: var(--text-muted); line-height: 1.75; }
 
 .profile-modal-head {
   display: flex;
-  gap: 1rem;
+  gap: 0.9rem;
   align-items: center;
-  margin-top: 0.8rem;
-  margin-bottom: 1rem;
+  margin-top: 0.3rem;
 }
-
-.profile-modal-meta {
+.profile-avatar-wrap {
+  width: 60px; height: 60px;
+  border-radius: 50%;
+  border: 1.5px solid var(--border-amber);
   display: flex;
-  flex-direction: column;
-  gap: 0.6rem;
-  flex: 1;
-}
-
-.profile-input {
-  width: 100%;
-  border-radius: 10px;
-  border: 1px solid rgba(219, 194, 139, 0.14);
-  background: rgba(255, 255, 255, 0.03);
-  color: #ddd3c2;
-  padding: 0.7rem 0.8rem;
-  font-family: inherit;
-}
-
-.profile-upload {
-  position: relative;
-  display: inline-flex;
+  align-items: center;
   justify-content: center;
-}
-
-.hidden-file {
-  position: absolute;
-  inset: 0;
-  opacity: 0;
+  background: var(--amber-dim);
+  color: var(--amber);
+  font-size: 1.3rem;
+  flex-shrink: 0;
+  overflow: hidden;
   cursor: pointer;
 }
+.profile-avatar-img { width: 100%; height: 100%; object-fit: cover; }
+.profile-modal-meta { display: flex; flex-direction: column; gap: 0.55rem; flex: 1; }
+.profile-input {
+  width: 100%;
+  border-radius: 6px;
+  border: 1px solid var(--border-paper);
+  background: rgba(255,255,255,0.55);
+  color: var(--text-main);
+  padding: 0.58rem 0.75rem;
+  font-family: inherit;
+  font-size: 0.88rem;
+  transition: border-color 0.2s;
+  box-sizing: border-box;
+}
+.profile-input:focus { outline: none; border-color: var(--border-amber); }
 
-.modal-title {
-  margin-top: 0.55rem;
-  font-size: 1.5rem;
-  color: #f0dfb1;
+.modal-stats-row { display: flex; gap: 0.55rem; }
+.modal-stat {
+  flex: 1;
+  background: rgba(255,255,255,0.4);
+  border: 1px solid var(--border-paper);
+  border-radius: 8px;
+  padding: 0.65rem 0.7rem;
+  text-align: center;
+}
+.modal-stat-label {
+  font-size: 0.6rem;
+  color: var(--text-dim);
+  letter-spacing: 0.1em;
+  font-family: 'Courier New', monospace;
+}
+.modal-stat-val {
+  font-size: 1.2rem;
+  color: var(--amber);
+  font-family: 'Courier New', monospace;
+  font-weight: bold;
+  margin-top: 0.2rem;
 }
 
-@media (max-width: 900px) {
-  .title-stage,
-  .intro-stage,
-  .hub-stats-bar,
-  .question-grid,
-  .treatment-grid {
-    grid-template-columns: 1fr;
-  }
+.settlement-modal { width: min(460px, calc(100vw - 2rem)); }
+.settlement-summary {
+  display: flex;
+  flex-direction: column;
+  gap: 0.65rem;
+}
+.settlement-stat {
+  padding: 0.8rem 0.9rem;
+  border-radius: 8px;
+  border: 1px solid var(--border-paper);
+  background: rgba(255,255,255,0.42);
+}
+.settlement-stat-label {
+  font-size: 0.62rem;
+  color: var(--text-dim);
+  letter-spacing: 0.14em;
+  font-family: 'Courier New', monospace;
+}
+.settlement-stat-value {
+  margin-top: 0.28rem;
+  font-size: 0.88rem;
+  color: var(--text-main);
+  line-height: 1.75;
+}
 
-  .phase-topbar,
-  .phase-topbar-actions,
-  .hub-topbar-actions,
-  .title-actions,
-  .intro-actions,
-  .notes-actions,
-  .feedback-actions,
-  .modal-actions {
-    flex-direction: column;
-    align-items: stretch;
-  }
+.archive-modal { width: min(1020px, calc(100vw - 2rem)); }
+.archive-panel-intro {
+  margin-top: 0.18rem;
+  margin-bottom: 0.85rem;
+  font-size: 0.76rem;
+  color: var(--text-muted);
+  line-height: 1.6;
+}
+.archive-layout {
+  display: grid;
+  grid-template-columns: 280px 1fr;
+  gap: 1rem;
+  min-height: 520px;
+}
+.archive-list {
+  display: flex;
+  flex-direction: column;
+  gap: 0.55rem;
+  max-height: 62vh;
+  overflow-y: auto;
+  padding-right: 0.15rem;
+  scrollbar-width: none;
+}
+.archive-list::-webkit-scrollbar { display: none; }
+.archive-list-item {
+  width: 100%;
+  border-radius: 14px;
+  border: 1px solid var(--border-paper);
+  background:
+    linear-gradient(180deg, rgba(255,255,255,0.82), rgba(247,239,225,0.7));
+  padding: 0.92rem 0.95rem;
+  text-align: left;
+  cursor: pointer;
+  transition: all 0.2s ease;
+  font-family: inherit;
+  box-shadow: 0 10px 24px rgba(70, 46, 8, 0.06);
+}
+.archive-list-item:hover,
+.archive-list-item.active {
+  border-color: var(--border-amber);
+  background:
+    linear-gradient(180deg, rgba(255,251,244,0.96), rgba(249,241,226,0.9));
+  transform: translateX(3px);
+  box-shadow: 0 14px 28px rgba(110, 76, 20, 0.12);
+}
+.archive-list-row {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 0.6rem;
+}
+.archive-list-name {
+  font-size: 0.98rem;
+  color: var(--text-dark);
+  line-height: 1.3;
+  font-weight: 600;
+}
+.archive-list-job {
+  margin-top: 0.42rem;
+  font-size: 0.74rem;
+  color: var(--text-main);
+  line-height: 1.6;
+}
+.archive-list-date {
+  margin-top: 0.35rem;
+  font-size: 0.66rem;
+  color: var(--text-dim);
+  letter-spacing: 0.04em;
+}
+.archive-list-outcome {
+  flex-shrink: 0;
+  padding: 0.18rem 0.46rem;
+  border-radius: 999px;
+  font-size: 0.6rem;
+  letter-spacing: 0.08em;
+  border: 1px solid var(--border-paper);
+  color: var(--text-dim);
+  background: rgba(255,255,255,0.72);
+}
+.archive-list-outcome.complete {
+  color: #8a5a00;
+  border-color: rgba(200, 130, 10, 0.35);
+  background: rgba(255, 245, 220, 0.94);
+}
+.archive-list-outcome.revisit {
+  color: #7b5f2a;
+  border-color: rgba(128, 112, 70, 0.24);
+  background: rgba(247, 240, 224, 0.94);
+}
+.archive-detail {
+  max-height: 62vh;
+  overflow-y: auto;
+  padding: 0.2rem 0.15rem 0.2rem 0.1rem;
+  scrollbar-width: none;
+}
+.archive-detail::-webkit-scrollbar { display: none; }
+.archive-detail-head {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 1rem;
+  padding-bottom: 0.9rem;
+  border-bottom: 1px solid var(--border-paper);
+}
+.archive-detail-title {
+  font-size: 1.26rem;
+  color: var(--text-dark);
+  letter-spacing: 0.08em;
+}
+.archive-detail-sub {
+  margin-top: 0.28rem;
+  font-size: 0.8rem;
+  color: var(--text-muted);
+}
+.archive-detail-meta {
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: flex-end;
+  gap: 0.45rem;
+}
+.archive-detail-pill {
+  padding: 0.28rem 0.62rem;
+  border-radius: 999px;
+  border: 1px solid rgba(200, 130, 10, 0.18);
+  background: rgba(255, 248, 236, 0.9);
+  color: var(--text-muted);
+  font-size: 0.64rem;
+  letter-spacing: 0.06em;
+}
+.archive-detail-layout {
+  margin-top: 1rem;
+  display: grid;
+  grid-template-columns: minmax(0, 1.35fr) minmax(260px, 0.85fr);
+  gap: 0.95rem;
+}
+.archive-side-column {
+  display: flex;
+  flex-direction: column;
+  gap: 0.95rem;
+}
+.archive-section {
+  display: flex;
+  flex-direction: column;
+  gap: 0.35rem;
+  padding: 0.95rem 1rem;
+  border-radius: 14px;
+  border: 1px solid rgba(160,130,80,0.14);
+  background: linear-gradient(180deg, rgba(255,255,255,0.74), rgba(249,242,229,0.56));
+  box-shadow: 0 14px 26px rgba(70, 46, 8, 0.05);
+}
+.archive-section-label {
+  font-family: 'Courier New', monospace;
+  font-size: 0.6rem;
+  letter-spacing: 0.18em;
+  color: var(--amber);
+}
+.archive-section-text,
+.archive-story p,
+.archive-history-item {
+  font-size: 0.8rem;
+  color: var(--text-main);
+  line-height: 1.8;
+}
+.archive-story p {
+  margin: 0 0 0.42rem 0;
+}
+.archive-story p:last-child {
+  margin-bottom: 0;
+}
+.archive-history {
+  display: flex;
+  flex-direction: column;
+  gap: 0.62rem;
+}
+.archive-history-item {
+  display: flex;
+  flex-direction: column;
+  gap: 0.4rem;
+  padding: 0.72rem 0.8rem;
+  border-radius: 12px;
+  background: rgba(255,255,255,0.52);
+  border: 1px solid rgba(160,130,80,0.12);
+}
+.archive-history-head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 0.5rem;
+}
+.archive-history-item strong {
+  font-size: 0.72rem;
+  color: var(--amber);
+  letter-spacing: 0.08em;
+}
+.archive-history-head span {
+  flex-shrink: 0;
+  font-size: 0.6rem;
+  color: var(--text-dim);
+  letter-spacing: 0.08em;
+}
+.archive-history-item p {
+  margin: 0;
+  font-size: 0.8rem;
+  line-height: 1.85;
+  color: var(--text-main);
+}
+.archive-history-item.is-question {
+  border-left: 3px solid rgba(200, 130, 10, 0.45);
+}
+.archive-history-item.is-answer,
+.archive-history-item.is-treatment_feedback {
+  border-left: 3px solid rgba(26, 128, 144, 0.34);
+}
+.archive-history-item.is-diagnosis {
+  border-left: 3px solid rgba(122, 104, 72, 0.42);
+}
 
-  .hub-profile,
-  .equipment-row {
-    flex-direction: column;
-  }
+/* ============================================================
+   移动端适配
+============================================================ */
 
-  .title-stage {
-    width: min(100%, calc(100vw - 2rem));
-    padding: 1rem 0;
-    gap: 1rem;
-  }
+* { -webkit-tap-highlight-color: transparent; box-sizing: border-box; }
 
-  .title-panel {
-    min-height: auto;
-  }
+@media (max-width: 480px) {
+  .title-center { margin-top: -3.5rem; width: calc(100vw - 2.5rem); }
+  .title-main { font-size: clamp(2.2rem, 11vw, 3.2rem); }
 
-  .title-sidebar {
-    min-height: auto;
-    padding: 1.2rem;
-  }
+  .intro-reading-column { padding: 1.5rem 1.3rem 3rem; }
+  .intro-lead { font-size: 1.25rem; }
+  .intro-paragraph { font-size: 0.9rem; line-height: 2; }
 
-  .hub-topbar-reframed {
-    gap: 0.7rem;
-  }
+  .hub-scroll-area { padding: 0.8rem 0.85rem 5.5rem; gap: 0.6rem; }
 
-  .hub-topbar-row {
-    grid-template-columns: auto 1fr 1fr;
-    align-items: center;
-  }
+  .consult-frame { margin: 0.6rem 0.7rem 0; }
+  .frame-content { padding: 0.8rem 0.88rem; }
+  .patient-info-bar { padding: 0.5rem 0.88rem 0.45rem; }
+  .consult-choices-area { padding: 0.5rem 0.7rem 0.55rem; }
+  .choice-btn { padding: 0.62rem 0.88rem; }
 
-  .hub-timeflow-row {
-    flex-direction: column;
-    align-items: stretch;
-    gap: 0.45rem;
-  }
+  .treatment-grid { grid-template-columns: 1fr; }
+  .treatment-scroll-area { padding: 0.8rem 0.85rem 2rem; }
 
-  .hub-topbar {
-    align-items: stretch;
-  }
-
-  .hub-topbar-text {
-    font-size: 0.92rem;
-    letter-spacing: 0.06em;
-  }
-
-  .topbar-action-btn {
-    padding-left: 0.85rem;
-    padding-right: 0.85rem;
-  }
-
-  .compact-stats {
-    grid-template-columns: 1fr;
-  }
-
-  .hub-secondary-actions {
-    flex-direction: column;
-  }
-
-  .profile-modal-head {
-    flex-direction: column;
-    align-items: flex-start;
-  }
-
-  .profile-meta {
-    min-width: 0;
-  }
-
-  .hub-main,
-  .consult-main,
-  .treatment-main,
-  .feedback-main {
-    padding: 1rem;
-  }
-
-  .intro-stage {
-    padding: 1rem;
-    overflow-y: auto;
-  }
-
-  .intro-sidebar {
-    order: 2;
-  }
-
-  .intro-card {
-    order: 1;
-  }
-
-  .consult-main {
-    height: calc(100vh - 112px);
-    grid-template-columns: 1fr;
-    grid-template-rows: minmax(0, 1fr) minmax(180px, 32vh);
-  }
-
-  .notes-sidebar.mobile {
-    position: absolute;
-    inset: 0 0 0 auto;
-    width: min(92vw, 380px);
-    z-index: 14;
-  }
-
-  .consult-topbar {
-    align-items: flex-start;
-    flex-direction: column;
-  }
-
-  .consult-topbar-left,
-  .consult-patient-line {
-    width: 100%;
-    justify-content: flex-start;
-    text-align: left;
-  }
-
-  .notes-sidebar {
-    grid-row: auto;
-  }
+  .modal-card { padding: 1.2rem; }
+  .modal-stats-row { flex-direction: column; }
+  .archive-layout { grid-template-columns: 1fr; min-height: auto; }
+  .archive-detail-head { flex-direction: column; }
+  .archive-detail-meta { justify-content: flex-start; }
+  .archive-detail-layout { grid-template-columns: 1fr; }
+  .archive-list, .archive-detail { max-height: none; }
 }
 </style>
-

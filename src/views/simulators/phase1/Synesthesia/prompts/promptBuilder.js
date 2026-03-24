@@ -43,6 +43,16 @@ function formatChatLog(chatLog = [], maxRounds = 6) {
   }).filter(Boolean).join('\n')
 }
 
+function formatMappingLevels(levelMap = {}) {
+  const entries = Object.entries(levelMap || {})
+
+  if (!entries.length) return '暂无'
+
+  return entries
+    .map(([key, level]) => `${key} = Lv.${level}`)
+    .join('；')
+}
+
 /**
  * 共享底座：患者信息 + 环境 + 追踪表
  */
@@ -56,8 +66,7 @@ function buildPatientSeed({ patient, environment, trackingSheet }) {
 来诊次数：第 ${patient.visitCount || 1} 次
 
 【当前环境干扰】
-${environment.name || environment.factor || '暂无'}
-${environment.description || environment.effect || ''}
+${environment.description || environment.effect || environment.name || environment.factor || '暂无'}
 
 【后台追踪表（隐藏，仅供叙事参考，绝对不可泄露给玩家）】
 ${formatSensorMap(trackingSheet?.unresolvedMappings || trackingSheet?.sensorMap)}
@@ -86,9 +95,11 @@ export function buildTrackingSheetPrompt({ patient, environment, estimatedIncome
 话语风格：${patient.speechStyle || ''}
 情绪状态：${patient.emotionalTone || ''}
 当前来诊次数：第 ${patient.visitCount || 1} 次
-环境：${environment.name || ''}
-环境描述：${environment.description || ''}
+环境描述：${environment.description || environment.effect || ''}
 预计收入：${estimatedIncome}
+
+【已确定的感官异常基底（必须严格参照，不可擅自改写）】${formatSensorMap(patient.originalMappings)}
+【异常强度等级（必须严格参照）】${formatMappingLevels(patient.initialMappingLevels || patient.mappingLevels)}
 
 ${JSON_OBJECT_ONLY_RULE}
 
@@ -169,16 +180,22 @@ ${isRevisit ? '这是复诊，患者之前来过，和这个地方有熟悉感�
 - 旁白视角，冷静观察，50-100字
 - 用动作和细节体现感官异常，不用情绪词
 - 医生先说一句很短的接待话，自然，不要模板台词
-- 患者随后说第一句主诉，只露最表层的不对劲，
-  不要一上来把全部病情倒出来
+- 患者要简短的打招呼，随后说第一句主诉，只露最表层的不对劲，
+- 不要一上来把全部病情倒出来
 - 环境干扰自然存在于背景中，不要单独标注
+- 不要用类似“我看东西的时候会有味道”这样的描述，各种感官都是时刻在运作的，要自然地把异常融入到他们的日常感知里。
 ${isRevisit ? `- 进门方式和初诊不同，有熟悉感
 - 自然体现"上次之后好了一部分，但还有残留"` : ''}
 
+【好的描述示例】
+“医生您好，我最近总觉得有点不舒服，我总觉得嘴里有一股苦味，像是泥土的感觉，但又说不上来是什么时候开始的。”（自然透露了味觉异常，和不确定的时间线）
+
+【不好的描述示例】
+“医生，我来是因为我有共觉症，我看东西会有味道，听声音会有颜色，这些症状已经持续好几个月了。”（直接说出诊断术语，不自然地一次性透露全部病情）
 ---ENTRANCE---
 （进门场景，50-100字）
 ---FIRST_LINE---
-（患者第一句话）`
+（患者的礼貌开场和描述症状）`
 }
 
 

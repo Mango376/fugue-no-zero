@@ -227,13 +227,14 @@ export const PATIENT_SPEECH_STYLE_POOL = [
 ]
 
 export const SYSTEM_SNAPSHOT = [
-  '标题页 -> 背景介绍 -> 主界面 -> 单患者问诊 -> 诊断仪 -> 治疗仪 -> 患者反馈',
-  '诊断仪每次来诊仅可使用 2 次，只显示已确认正确的映射，不直接指出错误项',
-  '治疗后若仍有残留问题且诊断次数耗尽，则预约 7 个游戏日后的复诊',
-  '现实 1 小时折算为游戏 1 天，仅在继续游戏或读档时统一结算'
+  '先在问诊里收集线索，再把你怀疑的感官错位记录进病历。',
+  '提交诊断仪后，只会确认你猜对的映射；猜错的项目不会被直接提示。',
+  '确认结果会带入治疗仪，只有已经查实的异常才能提交治疗。',
+  '治疗后先看患者反馈；若仍有残留问题，就继续问诊、补诊断、再治疗。'
 ]
 
 export const DIAGNOSIS_LIMIT = 2
+export const TREATMENT_LIMIT = 2
 export const REVISIT_DELAY_DAYS = 7
 export const REAL_MS_PER_GAME_DAY = 60 * 60 * 1000
 
@@ -255,6 +256,7 @@ export const DEFAULT_GAME_STATE = {
   diagnosisDraft: null,
   confirmedDiagnosis: null,
   diagnosisUsesLeft: DIAGNOSIS_LIMIT,
+  treatmentUsesLeft: TREATMENT_LIMIT,
   treatmentDraft: null,
   revisitQueue: [],
   completedCases: []
@@ -444,4 +446,3 @@ export function shouldTriggerUpgradeTutorial(serial) {
 export function shouldForceDebt(serial) {
   return getPresetRule(serial)?.forceDebt ?? false
 }
-
