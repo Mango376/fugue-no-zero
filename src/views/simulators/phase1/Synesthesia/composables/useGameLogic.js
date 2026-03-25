@@ -7,7 +7,6 @@ import {
   DEFAULT_EQUIPMENT_OVERVIEW,
   DEFAULT_GAME_STATE,
   DIAGNOSIS_LIMIT,
-  ENVIRONMENT_PHASES,
   HUB_ACTIONS,
   PLAYER_PROFILE,
   REAL_MS_PER_GAME_DAY,
@@ -50,7 +49,7 @@ const DEBT_REPAY_DAILY_PROBABILITY = 0.1
 const TREATMENT_FEE_BY_LEVEL = {
   1: 50,
   2: 100,
-  3: 50,
+  3: 150,
   4: 200
 }
 const UPGRADE_COST_BY_LEVEL = {
@@ -73,17 +72,14 @@ function buildDefaultModuleLevels(sourceId) {
 
 function normalizeTargets(sourceId, targets = []) {
   const allowed = new Set(SENSE_TARGETS[sourceId] ?? [])
-
   return [...new Set((Array.isArray(targets) ? targets : []).filter(target => allowed.has(target)))]
 }
 
 function normalizeMapping(mapping = {}) {
   const next = createEmptyMapping()
-
   SENSE_CONFIGS.forEach(item => {
     next[item.id] = normalizeTargets(item.id, mapping?.[item.id])
   })
-
   return next
 }
 
@@ -93,42 +89,35 @@ function cloneMapping(mapping) {
 
 function mergeMappings(base, extra) {
   const next = createEmptyMapping()
-
   SENSE_CONFIGS.forEach(item => {
     next[item.id] = [...new Set([
       ...normalizeTargets(item.id, base?.[item.id]),
       ...normalizeTargets(item.id, extra?.[item.id])
     ])]
   })
-
   return next
 }
 
 function intersectMappings(base, reference) {
   const next = createEmptyMapping()
-
   SENSE_CONFIGS.forEach(item => {
     const referenceSet = new Set(normalizeTargets(item.id, reference?.[item.id]))
     next[item.id] = normalizeTargets(item.id, base?.[item.id]).filter(target => referenceSet.has(target))
   })
-
   return next
 }
 
 function subtractMappings(base, removed) {
   const next = createEmptyMapping()
-
   SENSE_CONFIGS.forEach(item => {
     const removedSet = new Set(normalizeTargets(item.id, removed?.[item.id]))
     next[item.id] = normalizeTargets(item.id, base?.[item.id]).filter(target => !removedSet.has(target))
   })
-
   return next
 }
 
 function getMappingPairs(mapping) {
   const normalized = normalizeMapping(mapping)
-
   return SENSE_CONFIGS.flatMap(source =>
     normalized[source.id].map(target => ({
       source: source.id,
@@ -158,12 +147,9 @@ function isEmptyMapping(mapping) {
 function formatMappingSummary(mapping) {
   const lines = SENSE_CONFIGS.map(source => {
     const targets = normalizeTargets(source.id, mapping?.[source.id])
-
     if (!targets.length) return ''
-
     return `${SENSE_LABELS[source.id]} -> ${targets.map(target => SENSE_LABELS[target]).join('、')}`
   }).filter(Boolean)
-
   return lines.length ? lines.join('；') : '暂无'
 }
 
@@ -180,17 +166,12 @@ function cloneEquipmentOverview(source = DEFAULT_EQUIPMENT_OVERVIEW) {
 
 function cloneEnvironmentProfile(environment) {
   if (!environment) return null
-
-  return {
-    ...environment
-  }
+  return { ...environment }
 }
 
 function clonePatient(patient) {
   if (!patient) return null
-
   const { _initialMappingLevels, ...rest } = patient
-
   return {
     ...rest,
     environmentProfile: cloneEnvironmentProfile(patient.environmentProfile),
@@ -203,71 +184,48 @@ function clonePatient(patient) {
 
 function reconcilePatientSeverityWithEquipment(patient, equipmentList = []) {
   const nextPatient = clonePatient(patient)
-
   if (!nextPatient) return null
-
   const baseMapping = nextPatient.originalMappings ?? nextPatient.hiddenMappings
   const normalizedLevels = clampLevelMapToEquipment(
     nextPatient.initialMappingLevels ?? {},
     baseMapping,
     equipmentList
   )
-
   if (Object.keys(normalizedLevels).length > 0) {
     nextPatient.initialMappingLevels = normalizedLevels
   }
-
   if (Number(nextPatient.visitCount || 1) <= 1 && nextPatient.trackingSheet) {
     nextPatient.trackingSheet.mappingLevels = normalizeMappingLevelsForPairs(
       nextPatient.initialMappingLevels ?? normalizedLevels,
       nextPatient.trackingSheet.unresolvedMappings ?? nextPatient.hiddenMappings
     )
   }
-
   return nextPatient
 }
 
 function cloneCompletedCase(record) {
   if (!record) return null
-
-  return {
-    ...record
-  }
+  return { ...record }
 }
 
 function cloneDebtRecord(record) {
   if (!record) return null
-
-  return {
-    ...record
-  }
+  return { ...record }
 }
 
 function clonePhoneMessage(message) {
   if (!message) return null
-
-  return {
-    ...message
-  }
+  return { ...message }
 }
 
 function cloneTrackingSheet(trackingSheet) {
   if (!trackingSheet) return null
-
   return {
     ...trackingSheet,
-    patientProfile: {
-      ...(trackingSheet.patientProfile ?? {})
-    },
-    environmentFactors: Array.isArray(trackingSheet.environmentFactors)
-      ? [...trackingSheet.environmentFactors]
-      : [],
-    symptomLedger: Array.isArray(trackingSheet.symptomLedger)
-      ? [...trackingSheet.symptomLedger]
-      : [],
-    changeLog: Array.isArray(trackingSheet.changeLog)
-      ? [...trackingSheet.changeLog]
-      : [],
+    patientProfile: { ...(trackingSheet.patientProfile ?? {}) },
+    environmentFactors: Array.isArray(trackingSheet.environmentFactors) ? [...trackingSheet.environmentFactors] : [],
+    symptomLedger: Array.isArray(trackingSheet.symptomLedger) ? [...trackingSheet.symptomLedger] : [],
+    changeLog: Array.isArray(trackingSheet.changeLog) ? [...trackingSheet.changeLog] : [],
     originalMappings: cloneMapping(trackingSheet.originalMappings),
     unresolvedMappings: cloneMapping(trackingSheet.unresolvedMappings),
     confirmedMappings: cloneMapping(trackingSheet.confirmedMappings),
@@ -282,18 +240,14 @@ function cloneTrackingSheet(trackingSheet) {
 function sortRevisitQueue(queue = []) {
   return [...queue].sort((a, b) => {
     const returnDayDelta = (a.returnDay ?? Number.POSITIVE_INFINITY) - (b.returnDay ?? Number.POSITIVE_INFINITY)
-
     if (returnDayDelta !== 0) return returnDayDelta
-
     return (a.serial ?? 0) - (b.serial ?? 0)
   })
 }
 
 function rotateArray(list, offset = 0) {
   if (!list.length) return []
-
   const normalizedOffset = ((offset % list.length) + list.length) % list.length
-
   return [...list.slice(normalizedOffset), ...list.slice(0, normalizedOffset)]
 }
 
@@ -308,77 +262,28 @@ function sanitizeInlineText(text = '') {
     .trim()
 }
 
-function trimTextByLength(text = '', maxLength = 0) {
-  if (maxLength <= 0) return ''
-  return Array.from(String(text || '').trim()).slice(0, maxLength).join('').trim()
-}
-
-function shrinkEnvironmentDescription(text = '', maxLength = 30) {
-  const normalized = sanitizeInlineText(text)
-
-  if (!normalized) return ''
-  if (normalized.length <= maxLength) return normalized
-
-  const clauses = normalized
-    .split(/[。！？；]/)
-    .map(item => sanitizeInlineText(item))
-    .filter(Boolean)
-
-  for (const clause of clauses) {
-    if (clause.length <= maxLength) {
-      return clause
-    }
-  }
-
-  const commaSegments = normalized
-    .split(/[，、,]/)
-    .map(item => sanitizeInlineText(item))
-    .filter(Boolean)
-
-  if (commaSegments.length > 1) {
-    for (let count = commaSegments.length; count > 0; count -= 1) {
-      const candidate = commaSegments.slice(0, count).join('，')
-      if (candidate.length <= maxLength) {
-        return candidate
-      }
-    }
-  }
-
-  return trimTextByLength(normalized, maxLength)
-}
-
-function computeEnvironmentPhase(gameDay) {
-  const index = (Math.max(1, gameDay) - 1) % ENVIRONMENT_PHASES.length
-  return ENVIRONMENT_PHASES[index].phase
-}
-
 function createPatientSeedBase() {
   return Date.now() + Math.floor(Math.random() * 1000000)
 }
 
 function shuffleArray(list = []) {
   const next = [...list]
-
   for (let index = next.length - 1; index > 0; index -= 1) {
     const swapIndex = Math.floor(Math.random() * (index + 1))
     ;[next[index], next[swapIndex]] = [next[swapIndex], next[index]]
   }
-
   return next
 }
 
 function createIndexPool(size, avoidFirstIndex = null) {
   if (size <= 0) return []
-
   const deck = shuffleArray(Array.from({ length: size }, (_, index) => index))
-
   if (size > 1 && avoidFirstIndex !== null && deck[0] === avoidFirstIndex) {
     const swapIndex = deck.findIndex(index => index !== avoidFirstIndex)
     if (swapIndex > 0) {
       ;[deck[0], deck[swapIndex]] = [deck[swapIndex], deck[0]]
     }
   }
-
   return deck
 }
 
@@ -386,24 +291,7 @@ function normalizeIndexPool(pool, size) {
   const valid = Array.isArray(pool)
     ? [...new Set(pool.filter(index => Number.isInteger(index) && index >= 0 && index < size))]
     : []
-
   return valid.length ? valid : createIndexPool(size)
-}
-
-function pickRandomEnvironmentPhase(excludedPhase = null) {
-  const candidates = ENVIRONMENT_PHASES
-    .map(item => item.phase)
-    .filter(phase => ENVIRONMENT_PHASES.length <= 1 || phase !== excludedPhase)
-
-  if (!candidates.length) {
-    return ENVIRONMENT_PHASES[0]?.phase ?? 1
-  }
-
-  return candidates[Math.floor(Math.random() * candidates.length)]
-}
-
-function getEnvironmentByPhase(phaseId) {
-  return ENVIRONMENT_PHASES.find(item => item.phase === phaseId) ?? ENVIRONMENT_PHASES[0]
 }
 
 function makeHistoryEntry({ speaker, label, text, type = 'dialogue' }) {
@@ -417,14 +305,7 @@ function makeHistoryEntry({ speaker, label, text, type = 'dialogue' }) {
   }
 }
 
-function makePhoneMessage({
-  sender,
-  title,
-  text,
-  gameDay,
-  type = 'system',
-  read = false
-}) {
+function makePhoneMessage({ sender, title, text, gameDay, type = 'system', read = false }) {
   return {
     id: `sms-${Date.now()}-${Math.random().toString(36).slice(2, 8)}`,
     sender,
@@ -523,7 +404,6 @@ function pickInitialMappingLevel(patient, sourceId, targetId) {
     + (Number(patient?.visitCount || 1) * 7)
     + sourceId.length
     + targetId.length
-
   return seed % 100 < 78 ? 1 : 2
 }
 
@@ -531,20 +411,14 @@ function buildInitialMappingLevels(patient, rule = null) {
   if (patient?.initialMappingLevels && Object.keys(patient.initialMappingLevels).length > 0) {
     return normalizeGeneratedLevelMap(patient.initialMappingLevels, patient?.originalMappings ?? {})
   }
-
   return getMappingPairs(patient?.originalMappings ?? {}).reduce((acc, pair) => {
     if (!rule) {
-      // 随机期：原有逻辑
       acc[pair.key] = pickInitialMappingLevel(patient, pair.source, pair.target)
       return acc
     }
-
-    // 预设期：按规则决定等级
     const { maxLevel, mustHaveLv2 } = rule
     const pairIndex = Object.keys(acc).length
-
     if (mustHaveLv2 && pairIndex === 0) {
-      // 第一个异常强制 Lv.2
       acc[pair.key] = 2
     } else {
       const seed = (Number(patient?.serial || 1) * 19)
@@ -552,22 +426,48 @@ function buildInitialMappingLevels(patient, rule = null) {
         + pair.source.length
         + pair.target.length
         + pairIndex
-
-      acc[pair.key] = maxLevel === 1
-        ? 1
-        : 1 + (seed % maxLevel)
+      acc[pair.key] = maxLevel === 1 ? 1 : 1 + (seed % maxLevel)
     }
-
     return acc
   }, createEmptyLevelMap())
 }
 
+function parseTrackingSheetPayload(text) {
+  const cleaned = String(text || '').trim().replace(/^```json\s*/i, '').replace(/^```\s*/i, '').replace(/\s*```$/, '')
+  const parsed = JSON.parse(cleaned)
+  if (!parsed || typeof parsed !== 'object' || Array.isArray(parsed)) {
+    throw new Error('tracking sheet payload must be an object')
+  }
+  return parsed
+}
 
-function buildFallbackTrackingSheet(patient, environment) {
-  const estimatedIncome = buildEstimatedIncome(patient)
-  const initialPairs = getMappingPairs(patient.originalMappings).map(item => formatPairLabel(item.source, item.target))
+function requireGeneratedText(value, fieldLabel) {
+  const text = typeof value === 'string' ? value.trim() : ''
+  if (!text) {
+    throw new Error(`AI 生成的${fieldLabel}为空。`)
+  }
+  return text
+}
+
+function requireGeneratedTextList(value, fieldLabel) {
+  if (!Array.isArray(value)) {
+    throw new Error(`AI 生成的${fieldLabel}格式错误。`)
+  }
+  const list = value.map(item => String(item).trim()).filter(Boolean)
+  if (!list.length) {
+    throw new Error(`AI 生成的${fieldLabel}为空。`)
+  }
+  return list
+}
+
+function normalizeTrackingSheet(rawSheet, patient) {
+  const originalMappings = cloneMapping(patient.originalMappings)
+  const unresolvedMappings = cloneMapping(patient.hiddenMappings)
   const mappingLevels = buildInitialMappingLevels(patient)
-
+  const lockedMappingLevels = normalizeMappingLevelsForPairs(
+    patient?.initialMappingLevels ?? mappingLevels,
+    unresolvedMappings
+  )
   return {
     patientProfile: {
       name: patient.name,
@@ -577,77 +477,21 @@ function buildFallbackTrackingSheet(patient, environment) {
       speechStyle: patient.speechStyle,
       emotionalTone: patient.emotionalTone
     },
-    coreConcern: patient.attachment,
-    symptomSummary: `${patient.job}出现 ${countMappings(patient.originalMappings)} 项感官串线异常`,
-    environmentFactors: [
-      environment.name,
-      environment.description
-    ],
-    symptomLedger: initialPairs,
-    changeLog: [
-      `初诊建档：${initialPairs.join('；') || '暂无异常'}`
-    ],
-    abnormalCount: countMappings(patient.originalMappings),
-    estimatedIncome,
-    originalMappings: cloneMapping(patient.originalMappings),
-    unresolvedMappings: cloneMapping(patient.hiddenMappings),
+    coreConcern: requireGeneratedText(rawSheet?.coreConcern, '后台追踪表核心牵挂'),
+    symptomSummary: requireGeneratedText(rawSheet?.symptomSummary, '后台追踪表症状摘要'),
+    environmentFactors: requireGeneratedTextList(rawSheet?.environmentFactors, '后台追踪表环境干扰'),
+    symptomLedger: requireGeneratedTextList(rawSheet?.symptomLedger, '后台追踪表症状记录'),
+    changeLog: requireGeneratedTextList(rawSheet?.changeLog, '后台追踪表变更日志'),
+    abnormalCount: countMappings(originalMappings),
+    estimatedIncome: buildEstimatedIncome(patient),
+    originalMappings,
+    unresolvedMappings,
     confirmedMappings: createEmptyMapping(),
     resolvedMappings: createEmptyMapping(),
-    mappingLevels,
+    mappingLevels: lockedMappingLevels,
     healedMappings: createEmptyMapping(),
     worsenedMappings: createEmptyMapping(),
     newMappings: createEmptyMapping()
-  }
-}
-
-function parseTrackingSheetPayload(text) {
-  const cleaned = String(text || '').trim().replace(/^```json\s*/i, '').replace(/^```\s*/i, '').replace(/\s*```$/, '')
-  const parsed = JSON.parse(cleaned)
-
-  if (!parsed || typeof parsed !== 'object' || Array.isArray(parsed)) {
-    throw new Error('tracking sheet payload must be an object')
-  }
-
-  return parsed
-}
-
-function normalizeTrackingSheet(rawSheet, patient, environment) {
-  const fallback = buildFallbackTrackingSheet(patient, environment)
-  const lockedMappingLevels = normalizeMappingLevelsForPairs(
-    patient?.initialMappingLevels ?? fallback.mappingLevels,
-    fallback.unresolvedMappings
-  )
-
-  return {
-    patientProfile: {
-      ...fallback.patientProfile,
-      ...(rawSheet?.patientProfile ?? {})
-    },
-    coreConcern: typeof rawSheet?.coreConcern === 'string' && rawSheet.coreConcern.trim()
-      ? rawSheet.coreConcern.trim()
-      : fallback.coreConcern,
-    symptomSummary: typeof rawSheet?.symptomSummary === 'string' && rawSheet.symptomSummary.trim()
-      ? rawSheet.symptomSummary.trim()
-      : fallback.symptomSummary,
-    environmentFactors: Array.isArray(rawSheet?.environmentFactors) && rawSheet.environmentFactors.length
-      ? rawSheet.environmentFactors.map(item => String(item).trim()).filter(Boolean)
-      : fallback.environmentFactors,
-    symptomLedger: Array.isArray(rawSheet?.symptomLedger) && rawSheet.symptomLedger.length
-      ? rawSheet.symptomLedger.map(item => String(item).trim()).filter(Boolean)
-      : fallback.symptomLedger,
-    changeLog: Array.isArray(rawSheet?.changeLog) && rawSheet.changeLog.length
-      ? rawSheet.changeLog.map(item => String(item).trim()).filter(Boolean)
-      : fallback.changeLog,
-    abnormalCount: fallback.abnormalCount,
-    estimatedIncome: fallback.estimatedIncome,
-    originalMappings: cloneMapping(fallback.originalMappings),
-    unresolvedMappings: cloneMapping(fallback.unresolvedMappings),
-    confirmedMappings: cloneMapping(rawSheet?.confirmedMappings ?? fallback.confirmedMappings),
-    resolvedMappings: cloneMapping(rawSheet?.resolvedMappings ?? fallback.resolvedMappings),
-    mappingLevels: lockedMappingLevels,
-    healedMappings: cloneMapping(rawSheet?.healedMappings ?? fallback.healedMappings),
-    worsenedMappings: cloneMapping(rawSheet?.worsenedMappings ?? fallback.worsenedMappings),
-    newMappings: cloneMapping(rawSheet?.newMappings ?? fallback.newMappings)
   }
 }
 
@@ -670,19 +514,16 @@ function appendSymptomLedger(trackingSheet, line) {
 
 function applyRevisitMutation(patient, environment, currentDay) {
   if (!patient?.trackingSheet) return patient
-
   const nextPatient = clonePatient(patient)
   const nextSheet = cloneTrackingSheet(nextPatient.trackingSheet)
   const unresolved = cloneMapping(nextSheet.unresolvedMappings)
   const seed = buildPseudoSeed(nextPatient, environment?.phase, currentDay)
-
   const unresolvedPairs = getMappingPairs(unresolved)
   if (unresolvedPairs.length) {
     const targetPair = unresolvedPairs[seed % unresolvedPairs.length]
     const sourceTargets = unresolved[targetPair.source]
     const sourceLabel = SENSE_LABELS[targetPair.source]
     const availableTargets = SENSE_TARGETS[targetPair.source].filter(target => !sourceTargets.includes(target))
-
     if (availableTargets.length && seed % 100 < 65) {
       const newTarget = availableTargets[(seed + 3) % availableTargets.length]
       const oldSummary = `${sourceLabel} -> ${sourceTargets.map(item => SENSE_LABELS[item]).join('、')}`
@@ -697,14 +538,10 @@ function applyRevisitMutation(patient, environment, currentDay) {
         ...nextSheet.worsenedMappings[targetPair.source],
         ...unresolved[targetPair.source]
       ])]
-      appendSymptomLedger(
-        nextSheet,
-        `加重：~~${oldSummary}~~ -> ${sourceLabel} -> ${unresolved[targetPair.source].map(item => SENSE_LABELS[item]).join('、')}`
-      )
+      appendSymptomLedger(nextSheet, `加重：~~${oldSummary}~~ -> ${sourceLabel} -> ${unresolved[targetPair.source].map(item => SENSE_LABELS[item]).join('、')}`)
       appendTrackingLog(nextSheet, `复诊加深：${formatPairLabel(targetPair.source, newTarget)}`)
     }
   }
-
   const sourceId = SENSE_CONFIGS[(seed + 5) % SENSE_CONFIGS.length].id
   const addableTargets = SENSE_TARGETS[sourceId].filter(target => !unresolved[sourceId].includes(target))
   if (addableTargets.length && seed % 100 < 45) {
@@ -715,16 +552,11 @@ function applyRevisitMutation(patient, environment, currentDay) {
     appendSymptomLedger(nextSheet, `新增：${formatPairLabel(sourceId, newTarget)}`)
     appendTrackingLog(nextSheet, `复诊新增：${formatPairLabel(sourceId, newTarget)}`)
   }
-
-  nextSheet.environmentFactors = [
-    environment?.name || '',
-    environment?.description || ''
-  ].filter(Boolean)
+  nextSheet.environmentFactors = [environment?.name || '', environment?.description || ''].filter(Boolean)
   nextSheet.unresolvedMappings = cloneMapping(unresolved)
   nextSheet.abnormalCount = countMappings(unresolved)
   nextPatient.hiddenMappings = cloneMapping(unresolved)
   nextPatient.trackingSheet = nextSheet
-
   return nextPatient
 }
 
@@ -732,11 +564,9 @@ function getEquipmentLevel(equipmentOverview, sourceId, targetId = '') {
   const matched = Array.isArray(equipmentOverview)
     ? equipmentOverview.find(item => item.id === sourceId)
     : null
-
   if (targetId) {
     return Math.max(1, Number(matched?.moduleLevels?.[targetId] || 1))
   }
-
   return Math.max(1, Number(matched?.level || 1))
 }
 
@@ -772,7 +602,6 @@ function normalizeNarrativeError(error) {
   if (error?.message?.includes('请先配置AI接入设置')) {
     return '当前还没有配置 AI 接入，无法生成问诊叙事。'
   }
-
   return error?.message || '生成文本时出现问题。'
 }
 
@@ -793,9 +622,7 @@ function stripStructuredMarkers(text = '') {
 
 function looksLikePromptLeak(text = '') {
   const cleaned = stripStructuredMarkers(stripCodeFence(text))
-
   if (!cleaned) return false
-
   return (
     /生成\s*4\s*个下一步问诊选项/.test(cleaned)
     || /只输出\s*JSON/.test(cleaned)
@@ -809,23 +636,17 @@ function looksLikePromptLeak(text = '') {
 
 function sanitizeNarrativeReply(text = '') {
   const cleaned = stripStructuredMarkers(stripCodeFence(text))
-
   if (!cleaned || looksLikePromptLeak(cleaned)) {
     return ''
   }
-
   return cleaned
 }
 
 function sanitizeHistoryEntries(entries = []) {
   if (!Array.isArray(entries)) return []
-
   return entries
     .filter(item => item && typeof item === 'object')
-    .map(item => ({
-      ...item,
-      text: sanitizeNarrativeReply(item.text)
-    }))
+    .map(item => ({ ...item, text: sanitizeNarrativeReply(item.text) }))
     .filter(item => item.text)
 }
 
@@ -839,14 +660,13 @@ function sanitizeDoctorLine(text = '', label = '') {
 
 function normalizeQuestionText(text = '') {
   return String(text || '')
-    .replace(/[—\-–\s，。！？、：:“”"'`]/g, '')
+    .replace(/[—\-–\s，。！？、：:"""'`]/g, '')
     .trim()
 }
 
 function isRepeatedQuestion(candidate, historyLines = [], currentLines = []) {
   const normalized = normalizeQuestionText(candidate)
   if (!normalized) return true
-
   return [...historyLines, ...currentLines].some(item => {
     const compare = normalizeQuestionText(item)
     if (!compare) return false
@@ -862,21 +682,19 @@ function parseOptionPayload(text, recentDoctorLines = []) {
     ? normalized.slice(arrayStart, arrayEnd + 1)
     : normalized
   const parsed = JSON.parse(cleaned)
-
   if (!Array.isArray(parsed)) {
     throw new Error('选项返回格式错误。')
   }
-
   const selected = parsed
     .filter(item => item && typeof item === 'object')
-    .map((item, index) => ({
-      id: item.id || `dynamic-${index + 1}`,
-      label: item.label || `问诊选项 ${index + 1}`,
-      doctorLine: sanitizeDoctorLine(item.doctorLine || item.label || '再说细一点。', item.label || ''),
-      promptFocus: item.promptFocus || '继续追问患者当前最明显的不适。'
-    }))
+    .map((item, index) => {
+      const label = String(item.label || '').trim()
+      const doctorLine = sanitizeDoctorLine(item.doctorLine || '', label)
+      const promptFocus = String(item.promptFocus || '').trim()
+      return { id: item.id || `dynamic-${index + 1}`, label, doctorLine, promptFocus }
+    })
     .filter((item, index, list) => {
-      if (!item.doctorLine) return false
+      if (!item.label || !item.doctorLine || !item.promptFocus) return false
       return !isRepeatedQuestion(
         item.doctorLine,
         recentDoctorLines,
@@ -884,8 +702,10 @@ function parseOptionPayload(text, recentDoctorLines = []) {
       )
     })
     .slice(0, 4)
-
-  return selected.slice(0, 4)
+  if (selected.length < 4) {
+    throw new Error('AI 返回的有效问诊选项不足 4 个。')
+  }
+  return selected
 }
 
 
@@ -911,6 +731,7 @@ export function useGameLogic() {
   const isGeneratingText = ref(false)
   const typingEntryId = ref('')
   const isEnvironmentLoading = ref(false)
+  const environmentGenerationError = ref('')
   const isQueueGenerating = ref(false)
   const statusNotice = ref('')
   const narrativeError = ref('')
@@ -974,7 +795,6 @@ export function useGameLogic() {
   function updateDiagnosisUses(value) {
     const nextValue = clamp(Number(value) || 0, 0, DIAGNOSIS_LIMIT)
     diagnosisUsesLeft.value = nextValue
-
     if (activePatient.value) {
       activePatient.value.diagnosisUsesLeft = nextValue
     }
@@ -983,7 +803,6 @@ export function useGameLogic() {
   function updateTreatmentUses(value) {
     const nextValue = clamp(Number(value) || 0, 0, TREATMENT_LIMIT)
     treatmentUsesLeft.value = nextValue
-
     if (activePatient.value) {
       activePatient.value.treatmentUsesLeft = nextValue
     }
@@ -994,10 +813,7 @@ export function useGameLogic() {
       ...waitingPatients.value,
       ...revisitQueue.value,
       activePatient.value
-    ].filter(Boolean).map(item => ({
-      name: item.name,
-      job: item.job
-    }))
+    ].filter(Boolean).map(item => ({ name: item.name, job: item.job }))
   }
 
   function parseJsonObjectPayload(text, label = 'JSON') {
@@ -1007,46 +823,23 @@ export function useGameLogic() {
     const payload = objectStart !== -1 && objectEnd !== -1
       ? cleaned.slice(objectStart, objectEnd + 1)
       : cleaned
-
     const parsed = JSON.parse(payload)
-
     if (!parsed || typeof parsed !== 'object' || Array.isArray(parsed)) {
       throw new Error(`${label} 返回格式错误。`)
     }
-
     return parsed
   }
 
-function normalizeGeneratedEnvironment(rawEnvironment = {}, fallbackPhase = null, {
-  allowTrim = false,
-  fallbackEnvironment = null
-} = {}) {
-  const rawName = sanitizeInlineText(rawEnvironment?.name || '')
-  const rawDescription = allowTrim
-    ? shrinkEnvironmentDescription(rawEnvironment?.description || '', 30)
-    : sanitizeInlineText(rawEnvironment?.description || '')
-  const fallbackName = sanitizeInlineText(fallbackEnvironment?.name || '')
-  const fallbackDescription = sanitizeInlineText(fallbackEnvironment?.description || '')
-  const description = rawDescription || fallbackDescription
-  const name = rawName || fallbackName || trimTextByLength(description, 14) || '环境'
-
-  if (!description) {
-    throw new Error('AI 生成的环境信息不完整。')
-  }
-
-  if (rawName && rawName.length > 14) {
-    throw new Error('AI 生成的环境标题超过 14 字。')
-  }
-
-  if (description.length > 30) {
-    throw new Error('AI 生成的环境描述超过 30 字。')
-  }
-
+  function normalizeGeneratedEnvironment(rawEnvironment = {}, phaseSeed = null) {
+    const description = sanitizeInlineText(rawEnvironment?.description || '')
+    if (!description) {
+      throw new Error('AI 生成的环境信息不完整。')
+    }
+    const finalDescription = description.length > 40 ? description.slice(0, 40) : description
     return {
       id: `env-${Date.now()}-${Math.random().toString(36).slice(2, 8)}`,
-      phase: fallbackPhase ?? Date.now(),
-      name,
-      description
+      phase: phaseSeed ?? Date.now(),
+      description: finalDescription
     }
   }
 
@@ -1057,45 +850,21 @@ function normalizeGeneratedEnvironment(rawEnvironment = {}, fallbackPhase = null
     }, createEmptyLevelMap())
   }
 
-  function normalizeGeneratedPatientPayload(rawPatient, {
-    serial,
-    globalEnvironment,
-    seedBase = 0,
-    allowTrimEnvironment = false,
-    allowFallbackEnvironment = false
-  }) {
+  function normalizeGeneratedPatientPayload(rawPatient, { serial, seedBase = 0 }) {
     const name = String(rawPatient?.name || '').trim()
     const job = String(rawPatient?.job || '').trim()
     const jobContext = String(rawPatient?.jobContext || '').trim()
     const attachment = String(rawPatient?.attachment || '').trim()
     const emotionalTone = String(rawPatient?.emotionalTone || '').trim()
     const speechStyle = String(rawPatient?.speechStyle || '').trim()
-
     if (!name || !job || !jobContext || !attachment || !emotionalTone || !speechStyle) {
       throw new Error('AI 生成的患者基础资料不完整。')
     }
-
-    let environmentProfile = null
-
-    try {
-      environmentProfile = normalizeGeneratedEnvironment(rawPatient?.environment, Date.now() + serial, {
-        allowTrim: allowTrimEnvironment
-      })
-    } catch (error) {
-      if (!allowFallbackEnvironment || !globalEnvironment) {
-        throw error
-      }
-
-      environmentProfile = cloneEnvironmentProfile(globalEnvironment)
-    }
-
     const generatedMappings = normalizeMapping(rawPatient?.originalMappings)
     const generatedLevelMap = normalizeGeneratedLevelMap(rawPatient?.mappingLevels, generatedMappings)
-
     if (isEmptyMapping(generatedMappings)) {
       throw new Error('AI 生成的患者病症为空。')
     }
-
     return {
       id: `synesthesia-patient-${serial}-${Date.now()}`,
       serial,
@@ -1106,8 +875,6 @@ function normalizeGeneratedEnvironment(rawEnvironment = {}, fallbackPhase = null
       emotionalTone,
       speechStyle,
       visitCount: 1,
-      environmentPhase: environmentProfile.phase,
-      environmentProfile,
       diagnosisUsesLeft: DIAGNOSIS_LIMIT,
       treatmentUsesLeft: TREATMENT_LIMIT,
       hiddenMappings: cloneMapping(generatedMappings),
@@ -1127,26 +894,17 @@ function normalizeGeneratedEnvironment(rawEnvironment = {}, fallbackPhase = null
 
   async function generateCurrentEnvironmentProfile(previousEnvironmentDescription = '') {
     let lastError = null
-
     for (let attempt = 0; attempt < 3; attempt += 1) {
       try {
         const payload = await generateStructuredReply(
           buildEnvironmentGenerationPrompt({ previousEnvironmentDescription }),
           '环境信息'
         )
-        const isLastAttempt = attempt === 2
-        const fallbackEnvironment = isLastAttempt
-          ? getEnvironmentByPhase(computeEnvironmentPhase(gameDay.value))
-          : null
-        return normalizeGeneratedEnvironment(payload, Date.now() + attempt, {
-          allowTrim: isLastAttempt,
-          fallbackEnvironment
-        })
+        return normalizeGeneratedEnvironment(payload, Date.now() + attempt)
       } catch (error) {
         lastError = error
       }
     }
-
     throw lastError || new Error('AI 生成环境失败。')
   }
 
@@ -1154,21 +912,23 @@ function normalizeGeneratedEnvironment(rawEnvironment = {}, fallbackPhase = null
     if (!force && currentEnvironmentProfile.value) {
       return cloneEnvironmentProfile(currentEnvironmentProfile.value)
     }
-
     if (!environmentGenerationPromise) {
+      environmentGenerationError.value = ''
       isEnvironmentLoading.value = true
       environmentGenerationPromise = (async () => {
         const generatedProfile = await generateCurrentEnvironmentProfile(
           previousEnvironmentDescription || currentEnvironmentProfile.value?.description || ''
         )
         currentEnvironmentProfile.value = cloneEnvironmentProfile(generatedProfile)
+        environmentGenerationError.value = ''
         environmentPhase.value = Number(currentEnvironmentProfile.value?.phase || Date.now())
         scheduleProgressSave()
         return cloneEnvironmentProfile(currentEnvironmentProfile.value)
       })()
         .catch(error => {
           currentEnvironmentProfile.value = null
-          statusNotice.value = `当前环境生成失败：${normalizeNarrativeError(error)}`
+          environmentGenerationError.value = normalizeNarrativeError(error)
+          statusNotice.value = `当前环境生成失败：${environmentGenerationError.value}`
           throw error
         })
         .finally(() => {
@@ -1176,7 +936,6 @@ function normalizeGeneratedEnvironment(rawEnvironment = {}, fallbackPhase = null
           environmentGenerationPromise = null
         })
     }
-
     return environmentGenerationPromise
   }
 
@@ -1184,50 +943,33 @@ function normalizeGeneratedEnvironment(rawEnvironment = {}, fallbackPhase = null
     const existingPatients = collectExistingPatientReferences()
     const globalEnvironment = currentEnvironmentProfile.value
     let lastError = null
-
     if (!globalEnvironment) {
       throw new Error('当前环境尚未生成完成。')
     }
-
     for (let attempt = 0; attempt < 3; attempt += 1) {
       try {
         const payload = await generateStructuredReply(
-          buildPatientGenerationPrompt({
-            serial,
-            gameDay: gameDay.value,
-            globalEnvironment,
-            existingPatients
-          }),
+          buildPatientGenerationPrompt({ serial, gameDay: gameDay.value, globalEnvironment, existingPatients }),
           '患者信息'
         )
-        const isLastAttempt = attempt === 2
-        const patient = normalizeGeneratedPatientPayload(payload, {
-          serial,
-          globalEnvironment,
-          seedBase: patientSeedBase.value,
-          allowTrimEnvironment: isLastAttempt,
-          allowFallbackEnvironment: isLastAttempt
-        })
+        const patient = normalizeGeneratedPatientPayload(payload, { serial, seedBase: patientSeedBase.value })
+        patient.environmentProfile = cloneEnvironmentProfile(globalEnvironment)
+        patient.environmentPhase = globalEnvironment.phase
         const hasDuplicate = existingPatients.some(item => item.name === patient.name || item.job === patient.job)
-
         if (hasDuplicate) {
           throw new Error('AI 生成了重复的名字或职业。')
         }
-
         return patient
       } catch (error) {
         lastError = error
       }
     }
-
     throw lastError || new Error('AI 生成患者失败。')
   }
 
   async function ensurePatientQueue(targetCount = 1) {
     const safeTarget = clamp(Number(targetCount) || 1, 1, PATIENT_QUEUE_MAX)
-
     if (waitingPatients.value.length >= safeTarget) return
-
     if (!queueGenerationPromise) {
       queueGenerationPromise = (async () => {
         while (waitingPatients.value.length < safeTarget && waitingPatients.value.length < PATIENT_QUEUE_MAX) {
@@ -1240,7 +982,6 @@ function normalizeGeneratedEnvironment(rawEnvironment = {}, fallbackPhase = null
           queueGenerationPromise = null
         })
     }
-
     await queueGenerationPromise
   }
 
@@ -1248,31 +989,13 @@ function normalizeGeneratedEnvironment(rawEnvironment = {}, fallbackPhase = null
     throw new Error('Local patient generation has been disabled.')
   }
 
-
-
-  function maybeShiftEnvironment(daysPassed = 1) {
-    let nextPhase = environmentPhase.value
-
-    for (let index = 0; index < daysPassed; index += 1) {
-      const seed = gameDay.value + index + nextPatientSerial.value
-      if (seed % 100 < 42) {
-        nextPhase = pickRandomEnvironmentPhase(nextPhase)
-      }
-    }
-
-    environmentPhase.value = nextPhase
-  }
-
   async function refreshPatientQueue(force = false) {
     nowTick.value = Date.now()
-
     if (phase.value === 'title') return waitingPatients.value.length
     if (isEnvironmentLoading.value || !currentEnvironmentProfile.value) return waitingPatients.value.length
     if (waitingPatients.value.length >= PATIENT_QUEUE_MAX) return waitingPatients.value.length
     if (!force && queueGenerationPromise) return waitingPatients.value.length
-
     isQueueGenerating.value = true
-
     try {
       await ensurePatientQueue(PATIENT_QUEUE_MAX)
       return waitingPatients.value.length
@@ -1289,11 +1012,9 @@ function normalizeGeneratedEnvironment(rawEnvironment = {}, fallbackPhase = null
 
   function ensureQueueTimer() {
     if (queueTimer) clearInterval(queueTimer)
-
     queueTimer = setInterval(() => {
       if (isEnvironmentLoading.value || !currentEnvironmentProfile.value) return
       if (waitingPatients.value.length >= PATIENT_QUEUE_MAX || queueGenerationPromise) return
-
       refreshPatientQueue(true).catch(error => {
         console.warn('Synesthesia 候诊队列生成失败:', error)
       })
@@ -1302,7 +1023,6 @@ function normalizeGeneratedEnvironment(rawEnvironment = {}, fallbackPhase = null
 
   function popWaitingPatient() {
     if (!waitingPatients.value.length) return null
-
     const [nextPatient, ...rest] = waitingPatients.value
     waitingPatients.value = rest
     refreshPatientQueue(true).catch(error => {
@@ -1313,7 +1033,6 @@ function normalizeGeneratedEnvironment(rawEnvironment = {}, fallbackPhase = null
 
   function buildCompletedCaseRecord(outcome, extras = {}) {
     if (!activePatient.value) return null
-
     const base = {
       id: `${activePatient.value.id}-${Date.now()}`,
       patientId: activePatient.value.id,
@@ -1333,30 +1052,27 @@ function normalizeGeneratedEnvironment(rawEnvironment = {}, fallbackPhase = null
       closingNarrative: extras.closingNarrative || '',
       archiveStory: extras.archiveStory || '',
       environmentDescription: activeEnvironment.value?.description || '',
-      coreConcern: activePatient.value.attachment || activePatient.value.trackingSheet?.coreConcern || ''
+      coreConcern: activePatient.value.trackingSheet?.coreConcern || activePatient.value.attachment || ''
     }
-
     if (outcome === 'complete') {
       return {
         ...base,
         outcome,
         outcomeLabel: '完全治愈',
-        summary: '本次治疗已让患者当前的感官错位全部归位。'
+        summary: activePatient.value.trackingSheet?.symptomSummary || '本次治疗已让患者当前的感官错位全部归位。'
       }
     }
-
     return {
       ...base,
       outcome,
       outcomeLabel: '预约复诊',
       returnDay: gameDay.value + REVISIT_DELAY_DAYS,
-      summary: '本次治疗只稳定住部分问题，剩余异常将在后续复诊中继续处理。'
+      summary: activePatient.value.trackingSheet?.symptomSummary || '本次治疗只稳定住部分问题，剩余异常将在后续复诊中继续处理。'
     }
   }
 
   function pushCompletedCase(record) {
     if (!record) return
-
     completedCases.value = [record, ...completedCases.value].slice(0, 24)
     if (!selectedArchiveCaseId.value) {
       selectedArchiveCaseId.value = record.id
@@ -1365,7 +1081,6 @@ function normalizeGeneratedEnvironment(rawEnvironment = {}, fallbackPhase = null
 
   function pushPhoneMessage(message) {
     if (!message) return
-
     phoneMessages.value = [message, ...phoneMessages.value].slice(0, 40)
   }
 
@@ -1374,58 +1089,15 @@ function normalizeGeneratedEnvironment(rawEnvironment = {}, fallbackPhase = null
     scheduleProgressSave()
   }
 
-    function maybeCreateDebtRecord(patient, amount) {
+  function maybeCreateDebtRecord(patient, amount) {
     if (!patient || amount <= 0) return null
     if (Math.random() >= DEBT_BORROW_PROBABILITY) return null
-
-    const returnAfter = Math.floor(Math.random() * 16) + 5 // 5-20 个患者后还款
-    const repayAmount = Math.floor(amount * 1.2) // 120% 利息还款
-
-    const record = {
-      id: `debt-${patient.id}-${Date.now()}`,
-      patientId: patient.id,
-      patientSnapshot: {
-        name: patient.name,
-        job: patient.job,
-        attachment: patient.attachment,
-        speechStyle: patient.speechStyle
-      },
-      amount,
-      repayAmount,
-      createdDay: gameDay.value,
-      createdSerial: nextPatientSerial.value, // 记录产生债务时的患者总序号
-      returnAfter,
-      paidDay: null,
-      status: 'pending'
-    }
-
-    debtLedger.value = [record, ...debtLedger.value]
-    pushPhoneMessage(makePhoneMessage({
-      sender: patient.name,
-      title: '赊账申请',
-      text: `我这边今天只能先记账。这次诊疗先欠你 ${amount} 信用点，等手头缓过来会补上。`,
-      gameDay: gameDay.value,
-      type: 'debt'
-    }))
-
-    return record
-  }
-
-  function createForcedDebtRecord(patient, amount) {
-    if (!patient || amount <= 0) return null
-
     const returnAfter = Math.floor(Math.random() * 16) + 5
     const repayAmount = Math.floor(amount * 1.2)
-
     const record = {
       id: `debt-${patient.id}-${Date.now()}`,
       patientId: patient.id,
-      patientSnapshot: {
-        name: patient.name,
-        job: patient.job,
-        attachment: patient.attachment,
-        speechStyle: patient.speechStyle
-      },
+      patientSnapshot: { name: patient.name, job: patient.job, attachment: patient.attachment, speechStyle: patient.speechStyle },
       amount,
       repayAmount,
       createdDay: gameDay.value,
@@ -1434,7 +1106,33 @@ function normalizeGeneratedEnvironment(rawEnvironment = {}, fallbackPhase = null
       paidDay: null,
       status: 'pending'
     }
+    debtLedger.value = [record, ...debtLedger.value]
+    pushPhoneMessage(makePhoneMessage({
+      sender: patient.name,
+      title: '赊账申请',
+      text: `我这边今天只能先记账。这次诊疗先欠你 ${amount} 信用点，等手头缓过来会补上。`,
+      gameDay: gameDay.value,
+      type: 'debt'
+    }))
+    return record
+  }
 
+  function createForcedDebtRecord(patient, amount) {
+    if (!patient || amount <= 0) return null
+    const returnAfter = Math.floor(Math.random() * 16) + 5
+    const repayAmount = Math.floor(amount * 1.2)
+    const record = {
+      id: `debt-${patient.id}-${Date.now()}`,
+      patientId: patient.id,
+      patientSnapshot: { name: patient.name, job: patient.job, attachment: patient.attachment, speechStyle: patient.speechStyle },
+      amount,
+      repayAmount,
+      createdDay: gameDay.value,
+      createdSerial: nextPatientSerial.value,
+      returnAfter,
+      paidDay: null,
+      status: 'pending'
+    }
     debtLedger.value = [record, ...debtLedger.value]
     pushPhoneMessage(makePhoneMessage({
       sender: patient.name,
@@ -1443,27 +1141,20 @@ function normalizeGeneratedEnvironment(rawEnvironment = {}, fallbackPhase = null
       gameDay: gameDay.value,
       type: 'debt'
     }))
-
     return record
   }
 
-
-    async function checkPendingDebts() {
+  async function checkPendingDebts() {
     const currentSerial = nextPatientSerial.value
-    // 找出所有已满足 "经过了 returnAfter 个患者" 条件的未还款记录
-    const debtsToRepay = debtLedger.value.filter(record => 
-      record.status === 'pending' && 
+    const debtsToRepay = debtLedger.value.filter(record =>
+      record.status === 'pending' &&
       (currentSerial - record.createdSerial) >= record.returnAfter
     )
-
     for (const record of debtsToRepay) {
-      // 1. 更新状态和玩家资金
       record.status = 'paid'
       record.paidDay = gameDay.value
       credits.value += record.repayAmount
       earnedCreditsTotal.value += record.repayAmount
-
-      // 2. 调用 AI 生成有温度的还款短信
       let messageText = ''
       try {
         const prompt = buildMessagePrompt({
@@ -1477,13 +1168,11 @@ function normalizeGeneratedEnvironment(rawEnvironment = {}, fallbackPhase = null
       } catch (error) {
         console.warn('Synesthesia 还款短信生成失败:', error)
       }
-
       if (!messageText) {
         statusNotice.value = '收到还款，但 AI 未生成短信内容。'
         scheduleProgressSave()
         continue
       }
-
       pushPhoneMessage(makePhoneMessage({
         sender: record.patientSnapshot.name,
         title: '转账与留言',
@@ -1493,13 +1182,11 @@ function normalizeGeneratedEnvironment(rawEnvironment = {}, fallbackPhase = null
         read: false
       }))
     }
-
     if (debtsToRepay.length > 0) {
       statusNotice.value = '收到新的银行转账与短信留言。'
       scheduleProgressSave()
     }
   }
-
 
   function resetCaseState() {
     consultStage.value = 'arrival_intro'
@@ -1527,14 +1214,8 @@ function normalizeGeneratedEnvironment(rawEnvironment = {}, fallbackPhase = null
     resetCaseState()
   }
 
-  function buildArchiveStoryFallback(patient) {
-    if (!patient) return ''
-    return `${patient.name}一直把${patient.attachment || '手头那件放不下的事'}压在心里。症状闹起来时，她先想到的也不是自己舒不舒服，而是明天还能不能把活继续做下去。`
-  }
-
   async function generateArchiveStory() {
     if (!activePatient.value) return ''
-
     try {
       const prompt = buildStoryPrompt({
         patient: activePatient.value,
@@ -1543,10 +1224,12 @@ function normalizeGeneratedEnvironment(rawEnvironment = {}, fallbackPhase = null
         consultationHistory: consultationHistory.value
       })
       const reply = await aiService.generateReply(prompt, SYSTEM_PROMPT)
-      return sanitizeNarrativeReply(reply?.trim()) || buildArchiveStoryFallback(activePatient.value)
+      const result = sanitizeNarrativeReply(reply?.trim())
+      console.log('[archiveStory]', result?.slice(0, 50))
+      return result
     } catch (error) {
       console.warn('Synesthesia 患者背景故事生成失败:', error)
-      return buildArchiveStoryFallback(activePatient.value)
+      return ''
     }
   }
 
@@ -1567,8 +1250,6 @@ function normalizeGeneratedEnvironment(rawEnvironment = {}, fallbackPhase = null
     const notice = patientFeedbackOutcome.value === 'complete'
       ? '本次接待已经完成。'
       : `患者已预约第 ${activePatient.value?.returnDay} 天后的复诊。`
-
-    showSettlementModal.value = false
     pendingSettlementRecord.value = null
     clearActiveCase()
     phase.value = 'hub'
@@ -1580,7 +1261,7 @@ function normalizeGeneratedEnvironment(rawEnvironment = {}, fallbackPhase = null
     return {
       phase: phase.value,
       consultStage: consultStage.value,
-      consultEntryStage: consultEntryStage.value,
+      consultEntryStage: 'pre_consult',
       backgroundPage: backgroundPage.value,
       credits: credits.value,
       earnedCreditsTotal: earnedCreditsTotal.value,
@@ -1601,6 +1282,8 @@ function normalizeGeneratedEnvironment(rawEnvironment = {}, fallbackPhase = null
       consultNotes: consultNotes.value,
       isConsultNarrativeReady: isConsultNarrativeReady.value,
       isConsultOptionsReady: isConsultOptionsReady.value,
+      patientFeedbackOutcome: patientFeedbackOutcome.value,
+      pendingSettlementRecord: cloneCompletedCase(pendingSettlementRecord.value),
       phoneMessages: phoneMessages.value.map(item => clonePhoneMessage(item)),
       debtLedger: debtLedger.value.map(item => cloneDebtRecord(item)),
       diagnosisDraft: cloneMapping(diagnosisDraft.value),
@@ -1622,7 +1305,6 @@ function normalizeGeneratedEnvironment(rawEnvironment = {}, fallbackPhase = null
     if (autosaveTimer) {
       clearTimeout(autosaveTimer)
     }
-
     autosaveTimer = setTimeout(() => {
       saveProgress().catch(error => {
         console.warn('Synesthesia 自动保存失败:', error)
@@ -1633,7 +1315,10 @@ function normalizeGeneratedEnvironment(rawEnvironment = {}, fallbackPhase = null
 
   function applyGameState(rawState = {}) {
     const fallback = buildDefaultGameState()
-    const nextPhase = VALID_PHASES.includes(rawState.phase) ? rawState.phase : fallback.phase
+    const savedPhase = VALID_PHASES.includes(rawState.phase) ? rawState.phase : fallback.phase
+    const nextPhase = (savedPhase === 'patient_feedback' || savedPhase === 'settlement')
+      ? 'hub'
+      : savedPhase
     const nextConsultStage = VALID_CONSULT_STAGES.includes(rawState.consultStage)
       ? rawState.consultStage
       : fallback.consultStage
@@ -1644,6 +1329,7 @@ function normalizeGeneratedEnvironment(rawEnvironment = {}, fallbackPhase = null
     phase.value = nextPhase
     consultStage.value = nextConsultStage
     consultEntryStage.value = nextConsultEntryStage
+    environmentGenerationError.value = ''
     backgroundPage.value = clamp(Number(rawState.backgroundPage ?? fallback.backgroundPage), 0, BACKGROUND_PAGES.length - 1)
     credits.value = Number.isFinite(rawState.credits) ? rawState.credits : fallback.credits
     earnedCreditsTotal.value = Number.isFinite(rawState.earnedCreditsTotal)
@@ -1660,12 +1346,7 @@ function normalizeGeneratedEnvironment(rawEnvironment = {}, fallbackPhase = null
     environmentPhase.value = Number.isFinite(rawState.environmentPhase)
       ? rawState.environmentPhase
       : (currentEnvironmentProfile.value?.phase ?? fallback.environmentPhase)
-
-    playerProfile.value = {
-      ...PLAYER_PROFILE,
-      ...(rawState.playerProfile ?? {})
-    }
-
+    playerProfile.value = { ...PLAYER_PROFILE, ...(rawState.playerProfile ?? {}) }
     equipmentOverview.value = Array.isArray(rawState.equipmentOverview) && rawState.equipmentOverview.length > 0
       ? cloneEquipmentOverview(rawState.equipmentOverview)
       : cloneEquipmentOverview()
@@ -1676,7 +1357,6 @@ function normalizeGeneratedEnvironment(rawEnvironment = {}, fallbackPhase = null
         .slice(0, PATIENT_QUEUE_MAX)
       : []
     lastQueueRollAt.value = Number.isFinite(rawState.lastQueueRollAt) ? rawState.lastQueueRollAt : Date.now()
-
     activePatient.value = reconcilePatientSeverityWithEquipment(rawState.activePatient, equipmentOverview.value)
     if (activePatient.value && !activePatient.value.trackingSheet) {
       activePatient.value.trackingSheetReady = false
@@ -1688,6 +1368,12 @@ function normalizeGeneratedEnvironment(rawEnvironment = {}, fallbackPhase = null
     consultNotes.value = typeof rawState.consultNotes === 'string' ? rawState.consultNotes : ''
     isConsultNarrativeReady.value = Boolean(rawState.isConsultNarrativeReady)
     isConsultOptionsReady.value = Boolean(rawState.isConsultOptionsReady)
+    patientFeedbackText.value = ''
+    patientFeedbackOutcome.value = typeof rawState.patientFeedbackOutcome === 'string'
+      ? rawState.patientFeedbackOutcome
+      : ''
+    pendingSettlementRecord.value = cloneCompletedCase(rawState.pendingSettlementRecord)
+    showSettlementModal.value = false
     phoneMessages.value = Array.isArray(rawState.phoneMessages)
       ? rawState.phoneMessages.map(item => clonePhoneMessage(item)).filter(Boolean)
       : []
@@ -1717,35 +1403,41 @@ function normalizeGeneratedEnvironment(rawEnvironment = {}, fallbackPhase = null
     if ((phase.value === 'consult' || phase.value === 'treatment' || phase.value === 'patient_feedback' || phase.value === 'settlement') && !activePatient.value) {
       phase.value = 'hub'
       resetCaseState()
+      return
+    }
+
+    if (phase.value === 'consult' && activePatient.value) {
+      consultStage.value = 'questioning'
+      consultEntryStage.value = 'questioning'
+      if (!pendingSettlementRecord.value && (savedPhase === 'patient_feedback' || savedPhase === 'settlement')) {
+        const recoveredRecord = completedCases.value.find(item => item.patientId === activePatient.value?.id)
+        if (recoveredRecord && (recoveredRecord.outcome === 'complete' || recoveredRecord.outcome === 'revisit')) {
+          pendingSettlementRecord.value = cloneCompletedCase(recoveredRecord)
+          patientFeedbackOutcome.value = recoveredRecord.outcome
+          consultOptions.value = []
+          isConsultOptionsReady.value = false
+        }
+      }
     }
   }
 
   function settleElapsedGameTime(savedState) {
     const hasActiveCase = !!savedState?.activePatient && ['consult', 'treatment', 'patient_feedback', 'settlement'].includes(savedState?.phase)
-
     if (hasActiveCase) {
       lastTimeSyncAt.value = Date.now()
       return 0
     }
-
     const previousSyncAt = Number(savedState?.lastTimeSyncAt)
-
     if (!previousSyncAt) {
       lastTimeSyncAt.value = Date.now()
-      environmentPhase.value = pickRandomEnvironmentPhase()
       return 0
     }
-
     const elapsed = Math.max(0, Date.now() - previousSyncAt)
     const passedDays = Math.floor(elapsed / REAL_MS_PER_GAME_DAY)
-
     if (passedDays > 0) {
       gameDay.value += passedDays
-      maybeShiftEnvironment(passedDays)
     }
-
     lastTimeSyncAt.value = Date.now()
-
     return passedDays
   }
 
@@ -1788,7 +1480,6 @@ function normalizeGeneratedEnvironment(rawEnvironment = {}, fallbackPhase = null
       showConfirmNewGameModal.value = true
       return
     }
-
     await executeStartNewGame()
   }
 
@@ -1811,17 +1502,15 @@ function normalizeGeneratedEnvironment(rawEnvironment = {}, fallbackPhase = null
 
   async function restoreFromSave(saved) {
     applyGameState(saved)
-
     const passedDays = settleElapsedGameTime(saved)
     narrativeError.value = ''
     await ensureCurrentEnvironmentProfile({
-      force: !currentEnvironmentProfile.value,
+      force: passedDays > 0 || !currentEnvironmentProfile.value,
       previousEnvironmentDescription: currentEnvironmentProfile.value?.description || ''
     })
     refreshPatientQueue(true).catch(error => {
       console.warn('Synesthesia 读档后候诊队列刷新失败:', error)
     })
-
     if (passedDays > 0) {
       statusNotice.value = `离线期间过去了 ${passedDays} 个游戏日。`
     } else {
@@ -1831,17 +1520,13 @@ function normalizeGeneratedEnvironment(rawEnvironment = {}, fallbackPhase = null
 
   async function continueGame() {
     if (!hasSave.value) return
-
     try {
       const saved = await saveService.load(SCRIPT_ID)
-
       if (!saved) {
         hasSave.value = false
         return
       }
-
       await restoreFromSave(saved)
-
       if (phase.value === 'background_intro' || phase.value === 'title') {
         phase.value = 'hub'
         await saveProgress()
@@ -1854,7 +1539,6 @@ function normalizeGeneratedEnvironment(rawEnvironment = {}, fallbackPhase = null
 
   async function loadArchivedGame() {
     if (!archiveSaves.value.length) return
-
     try {
       const latestArchive = archiveSaves.value[0]
       const saved = await saveService.loadById(latestArchive.scriptId)
@@ -1873,19 +1557,16 @@ function normalizeGeneratedEnvironment(rawEnvironment = {}, fallbackPhase = null
         console.warn('Synesthesia 离开前保存失败:', error)
       }
     }
-
     router.push('/')
   }
 
   async function returnToHub() {
     invalidateConsultRequest()
     isGeneratingText.value = false
-
     if (consultEntryStage.value === 'questioning') {
       isConsultNarrativeReady.value = consultationHistory.value.length > 0
       isConsultOptionsReady.value = consultOptions.value.length > 0
     }
-
     if (consultEntryStage.value === 'entering_consult') {
       if (consultationHistory.value.length) {
         consultEntryStage.value = 'questioning'
@@ -1899,10 +1580,8 @@ function normalizeGeneratedEnvironment(rawEnvironment = {}, fallbackPhase = null
         isConsultOptionsReady.value = false
       }
     }
-
     phase.value = 'hub'
     statusNotice.value = ''
-
     try {
       await saveProgress()
     } catch (error) {
@@ -1922,7 +1601,6 @@ function normalizeGeneratedEnvironment(rawEnvironment = {}, fallbackPhase = null
       await saveProgress()
       return
     }
-
     phase.value = 'hub'
     await saveProgress()
   }
@@ -1933,7 +1611,6 @@ function normalizeGeneratedEnvironment(rawEnvironment = {}, fallbackPhase = null
       await saveProgress()
       return
     }
-
     returnToTitle()
   }
 
@@ -1964,30 +1641,20 @@ function normalizeGeneratedEnvironment(rawEnvironment = {}, fallbackPhase = null
 
   async function generateTrackingSheet(patient) {
     if (!patient) return null
-
-    const environment = currentEnvironmentProfile.value
-      ?? patient.environmentProfile
-
+    const environment = currentEnvironmentProfile.value ?? patient.environmentProfile
     if (!environment) {
       throw new Error('当前环境尚未生成完成。')
     }
-
     const parsedSheet = await generateStructuredReply(
-      buildTrackingSheetPrompt({
-        patient,
-        environment,
-        estimatedIncome: buildEstimatedIncome(patient)
-      }),
+      buildTrackingSheetPrompt({ patient, environment, estimatedIncome: buildEstimatedIncome(patient) }),
       '后台追踪表'
     )
-    return normalizeTrackingSheet(parsedSheet, patient, environment)
+    return normalizeTrackingSheet(parsedSheet, patient)
   }
 
   async function generateArrivalNarrative(requestToken = null) {
     if (!activePatient.value) return
-
     narrativeError.value = ''
-
     try {
       const prompt = buildArrivalPrompt({
         patient: activePatient.value,
@@ -1996,21 +1663,16 @@ function normalizeGeneratedEnvironment(rawEnvironment = {}, fallbackPhase = null
       })
       const reply = await aiService.generateReply(prompt, SYSTEM_PROMPT)
       const trimmed = reply?.trim()
-
       if (requestToken !== null && !isCurrentConsultRequest(requestToken)) {
         return
       }
-
       if (!trimmed) {
         throw new Error('AI 返回了空白内容。')
       }
-
       const safeText = sanitizeNarrativeReply(trimmed)
-
       if (!safeText) {
         throw new Error('AI 返回的到诊文本无效。')
       }
-
       consultationHistory.value = [
         makeHistoryEntry({
           speaker: 'narrator',
@@ -2029,35 +1691,28 @@ function normalizeGeneratedEnvironment(rawEnvironment = {}, fallbackPhase = null
 
   function pullDueRevisitPatient() {
     const dueIndex = revisitQueue.value.findIndex(item => Number(item.returnDay) <= gameDay.value)
-
     if (dueIndex === -1) return null
-
     const [patient] = revisitQueue.value.splice(dueIndex, 1)
     let revisitingPatient = clonePatient(patient)
-    const revisitEnvironmentPhase = pickRandomEnvironmentPhase(revisitingPatient.environmentPhase ?? environmentPhase.value)
     const revisitEnvironment = cloneEnvironmentProfile(currentEnvironmentProfile.value)
-
     if (!revisitEnvironment) {
       statusNotice.value = '当前环境尚未生成完成，暂时无法接待复诊患者。'
       revisitQueue.value = sortRevisitQueue([patient, ...revisitQueue.value])
       return null
     }
-
     revisitingPatient.visitCount = Number(revisitingPatient.visitCount || 1) + 1
-    revisitingPatient.environmentPhase = revisitEnvironment.phase ?? revisitEnvironmentPhase
+    revisitingPatient.environmentPhase = revisitEnvironment.phase ?? Date.now()
     revisitingPatient.environmentProfile = cloneEnvironmentProfile(revisitEnvironment)
     revisitingPatient.returnDay = null
     if (revisitingPatient.trackingSheet) {
       revisitingPatient.trackingSheet.patientProfile.visitCount = revisitingPatient.visitCount
     }
     revisitingPatient = applyRevisitMutation(revisitingPatient, revisitEnvironment, gameDay.value)
-
     return revisitingPatient
   }
 
   async function startPatientFlow() {
     if (isGeneratingText.value) return
-
     if (activePatient.value) {
       phase.value = 'consult'
       await saveProgress()
@@ -2066,18 +1721,14 @@ function normalizeGeneratedEnvironment(rawEnvironment = {}, fallbackPhase = null
       }
       return
     }
-
     resetCaseState()
-
     const revisitingPatient = pullDueRevisitPatient()
     const nextPatient = revisitingPatient || popWaitingPatient()
-
     if (!nextPatient) {
       statusNotice.value = '门外暂时没人。'
       await saveProgress()
       return
     }
-
     nextPatient.trackingSheet = revisitingPatient?.trackingSheet
       ? cloneTrackingSheet(revisitingPatient.trackingSheet)
       : null
@@ -2091,14 +1742,12 @@ function normalizeGeneratedEnvironment(rawEnvironment = {}, fallbackPhase = null
     isConsultNarrativeReady.value = false
     isConsultOptionsReady.value = false
     statusNotice.value = revisitingPatient ? `复诊患者 ${nextPatient.name} 已到访。` : '已有患者到访。'
-
     await saveProgress()
     await continueConsultFlow()
   }
 
   async function continueConsultFlow() {
     if (!activePatient.value || isGeneratingText.value || consultEntryStage.value !== 'pre_consult') return
-
     const requestToken = beginConsultRequest()
     consultEntryStage.value = 'entering_consult'
     consultStage.value = 'arrival_intro'
@@ -2107,29 +1756,22 @@ function normalizeGeneratedEnvironment(rawEnvironment = {}, fallbackPhase = null
     isGeneratingText.value = true
     narrativeError.value = ''
     await saveProgress()
-
     try {
       if (activePatient.value && !activePatient.value.trackingSheetReady) {
         const generatedTrackingSheet = await generateTrackingSheet(activePatient.value)
         if (!isCurrentConsultRequest(requestToken)) return
-
         activePatient.value.trackingSheet = generatedTrackingSheet
         activePatient.value.trackingSheetReady = true
       }
-
       await generateArrivalNarrative(requestToken)
       if (!isCurrentConsultRequest(requestToken)) return
-
       isConsultNarrativeReady.value = consultationHistory.value.length > 0
-
       if (!isConsultNarrativeReady.value) {
         consultEntryStage.value = 'pre_consult'
         return
       }
-
       await refreshConsultOptions(requestToken)
       if (!isCurrentConsultRequest(requestToken)) return
-
       isConsultOptionsReady.value = consultOptions.value.length > 0
       consultEntryStage.value = 'questioning'
       consultStage.value = 'questioning'
@@ -2151,6 +1793,12 @@ function normalizeGeneratedEnvironment(rawEnvironment = {}, fallbackPhase = null
   }
 
   async function refreshConsultOptions(requestToken = null) {
+    // 有待结算记录时不生成选项
+    if (pendingSettlementRecord.value) {
+      consultOptions.value = []
+      return []
+    }
+
     if (!activePatient.value) {
       consultOptions.value = []
       return consultOptions.value
@@ -2175,14 +1823,11 @@ function normalizeGeneratedEnvironment(rawEnvironment = {}, fallbackPhase = null
       if (requestToken !== null && !isCurrentConsultRequest(requestToken)) {
         return []
       }
-
       const parsedOptions = parseOptionPayload(reply, recentDoctorLines)
-
       if (parsedOptions.length > 0) {
         consultOptions.value = parsedOptions
         return consultOptions.value
       }
-
       throw new Error('AI 返回的问诊选项为空。')
     } catch (error) {
       if (requestToken !== null && !isCurrentConsultRequest(requestToken)) {
@@ -2197,7 +1842,6 @@ function normalizeGeneratedEnvironment(rawEnvironment = {}, fallbackPhase = null
 
   async function chooseConsultOption(option) {
     if (!activePatient.value || isGeneratingText.value) return
-
     const requestToken = beginConsultRequest()
     const historyBeforeChoice = [...consultationHistory.value]
     const doctorEntry = makeHistoryEntry({
@@ -2206,7 +1850,6 @@ function normalizeGeneratedEnvironment(rawEnvironment = {}, fallbackPhase = null
       text: option.doctorLine,
       type: 'question'
     })
-
     consultStage.value = 'questioning'
     consultEntryStage.value = 'questioning'
     isGeneratingText.value = true
@@ -2214,48 +1857,34 @@ function normalizeGeneratedEnvironment(rawEnvironment = {}, fallbackPhase = null
     isConsultNarrativeReady.value = false
     isConsultOptionsReady.value = false
     narrativeError.value = ''
-
     try {
       const prompt = buildConsultReplyPrompt({
         patient: activePatient.value,
         environment: activeEnvironment.value,
         trackingSheet: activePatient.value.trackingSheet,
         option,
-        consultationHistory: [
-          ...historyBeforeChoice,
-          doctorEntry
-        ],
+        consultationHistory: [...historyBeforeChoice, doctorEntry],
         consultNotes: consultNotes.value,
         diagnosisDraft: diagnosisDraft.value,
         confirmedDiagnosis: confirmedDiagnosis.value
       })
       const reply = await aiService.generateReply(prompt, SYSTEM_PROMPT)
       const trimmed = reply?.trim()
-
       if (!isCurrentConsultRequest(requestToken)) return
-
       if (!trimmed) {
         throw new Error('AI 返回了空白内容。')
       }
-
       const safeText = sanitizeNarrativeReply(trimmed)
-
       if (!safeText) {
         throw new Error('AI 返回的患者回复无效。')
       }
-
       const patientEntry = makeHistoryEntry({
         speaker: 'patient',
         label: activePatient.value.name,
         text: safeText,
         type: 'answer'
       })
-
-      consultationHistory.value = [
-        ...historyBeforeChoice,
-        doctorEntry,
-        patientEntry
-      ]
+      consultationHistory.value = [...historyBeforeChoice, doctorEntry, patientEntry]
       typingEntryId.value = patientEntry.id
       isConsultNarrativeReady.value = true
     } catch (error) {
@@ -2263,11 +1892,9 @@ function normalizeGeneratedEnvironment(rawEnvironment = {}, fallbackPhase = null
       narrativeError.value = normalizeNarrativeError(error)
     } finally {
       if (!isCurrentConsultRequest(requestToken)) return
-
       await refreshConsultOptions(requestToken)
       isConsultOptionsReady.value = consultOptions.value.length > 0
       isGeneratingText.value = false
-      typingEntryId.value = ''
       await saveProgress()
     }
   }
@@ -2275,13 +1902,11 @@ function normalizeGeneratedEnvironment(rawEnvironment = {}, fallbackPhase = null
   function toggleMappingTarget(mappingRef, sourceId, targetId) {
     const nextMapping = cloneMapping(mappingRef.value)
     const currentTargets = new Set(nextMapping[sourceId])
-
     if (currentTargets.has(targetId)) {
       nextMapping[sourceId] = nextMapping[sourceId].filter(item => item !== targetId)
     } else {
       nextMapping[sourceId] = [...nextMapping[sourceId], targetId]
     }
-
     mappingRef.value = nextMapping
     scheduleProgressSave()
   }
@@ -2301,21 +1926,17 @@ function normalizeGeneratedEnvironment(rawEnvironment = {}, fallbackPhase = null
 
   async function submitDiagnosis() {
     if (!activePatient.value || diagnosisUsesLeft.value <= 0 || isEmptyMapping(diagnosisDraft.value)) return
-
     updateDiagnosisUses(diagnosisUsesLeft.value - 1)
-
     const referenceMappings = activePatient.value.trackingSheet?.unresolvedMappings ?? activePatient.value.hiddenMappings
     const matched = intersectMappings(diagnosisDraft.value, referenceMappings)
     const previousConfirmed = cloneMapping(confirmedDiagnosis.value)
     const nextConfirmed = mergeMappings(previousConfirmed, matched)
     const newlyConfirmed = subtractMappings(nextConfirmed, previousConfirmed)
-
     confirmedDiagnosis.value = nextConfirmed
     treatmentDraft.value = mergeMappings(treatmentDraft.value, nextConfirmed)
     if (activePatient.value.trackingSheet) {
       activePatient.value.trackingSheet.confirmedMappings = cloneMapping(nextConfirmed)
     }
-
     consultationHistory.value = [
       ...consultationHistory.value,
       makeHistoryEntry({
@@ -2327,28 +1948,23 @@ function normalizeGeneratedEnvironment(rawEnvironment = {}, fallbackPhase = null
         type: 'diagnosis'
       })
     ]
-
     statusNotice.value = countMappings(newlyConfirmed) > 0
       ? `诊断仪确认了 ${countMappings(newlyConfirmed)} 条映射。`
       : '本次诊断没有新增确认结果。'
-
     await saveProgress()
   }
 
   async function openTreatmentScreen() {
     if (!activePatient.value || treatmentUsesLeft.value <= 0) return
-
     const referenceMappings = activePatient.value.trackingSheet?.unresolvedMappings ?? activePatient.value.hiddenMappings
     const canBlindTreatment = diagnosisUsesLeft.value <= 0
     const entryMappings = canBlindTreatment ? referenceMappings : confirmedDiagnosis.value
     const treatableMappings = filterTreatableMappings(referenceMappings)
-
     if (isEmptyMapping(entryMappings) || isEmptyMapping(treatableMappings)) {
       statusNotice.value = '当前没有治疗仪可以处理的异常，先升级设备后再治疗。'
       await saveProgress()
       return
     }
-
     const availableDraft = canBlindTreatment
       ? treatableMappings
       : intersectMappings(treatableMappings, confirmedDiagnosis.value)
@@ -2366,10 +1982,8 @@ function normalizeGeneratedEnvironment(rawEnvironment = {}, fallbackPhase = null
 
   async function generateTreatmentFeedback({ resolvedMappings, remainingMappings, outcome }) {
     if (!activePatient.value) return
-
     isGeneratingText.value = true
     narrativeError.value = ''
-
     try {
       const prompt = buildTreatmentFeedbackPrompt({
         patient: activePatient.value,
@@ -2383,11 +1997,9 @@ function normalizeGeneratedEnvironment(rawEnvironment = {}, fallbackPhase = null
       const reply = await aiService.generateReply(prompt, SYSTEM_PROMPT)
       const trimmed = reply?.trim()
       const safeText = sanitizeNarrativeReply(trimmed)
-
       if (!safeText) {
         throw new Error('AI 返回了空白内容。')
       }
-
       patientFeedbackText.value = safeText
     } catch (error) {
       narrativeError.value = normalizeNarrativeError(error)
@@ -2399,10 +2011,8 @@ function normalizeGeneratedEnvironment(rawEnvironment = {}, fallbackPhase = null
 
   function appendTreatmentFeedbackToHistory(feedbackText) {
     if (!activePatient.value) return false
-
     const safeText = sanitizeNarrativeReply(feedbackText)
     if (!safeText) return false
-
     const lastEntry = consultationHistory.value[consultationHistory.value.length - 1]
     if (
       lastEntry?.speaker === 'patient'
@@ -2411,7 +2021,6 @@ function normalizeGeneratedEnvironment(rawEnvironment = {}, fallbackPhase = null
     ) {
       return false
     }
-
     consultationHistory.value = [
       ...consultationHistory.value,
       makeHistoryEntry({
@@ -2421,10 +2030,45 @@ function normalizeGeneratedEnvironment(rawEnvironment = {}, fallbackPhase = null
         type: 'treatment_feedback'
       })
     ]
-
     return true
   }
 
+  function appendNarrationToHistory(text, type = 'narration') {
+    const safeText = sanitizeNarrativeReply(text)
+    if (!safeText) return false
+    const lastEntry = consultationHistory.value[consultationHistory.value.length - 1]
+    if (
+      lastEntry?.speaker === 'narrator'
+      && lastEntry?.type === type
+      && lastEntry?.text === safeText
+    ) {
+      return false
+    }
+    consultationHistory.value = [
+      ...consultationHistory.value,
+      makeHistoryEntry({
+        speaker: 'narrator',
+        label: '旁白',
+        text: safeText,
+        type
+      })
+    ]
+    return true
+  }
+
+  function moveToConsultAfterTreatment() {
+    phase.value = 'consult'
+    consultStage.value = 'questioning'
+    consultEntryStage.value = 'questioning'
+    consultOptions.value = []
+    isConsultOptionsReady.value = false
+    isConsultNarrativeReady.value = consultationHistory.value.length > 0
+  }
+
+  // ================================================================
+  // submitTreatment：治疗完成后立即设置 pendingSettlementRecord
+  // archiveStory 移到 advanceFromFeedback 时生成
+  // ================================================================
   async function submitTreatment() {
     if (!activePatient.value || isGeneratingText.value || isEmptyMapping(treatmentDraft.value) || treatmentUsesLeft.value <= 0) return
 
@@ -2442,16 +2086,13 @@ function normalizeGeneratedEnvironment(rawEnvironment = {}, fallbackPhase = null
     const settlementItems = buildSettlementItems(resolvedMappings, equipmentOverview.value)
     const settlementTotal = settlementItems.reduce((sum, item) => sum + item.fee, 0)
     const debtRecord = activePatient.value?.forceDebt
-  ? createForcedDebtRecord(activePatient.value, settlementTotal)
-  : maybeCreateDebtRecord(activePatient.value, settlementTotal)
+      ? createForcedDebtRecord(activePatient.value, settlementTotal)
+      : maybeCreateDebtRecord(activePatient.value, settlementTotal)
 
     const collectedTotal = debtRecord ? 0 : settlementTotal
     updateTreatmentUses(treatmentUsesLeft.value - 1)
 
-    activePatient.value = {
-      ...activePatient.value,
-      hiddenMappings: remainingMappings
-    }
+    activePatient.value = { ...activePatient.value, hiddenMappings: remainingMappings }
     if (activePatient.value.trackingSheet) {
       activePatient.value.trackingSheet.unresolvedMappings = cloneMapping(remainingMappings)
       activePatient.value.trackingSheet.confirmedMappings = intersectMappings(confirmedDiagnosis.value, remainingMappings)
@@ -2481,31 +2122,37 @@ function normalizeGeneratedEnvironment(rawEnvironment = {}, fallbackPhase = null
     confirmedDiagnosis.value = intersectMappings(confirmedDiagnosis.value, remainingMappings)
     treatmentDraft.value = cloneMapping(confirmedDiagnosis.value)
     patientFeedbackOutcome.value = 'partial'
-    phase.value = 'patient_feedback'
+
+    // 关掉病历抽屉，回到问诊页
+    moveToConsultAfterTreatment()
+    showNotesDrawer.value = false
+    pendingSettlementRecord.value = null
+    showSettlementModal.value = false
+
     if (!debtRecord) {
       credits.value += settlementTotal
       earnedCreditsTotal.value += settlementTotal
     }
 
+    // 判断结果
     if (isEmptyMapping(remainingMappings)) {
       patientFeedbackOutcome.value = 'complete'
       patientCount.value += 1
+      // 立即清空选项，防止重试按钮出现
+      consultOptions.value = []
+      isConsultOptionsReady.value = false
     } else if (treatmentUsesLeft.value <= 0) {
       patientFeedbackOutcome.value = 'revisit'
+      // 立即清空选项
+      consultOptions.value = []
+      isConsultOptionsReady.value = false
       const returnDay = gameDay.value + REVISIT_DELAY_DAYS
-      const revisitPatient = {
-        ...clonePatient(activePatient.value),
-        returnDay
-      }
-
-      activePatient.value = {
-        ...activePatient.value,
-        returnDay
-      }
-
+      const revisitPatient = { ...clonePatient(activePatient.value), returnDay }
+      activePatient.value = { ...activePatient.value, returnDay }
       revisitQueue.value = sortRevisitQueue([...revisitQueue.value, revisitPatient])
     }
 
+    // 生成治疗反馈
     await generateTreatmentFeedback({
       resolvedMappings,
       remainingMappings,
@@ -2514,84 +2161,103 @@ function normalizeGeneratedEnvironment(rawEnvironment = {}, fallbackPhase = null
 
     appendTreatmentFeedbackToHistory(patientFeedbackText.value)
 
-    if (patientFeedbackOutcome.value === 'complete') {
-      const archiveStory = await generateArchiveStory()
-      const record = buildCompletedCaseRecord('complete', {
+    if (patientFeedbackOutcome.value === 'complete' || patientFeedbackOutcome.value === 'revisit') {
+      // 立即建好记录，archiveStory 留空，点击结算按钮时再生成
+      const record = buildCompletedCaseRecord(patientFeedbackOutcome.value, {
         settlementItems,
         settlementTotal,
         collectedTotal,
         paymentMode: debtRecord ? 'credit' : 'paid',
         feedbackText: patientFeedbackText.value,
         closingNarrative: patientFeedbackText.value,
-        archiveStory
+        archiveStory: ''
       })
       pushCompletedCase(record)
       pendingSettlementRecord.value = record
-    } else if (patientFeedbackOutcome.value === 'revisit') {
-      const archiveStory = await generateArchiveStory()
-      const record = buildCompletedCaseRecord('revisit', {
-        settlementItems,
-        settlementTotal,
-        collectedTotal,
-        paymentMode: debtRecord ? 'credit' : 'paid',
-        feedbackText: patientFeedbackText.value,
-        closingNarrative: patientFeedbackText.value,
-        archiveStory
-      })
-      pushCompletedCase(record)
-      pendingSettlementRecord.value = record
+      statusNotice.value = patientFeedbackOutcome.value === 'complete'
+        ? '治疗已完成，点击进入结算。'
+        : `已预约第 ${activePatient.value?.returnDay} 天后的复诊，点击进入结算。`
+    } else {
+      // partial：继续问诊
+      patientFeedbackText.value = ''
+      statusNotice.value = '患者已经给出治疗后的反应，继续问诊后再决定下一轮治疗。'
+      try {
+        isGeneratingText.value = true
+        narrativeError.value = ''
+        const requestToken = beginConsultRequest()
+        await refreshConsultOptions(requestToken)
+        if (isCurrentConsultRequest(requestToken)) {
+          isConsultOptionsReady.value = consultOptions.value.length > 0
+        }
+      } catch (error) {
+        narrativeError.value = normalizeNarrativeError(error)
+      } finally {
+        isGeneratingText.value = false
+      }
     }
 
     await saveProgress()
   }
 
+  // ================================================================
+  // advanceFromFeedback：点击结算按钮时生成 archiveStory，完成后跳转
+  // ================================================================
   async function advanceFromFeedback() {
     await checkPendingDebts()
-    if (patientFeedbackOutcome.value === 'partial') {
-      appendTreatmentFeedbackToHistory(patientFeedbackText.value)
-      phase.value = 'consult'
-      consultStage.value = 'questioning'
-      consultEntryStage.value = 'questioning'
-      patientFeedbackText.value = ''
-      consultOptions.value = []
-      isConsultOptionsReady.value = false
-      isConsultNarrativeReady.value = consultationHistory.value.length > 0
-      isGeneratingText.value = true
-      narrativeError.value = ''
-      statusNotice.value = '患者已经给出治疗后的反应，继续问诊后再决定下一轮治疗。'
+    if (!pendingSettlementRecord.value) return
 
-      try {
-        await refreshConsultOptions()
-        isConsultOptionsReady.value = consultOptions.value.length > 0
-      } finally {
-        isGeneratingText.value = false
-        await saveProgress()
+    // 进入加载状态
+    isGeneratingText.value = true
+    narrativeError.value = ''
+
+    try {
+      // 生成结尾故事
+      const archiveStory = await generateArchiveStory()
+
+      if (archiveStory) {
+        // 写入对话记录
+        appendNarrationToHistory(archiveStory, 'closing_story')
+
+        // 更新 pendingSettlementRecord 里的 archiveStory
+        const updatedRecord = {
+          ...pendingSettlementRecord.value,
+          archiveStory,
+          closingNarrative: archiveStory,
+          // 同步更新 consultationHistory 快照
+          consultationHistory: consultationHistory.value.map(item => ({ ...item }))
+        }
+        pendingSettlementRecord.value = updatedRecord
+
+        // 同步更新 completedCases 里对应的记录
+        completedCases.value = completedCases.value.map(item =>
+          item.id === updatedRecord.id
+            ? { ...item, archiveStory, closingNarrative: archiveStory, consultationHistory: updatedRecord.consultationHistory }
+            : item
+        )
       }
-      return
+    } catch (error) {
+      console.warn('Synesthesia 结尾故事生成失败:', error)
+      // 生成失败不阻断流程，继续进入结算
+    } finally {
+      isGeneratingText.value = false
     }
 
     phase.value = 'settlement'
-    showSettlementModal.value = false
     await saveProgress()
   }
 
   function syncResponsiveState() {
     if (typeof window === 'undefined') return
-
     const mobile = window.innerWidth <= 900
     const previousMobile = isMobileLayout.value
-
     isMobileLayout.value = mobile
-
     if (mobile === previousMobile) return
-
     if (mobile) {
       equipmentExpanded.value = false
       snapshotExpanded.value = false
       showNotesDrawer.value = false
       return
     }
-
     equipmentExpanded.value = true
     snapshotExpanded.value = true
     showNotesDrawer.value = true
@@ -2609,10 +2275,8 @@ function normalizeGeneratedEnvironment(rawEnvironment = {}, fallbackPhase = null
       showUpgradeFailureModal.value = true
       return
     }
-
     equipmentOverview.value = equipmentOverview.value.map(item => {
       if (item.id !== sourceId) return item
-
       const nextLevel = Math.min(4, getEquipmentLevel(equipmentOverview.value, sourceId, targetId) + 1)
       return {
         ...item,
@@ -2651,13 +2315,9 @@ function normalizeGeneratedEnvironment(rawEnvironment = {}, fallbackPhase = null
     return currentEnvironmentProfile.value ?? null
   })
 
-  const currentEnvironmentName = computed(() => {
-    if (isEnvironmentLoading.value && !currentEnvironmentProfile.value) return '正在检测环境数据'
-    return currentEnvironment.value?.name || '环境信息暂不可用'
-  })
-
   const currentEnvironmentDescription = computed(() => {
     if (isEnvironmentLoading.value && !currentEnvironmentProfile.value) return '正在检测环境数据'
+    if (environmentGenerationError.value) return `环境生成失败：${environmentGenerationError.value}`
     return currentEnvironment.value?.description || '环境信息暂不可用'
   })
 
@@ -2675,26 +2335,10 @@ function normalizeGeneratedEnvironment(rawEnvironment = {}, fallbackPhase = null
 
   const hubStats = computed(() => {
     return [
-      {
-        label: '当前信用点',
-        value: `${credits.value}`,
-        meta: '本轮先保留字段，不接入经营结算'
-      },
-      {
-        label: '已完成接待',
-        value: `${patientCount.value}`,
-        meta: '仅在完全治愈后增加'
-      },
-      {
-        label: '当前游戏日',
-        value: `第 ${gameDay.value} 天`,
-        meta: currentEnvironmentName.value
-      },
-      {
-        label: '待复诊患者',
-        value: `${pendingRevisitCount.value}`,
-        meta: dueRevisitCount.value > 0 ? `已有 ${dueRevisitCount.value} 名患者到期` : '暂无到期复诊'
-      }
+      { label: '当前信用点', value: `${credits.value}`, meta: '本轮先保留字段，不接入经营结算' },
+      { label: '已完成接待', value: `${patientCount.value}`, meta: '仅在完全治愈后增加' },
+      { label: '当前游戏日', value: `第 ${gameDay.value} 天`, meta: currentEnvironmentDescription.value },
+      { label: '待复诊患者', value: `${pendingRevisitCount.value}`, meta: dueRevisitCount.value > 0 ? `已有 ${dueRevisitCount.value} 名患者到期` : '暂无到期复诊' }
     ]
   })
 
@@ -2707,6 +2351,7 @@ function normalizeGeneratedEnvironment(rawEnvironment = {}, fallbackPhase = null
       moduleCount: `${item.modules.length} 个映射模块`
     }))
   })
+
   const equipmentModuleRows = computed(() => {
     return equipmentOverview.value.map(item => ({
       id: item.id,
@@ -2720,25 +2365,32 @@ function normalizeGeneratedEnvironment(rawEnvironment = {}, fallbackPhase = null
       }))
     }))
   })
+
   const waitingPatientCount = computed(() => waitingPatients.value.length)
+
   const canStartPatientFlow = computed(() => (
     Boolean(activePatient.value)
     || waitingPatients.value.length > 0
     || revisitQueue.value.some(item => Number(item.returnDay) <= gameDay.value)
   ))
+
   const patientArrivalStatusText = computed(() => {
     if (canStartPatientFlow.value) return '已有患者到访。'
     if (isEnvironmentLoading.value) return '正在检测环境数据。'
+    if (environmentGenerationError.value) return '环境生成失败，请重新开始。'
     if (isQueueGenerating.value) return '正在整理候诊档案。'
     return '门外暂时没人。'
   })
+
   const patientArrivalActionLabel = computed(() => {
     if (activePatient.value) return '进入诊断室'
     if (canStartPatientFlow.value) return '开始就诊'
     if (isEnvironmentLoading.value) return '正在检测环境数据'
+    if (environmentGenerationError.value) return '环境生成失败'
     if (isQueueGenerating.value) return '正在生成患者'
     return '门外暂时没人'
   })
+
   const timeProgressPercent = computed(() => {
     const elapsed = Math.max(0, nowTick.value - lastTimeSyncAt.value)
     return Math.min(100, (elapsed / REAL_MS_PER_GAME_DAY) * 100)
@@ -2748,6 +2400,7 @@ function normalizeGeneratedEnvironment(rawEnvironment = {}, fallbackPhase = null
   const activeTrackingSheet = computed(() => activePatient.value?.trackingSheet ?? null)
   const confirmedDiagnosisSummary = computed(() => formatMappingSummary(confirmedDiagnosis.value))
   const treatmentDraftSummary = computed(() => formatMappingSummary(treatmentDraft.value))
+
   const canShowConsultChoices = computed(() => {
     return phase.value === 'consult'
       && consultEntryStage.value === 'questioning'
@@ -2755,6 +2408,7 @@ function normalizeGeneratedEnvironment(rawEnvironment = {}, fallbackPhase = null
       && isConsultOptionsReady.value
       && !isGeneratingText.value
   })
+
   const confirmedDiagnosisDetails = computed(() => {
     return getMappingPairs(confirmedDiagnosis.value).map(pair => ({
       ...pair,
@@ -2766,23 +2420,19 @@ function normalizeGeneratedEnvironment(rawEnvironment = {}, fallbackPhase = null
   function isTreatmentOptionEnabled(sourceId, targetId) {
     const confirmed = confirmedDiagnosis.value?.[sourceId]?.includes(targetId)
     const allowBlindTreatment = diagnosisUsesLeft.value <= 0
-
     const symptomLevel = getMappingLevel(activeTrackingSheet.value?.mappingLevels, sourceId, targetId)
     const equipmentLevel = getEquipmentLevel(equipmentOverview.value, sourceId, targetId)
-
     if (!confirmed && !allowBlindTreatment) return false
     return equipmentLevel >= symptomLevel
   }
 
   function filterTreatableMappings(mapping) {
     const next = createEmptyMapping()
-
     SENSE_CONFIGS.forEach(item => {
       next[item.id] = normalizeTargets(item.id, mapping?.[item.id]).filter(targetId => {
         return isTreatmentOptionEnabled(item.id, targetId)
       })
     })
-
     return next
   }
 
@@ -2791,29 +2441,16 @@ function normalizeGeneratedEnvironment(rawEnvironment = {}, fallbackPhase = null
     const equipmentLevel = getEquipmentLevel(equipmentOverview.value, sourceId, targetId)
     const confirmed = confirmedDiagnosis.value?.[sourceId]?.includes(targetId)
     const allowBlindTreatment = diagnosisUsesLeft.value <= 0
-
     if (!confirmed && !allowBlindTreatment) {
-      return {
-        level: symptomLevel,
-        disabled: true,
-        reason: '需先由诊断仪确认'
-      }
+      return { level: symptomLevel, disabled: true, reason: '需先由诊断仪确认' }
     }
-
     if (equipmentLevel < symptomLevel) {
-      return {
-        level: symptomLevel,
-        disabled: true,
-        reason: `需要 Lv.${symptomLevel} 治疗仪`
-      }
+      return { level: symptomLevel, disabled: true, reason: `需要 Lv.${symptomLevel} 治疗仪` }
     }
-
     return {
       level: symptomLevel,
       disabled: false,
-      reason: confirmed
-        ? `可由 Lv.${equipmentLevel} 治疗仪处理`
-        : `可直接尝试治疗，结果需自行判断`
+      reason: confirmed ? `可由 Lv.${equipmentLevel} 治疗仪处理` : `可直接尝试治疗，结果需自行判断`
     }
   }
 
@@ -2836,58 +2473,47 @@ function normalizeGeneratedEnvironment(rawEnvironment = {}, fallbackPhase = null
   })
 
   const latestCompletedCase = computed(() => completedCases.value[0] ?? null)
-  const currentSettlementRecord = computed(() => pendingSettlementRecord.value ?? latestCompletedCase.value ?? null)
+  const currentSettlementRecord = computed(() => pendingSettlementRecord.value ?? null)
   const archiveCases = computed(() => completedCases.value)
   const selectedArchiveCase = computed(() => {
     if (!archiveCases.value.length) return null
     return archiveCases.value.find(item => item.id === selectedArchiveCaseId.value) ?? archiveCases.value[0]
   })
+
   const settlementLevelSummary = computed(() => {
     const items = currentSettlementRecord.value?.settlementItems ?? []
     const grouped = items.reduce((acc, item) => {
       const level = Number(item.level || 1)
       const label = String(item.label || '').trim()
       const key = `${label}__${level}`
-
       if (!label) return acc
-
-      if (!acc[key]) {
-        acc[key] = {
-          level,
-          label,
-          count: 0
-        }
-      }
-
+      if (!acc[key]) { acc[key] = { level, label, count: 0 } }
       acc[key].count += 1
       return acc
     }, {})
-
     return Object.values(grouped)
       .sort((a, b) => a.level - b.level || a.label.localeCompare(b.label, 'zh-Hans-CN'))
       .map(item => ({
         level: item.level,
         count: item.count,
-        label: item.count > 1
-          ? `${item.label} · Lv.${item.level} × ${item.count}`
-          : `${item.label} · Lv.${item.level}`
+        label: item.count > 1 ? `${item.label} · Lv.${item.level} × ${item.count}` : `${item.label} · Lv.${item.level}`
       }))
   })
+
   const curedArchives = computed(() => completedCases.value.filter(item => item.outcome === 'complete'))
   const totalEarnings = computed(() => earnedCreditsTotal.value)
   const totalCuredCount = computed(() => completedCases.value.filter(item => item.outcome === 'complete').length)
   const totalEquipmentLevel = computed(() => equipmentOverview.value.reduce((sum, item) => sum + Number(item.level || 0), 0))
   const unreadPhoneCount = computed(() => phoneMessages.value.filter(item => !item.read).length)
   const pendingDebtCount = computed(() => debtLedger.value.filter(item => item.status === 'pending').length)
+
   const latestArchiveLabel = computed(() => {
     if (!archiveSaves.value.length) return '暂无可读取的归档'
     const latest = archiveSaves.value[0]
     return latest?.saveTime ? `归档于 ${latest.saveTime.slice(0, 16).replace('T', ' ')}` : '读取最近一次归档'
   })
 
-  const currentFeedbackActionLabel = computed(() => {
-    return patientFeedbackOutcome.value === 'partial' ? '继续问诊' : '进入结算'
-  })
+  const currentFeedbackActionLabel = computed(() => '进入结算')
 
   const feedbackOutcomeLabel = computed(() => {
     if (patientFeedbackOutcome.value === 'complete') return '本次治疗完成'
@@ -2897,7 +2523,6 @@ function normalizeGeneratedEnvironment(rawEnvironment = {}, fallbackPhase = null
 
   const activePatientSummary = computed(() => {
     if (!activePatient.value) return ''
-
     return `${activePatient.value.job} · 第 ${activePatient.value.visitCount} 次来诊`
   })
 
@@ -2917,14 +2542,8 @@ function normalizeGeneratedEnvironment(rawEnvironment = {}, fallbackPhase = null
 
   onBeforeUnmount(() => {
     window.removeEventListener('resize', syncResponsiveState)
-
-    if (autosaveTimer) {
-      clearTimeout(autosaveTimer)
-    }
-
-    if (queueTimer) {
-      clearInterval(queueTimer)
-    }
+    if (autosaveTimer) { clearTimeout(autosaveTimer) }
+    if (queueTimer) { clearInterval(queueTimer) }
   })
 
   return {
@@ -2947,6 +2566,7 @@ function normalizeGeneratedEnvironment(rawEnvironment = {}, fallbackPhase = null
     isGeneratingText,
     typingEntryId,
     isEnvironmentLoading,
+    isQueueGenerating,
     statusNotice,
     narrativeError,
     patientFeedbackText,
@@ -2965,7 +2585,8 @@ function normalizeGeneratedEnvironment(rawEnvironment = {}, fallbackPhase = null
     isConsultOptionsReady,
     diagnosisDraft,
     confirmedDiagnosis,
-    diagnosisUsesLeft,
+    diagnosisAttemptsLeft: diagnosisUsesLeft,
+    diagnosisAttemptsTotal: DIAGNOSIS_LIMIT,
     treatmentDraft,
     revisitQueue,
     completedCases,
@@ -2974,7 +2595,6 @@ function normalizeGeneratedEnvironment(rawEnvironment = {}, fallbackPhase = null
     debtLedger,
     currentBackgroundPage,
     currentEnvironment,
-    currentEnvironmentName,
     currentEnvironmentDescription,
     activeEnvironment,
     pendingRevisitCount,
@@ -3055,6 +2675,7 @@ function normalizeGeneratedEnvironment(rawEnvironment = {}, fallbackPhase = null
     toggleEquipmentSection,
     closeUpgradeFailureModal,
     toggleSnapshotSection,
+    refreshConsultOptions,
     toggleNotesDrawer
   }
 }

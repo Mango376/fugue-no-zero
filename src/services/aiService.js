@@ -2,6 +2,8 @@ import axios from 'axios'
 import db from '../db/gameDB'
 import { MujianSdk } from '@mujian/js-sdk'
 
+const MUJIAN_CHAT_TIMEOUT_MS = 300000
+
 class AIService {
   constructor() {
     this._mujian = null
@@ -33,7 +35,7 @@ class AIService {
         await Promise.race([
           this._mujian.init(),
           new Promise((_, reject) =>
-            setTimeout(() => reject(new Error('SDK init timeout')), 15000)
+            setTimeout(() => reject(new Error('SDK init timeout')), 150000)
           )
         ])
         this._isMujian = true
@@ -145,15 +147,29 @@ class AIService {
 
     return new Promise((resolve, reject) => {
       let fullContent = ''
+      let settled = false
+      const settle = (handler, value) => {
+        if (settled) return
+        settled = true
+        clearTimeout(timeoutId)
+        handler(value)
+      }
+      const timeoutId = setTimeout(() => {
+        ctrl.abort()
+        settle(reject, new Error(`幕间 AI 响应超时（>${MUJIAN_CHAT_TIMEOUT_MS / 1000}s）`))
+      }, MUJIAN_CHAT_TIMEOUT_MS)
+
       this._mujian.ai.chat.complete(
         query,
         (res) => {
-          fullContent = res.fullContent
-          if (res.isFinished) resolve(fullContent)
+          fullContent = res.fullContent || fullContent
+          if (res.isFinished) settle(resolve, fullContent)
         },
         ctrl.signal,
         { parseContent: true }
-      ).catch(reject)
+      ).catch(error => {
+        settle(reject, error)
+      })
     })
   }
 

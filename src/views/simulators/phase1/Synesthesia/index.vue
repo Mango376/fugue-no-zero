@@ -117,24 +117,19 @@
         </div>
 
         <div class="hub-card hub-environment-card">
-  <div class="hub-env-label">当前环境</div>
-
-  <!-- 加载中 -->
-  <template v-if="isEnvironmentLoading && !currentEnvironment?.description">
-    <div class="env-loading">
-      <div class="env-loading-bars">
-        <span></span><span></span><span></span><span></span><span></span>
-      </div>
-      <div class="env-loading-text">正在感知环境……</div>
-    </div>
-  </template>
-
-  <!-- 已加载 -->
-  <template v-else>
-    <div class="hub-env-desc">{{ currentEnvironmentDescription }}</div>
-  </template>
-</div>
-
+          <div class="hub-env-label">当前环境</div>
+          <template v-if="isEnvironmentLoading && !currentEnvironment?.description">
+            <div class="env-loading">
+              <div class="env-loading-bars">
+                <span></span><span></span><span></span><span></span><span></span>
+              </div>
+              <div class="env-loading-text">正在感知环境……</div>
+            </div>
+          </template>
+          <template v-else>
+            <div class="hub-env-desc">{{ currentEnvironmentDescription }}</div>
+          </template>
+        </div>
 
         <div class="hub-menu-list">
           <div
@@ -185,11 +180,13 @@
             </div>
           </div>
 
-          <div v-if="archiveCases.length" class="hub-menu-item" @click="openArchivePanel()">
+          <div class="hub-menu-item" @click="openPatientRecords">
             <div class="menu-icon-wrap">📋</div>
             <div class="menu-content">
-              <div class="menu-title">患者档案库</div>
-              <div class="menu-sub">已归档 {{ archiveCases.length }} 份病例记录</div>
+              <div class="menu-title">患者档案</div>
+              <div class="menu-sub">
+                {{ archiveCases.length ? `已归档 ${archiveCases.length} 份病例记录` : '查看历次诊疗的患者记录' }}
+              </div>
             </div>
             <div class="menu-arrow">›</div>
           </div>
@@ -197,8 +194,8 @@
           <div class="hub-menu-item" @click="toggleSnapshotSection">
             <div class="menu-icon-wrap">◎</div>
             <div class="menu-content">
-              <div class="menu-title">系统快照</div>
-              <div class="menu-sub">查看当前版本已接入的主流程节点</div>
+              <div class="menu-title">诊断流程</div>
+              <div class="menu-sub">针对"共觉"的诊断治疗流程</div>
             </div>
             <div class="menu-arrow">{{ snapshotExpanded ? '▾' : '›' }}</div>
           </div>
@@ -218,15 +215,147 @@
     </section>
     </Transition>
 
+    <!-- ========== 患者档案页 ========== -->
+    <Transition name="fade">
+    <section v-if="phase === 'patient_records'" class="screen screen-patient-records">
+
+      <header class="phase-topbar">
+        <button class="back-btn" @click="closePatientRecords">
+          ‹ {{ localSelectedArchive ? '返回列表' : '返回' }}
+        </button>
+        <div class="phase-topbar-center">
+          <div class="phase-title">
+            {{ localSelectedArchive ? localSelectedArchive.name : '患者档案' }}
+          </div>
+          <div v-if="localSelectedArchive" class="phase-sub">
+            {{ localSelectedArchive.job }}
+          </div>
+        </div>
+      </header>
+
+      <!-- 列表视图 -->
+      <div v-if="!localSelectedArchive" class="pr-scroll-area">
+        <div class="pr-list-header">患者档案 / PATIENT RECORDS</div>
+
+        <div v-if="!archiveCases.length" class="pr-empty">尚无诊断记录</div>
+
+        <div class="pr-list">
+          <div
+            v-for="(archive, idx) in [...archiveCases].reverse()"
+            :key="archive.id || idx"
+            class="pr-card"
+            @click="localSelectedArchive = archive"
+          >
+            <div class="pr-card-top">
+              <div class="pr-outcome-tag" :class="archive.outcome">
+                {{ archive.outcomeLabel || '已归档' }}
+              </div>
+              <div class="pr-card-day">第 {{ archive.gameDay }} 天</div>
+            </div>
+            <div class="pr-card-name">{{ archive.name }}</div>
+            <div class="pr-card-meta">
+              <span>{{ archive.job }}</span>
+              <span class="pr-dot">·</span>
+              <span>第 {{ archive.visitCount || 1 }} 次来诊</span>
+              <span class="pr-dot">·</span>
+              <span class="pr-income">+{{ archive.settlementTotal || archive.collectedTotal || 0 }} 信用点</span>
+            </div>
+            <div class="pr-card-divider"></div>
+            <div class="pr-card-preview">
+              {{ archive.summary || archive.trackingSheet?.symptomSummary || '暂无摘要' }}
+            </div>
+            <div class="pr-card-enter">查看详情 ›</div>
+          </div>
+        </div>
+      </div>
+
+      <!-- 详情视图 -->
+      <div v-if="localSelectedArchive" class="pr-scroll-area">
+
+        <div class="pr-detail-header">
+          <div class="pr-detail-name">{{ localSelectedArchive.name }}</div>
+          <div class="pr-detail-meta">
+            <span>{{ localSelectedArchive.job }}</span>
+            <span class="pr-dot">·</span>
+            <span>{{ formatArchiveDate(localSelectedArchive) }}</span>
+            <span class="pr-dot">·</span>
+            <span>第 {{ localSelectedArchive.visitCount || 1 }} 次来诊</span>
+          </div>
+          <div class="pr-detail-income">
+            收入 {{ localSelectedArchive.settlementTotal || localSelectedArchive.collectedTotal || 0 }} 信用点
+          </div>
+        </div>
+
+        <template v-if="localSelectedArchive.coreConcern || localSelectedArchive.trackingSheet?.coreConcern">
+          <div class="pr-section-title">核心牵挂</div>
+          <div class="pr-text-card">
+            {{ localSelectedArchive.trackingSheet?.coreConcern || localSelectedArchive.coreConcern }}
+          </div>
+        </template>
+
+        <template v-if="localSelectedArchive.summary || localSelectedArchive.trackingSheet?.symptomSummary">
+          <div class="pr-section-title">病例摘要</div>
+          <div class="pr-text-card">
+            {{ localSelectedArchive.trackingSheet?.symptomSummary || localSelectedArchive.summary }}
+          </div>
+        </template>
+
+        <template v-if="localSelectedArchive.archiveStory || (localSelectedArchive.closingNarrative && localSelectedArchive.closingNarrative !== localSelectedArchive.feedbackText)">
+  <div class="pr-section-title">背景档案</div>
+  <div class="pr-text-card pr-story">
+    <p
+      v-for="(para, i) in splitParagraphs(localSelectedArchive.archiveStory || localSelectedArchive.closingNarrative)"
+      :key="i"
+    >{{ para }}</p>
+  </div>
+</template>
+
+        <template v-if="localSelectedArchive.consultationHistory?.length">
+          <div class="pr-section-title">问诊记录</div>
+          <div class="pr-consult-list">
+            <div
+              v-for="(entry, i) in localSelectedArchive.consultationHistory"
+              :key="entry.id || i"
+              class="pr-consult-entry"
+              :class="`entry-${entry.speaker}`"
+            >
+              <div class="pr-entry-label">第 {{ i + 1 }} 条 · {{ getArchiveEntryTypeLabel(entry) }}</div>
+              <div class="pr-entry-text">
+                <p v-for="(para, pi) in splitParagraphs(entry.text)" :key="pi">{{ para }}</p>
+              </div>
+            </div>
+          </div>
+        </template>
+
+        <template v-if="localSelectedArchive.feedbackText">
+          <div class="pr-section-title">治疗反馈</div>
+          <div class="pr-text-card">
+            <p v-for="(para, i) in splitParagraphs(localSelectedArchive.feedbackText)" :key="i">{{ para }}</p>
+          </div>
+        </template>
+
+        <template v-if="localSelectedArchive.trackingSheet?.changeLog?.length">
+          <div class="pr-section-title">诊断变更</div>
+          <div class="pr-changelog">
+            <div
+              v-for="(log, i) in localSelectedArchive.trackingSheet.changeLog"
+              :key="i"
+              class="pr-changelog-item"
+            >{{ log }}</div>
+          </div>
+        </template>
+
+      </div>
+
+    </section>
+    </Transition>
+
     <!-- ========== 问诊页 ========== -->
     <Transition name="fade">
     <section v-if="phase === 'consult'" class="screen screen-consult">
 
       <header class="consult-topbar">
         <button class="back-btn" @click="returnToHub">‹ 返回主界面</button>
-        <div class="diagnosis-chip">
-          诊断仪剩余 {{ diagnosisAttemptsLeft }} / {{ diagnosisAttemptsTotal }} 次
-        </div>
       </header>
 
       <div class="consult-frame">
@@ -250,7 +379,6 @@
           </div>
         </div>
 
-        <!-- 历史折叠按钮 -->
         <button
           v-if="collapsedHistoryCount > 0"
           class="history-toggle-btn"
@@ -263,32 +391,32 @@
           }}</span>
         </button>
 
-        <!-- 对话内容区 -->
         <div class="frame-content" ref="contentEl">
 
-          <!-- 折叠时的分割线 -->
           <div v-if="!showFullHistory && collapsedHistoryCount > 0" class="history-divider">
             <span class="hd-line"></span>
             <span class="hd-text">以上为历史记录</span>
             <span class="hd-line"></span>
           </div>
 
-          <!-- 对话条目 -->
           <template v-for="entry in visibleEntries" :key="entry.id">
 
-            <div v-if="entry.speaker === 'narration' || entry.speaker === 'system'" class="entry-narration">
+            <div v-if="entry.speaker === 'narration' || entry.speaker === 'narrator' || entry.speaker === 'system'" class="entry-narration">
               <p v-for="(para, i) in splitParagraphs(entry.text)" :key="i">{{ para }}</p>
             </div>
 
             <div v-else-if="entry.speaker === 'patient'" class="entry-patient">
-              <template v-if="isGeneratingText && entry.id === typingEntryId">
-                <Typewriter :text="entry.text" :speed="24" />
+              <template v-if="entry.id === typingEntryId">
+                <Typewriter
+                  :text="entry.text"
+                  :speed="45"
+                  @done="handleTypingDone"
+                />
               </template>
               <template v-else>
                 <p v-for="(para, i) in splitParagraphs(entry.text)" :key="i">{{ para }}</p>
               </template>
             </div>
-
             <div v-else-if="entry.speaker === 'doctor'" class="entry-doctor">
               <span class="entry-doctor-arrow">▷</span>
               <span>{{ entry.text }}</span>
@@ -300,10 +428,12 @@
 
           </template>
 
-          <!-- 空状态 -->
-          <div v-if="safeConsultationHistory.length === 0 && !isGeneratingText" class="frame-empty">
-            等待患者进入诊断室……
-          </div>
+          <div v-if="safeConsultationHistory.length === 0 && !isGeneratingText" class="frame-empty-area">
+  <div class="frame-empty-text">等待患者进入诊断室……</div>
+  <button class="retry-btn" @click="retryArrivalNarrative">
+    重新加载 ↺
+  </button>
+</div>
 
         </div>
 
@@ -339,9 +469,9 @@
 
       <!-- 选项区 -->
       <div
-        v-if="!isGeneratingText && canShowConsultChoices && currentConsultOptions.length > 0"
-        class="consult-choices-area"
-      >
+  v-if="!isGeneratingText && !isTypingActive && canShowConsultChoices && currentConsultOptions.length > 0 && !pendingSettlementRecord"
+  class="consult-choices-area"
+>
         <div class="choices-label">做出选择</div>
         <div class="choices-list">
           <button
@@ -356,16 +486,52 @@
         </div>
       </div>
 
-      <!-- 浮动按钮组 -->
+      <!-- 重试按钮：无选项、不在加载、没有待结算记录时显示 -->
+      <div
+  v-if="!isGeneratingText && !isTypingActive && currentConsultOptions.length === 0 && safeConsultationHistory.length > 0 && !pendingSettlementRecord"
+  class="consult-retry-area"
+>
+        <button class="retry-btn" @click="handleRetryOptions">
+  重新生成选项 ↺
+</button>
+      </div>
+
+      <!-- 结算入口：治疗完成后显示 -->
+     <div
+  v-if="!isGeneratingText && !isTypingActive && pendingSettlementRecord"
+  class="consult-choices-area consult-settlement-area"
+>
+        <div class="choices-label">本轮收尾</div>
+        <div class="consult-settlement-card">
+          <div class="feedback-chip" :class="patientFeedbackOutcome">{{ feedbackOutcomeLabel }}</div>
+          <div class="consult-settlement-copy">
+            问诊记录已写入本轮反馈{{ patientFeedbackOutcome === 'complete' ? '与结尾剧情' : '' }}，确认后进入结算。
+          </div>
+          <div v-if="patientFeedbackOutcome === 'revisit' && activePatient?.returnDay" class="feedback-schedule">
+            已为这位患者预约第 {{ activePatient.returnDay }} 天后的复诊。
+          </div>
+          <button class="btn-primary consult-settlement-btn" @click="advanceFromFeedback">
+            {{ currentFeedbackActionLabel }}
+          </button>
+        </div>
+      </div>
+
       <div class="consult-fabs">
         <button class="fab-btn" @click="togglePhonePanel">
           手机
           <span v-if="unreadPhoneCount" class="fab-badge">{{ unreadPhoneCount }}</span>
         </button>
-        <button class="fab-btn" @click="toggleNotesDrawer">病历记录</button>
       </div>
+<!-- 右侧病历记录标签 -->
+<div
+  class="notes-tab"
+  :class="{ open: showNotesDrawer }"
+  @click="toggleNotesDrawer"
+>
+  <span class="notes-tab-text">病历记录</span>
+  <span class="notes-tab-arrow">{{ showNotesDrawer ? '›' : '‹' }}</span>
+</div>
 
-      <!-- 病历记录抽屉 -->
       <Transition name="drawer-fade">
       <aside v-if="showNotesDrawer" class="notes-drawer">
         <div class="notes-backdrop" @click="toggleNotesDrawer"></div>
@@ -499,71 +665,54 @@
     </section>
     </Transition>
 
-    <!-- ========== 反馈页 ========== -->
+    <!-- ========== 结算页 ========== -->
     <Transition name="fade">
-    <section v-if="phase === 'patient_feedback'" class="screen screen-feedback">
-      <header class="phase-topbar">
-        <button class="back-btn" @click="goHome">‹ 主界面</button>
-        <div class="phase-topbar-center">
-          <div class="phase-title">{{ feedbackOutcomeLabel }}</div>
-          <div class="phase-sub">{{ activePatient?.name }}</div>
-        </div>
-        <button class="btn-secondary compact" @click="saveManualProgress">保存</button>
-      </header>
-
-      <div class="feedback-scroll-area">
-        <div class="feedback-card">
-          <div class="card-section-label">患者反馈</div>
-          <div class="feedback-chip" :class="patientFeedbackOutcome">{{ feedbackOutcomeLabel }}</div>
-          <div v-if="narrativeError" class="error-box">{{ narrativeError }}</div>
-          <div class="feedback-body">
-            <p v-for="(para, i) in splitParagraphs(patientFeedbackText)" :key="i">{{ para }}</p>
-          </div>
-          <div v-if="patientFeedbackOutcome === 'revisit' && activePatient?.returnDay" class="feedback-schedule">
-            已为这位患者预约第 {{ activePatient.returnDay }} 天后的复诊。
-          </div>
-          <div class="feedback-actions">
-            <button class="btn-primary" @click="advanceFromFeedback">{{ currentFeedbackActionLabel }}</button>
-          </div>
-        </div>
-      </div>
-    </section>
-    </Transition>
-
-    <Transition name="fade">
-    <section v-if="phase === 'settlement' && currentSettlementRecord" class="screen screen-settlement">
+    <section v-if="phase === 'settlement'" class="screen screen-settlement">
       <header class="phase-topbar">
         <button class="back-btn" @click="goHome">‹ 主界面</button>
         <div class="phase-topbar-center">
           <div class="phase-title">诊疗结算</div>
-          <div class="phase-sub">{{ currentSettlementRecord.name }}</div>
+          <div class="phase-sub">{{ currentSettlementRecord?.name }}</div>
         </div>
         <button class="btn-secondary compact" @click="saveManualProgress">保存</button>
       </header>
 
       <div class="feedback-scroll-area">
-        <div class="feedback-card settlement-page-card">
-          <div class="card-section-label">结案记录</div>
-          <div class="feedback-chip" :class="patientFeedbackOutcome">{{ currentSettlementRecord.outcomeLabel }}</div>
-          <div class="feedback-body">
-            <p v-for="(para, i) in splitParagraphs(currentSettlementRecord.closingNarrative || currentSettlementRecord.feedbackText)" :key="`settlement-${i}`">{{ para }}</p>
-          </div>
-          <div class="settlement-summary">
-            <div class="settlement-stat">
-              <div class="settlement-stat-label">成功治愈</div>
-              <div class="settlement-stat-value">
-                {{ settlementLevelSummary.length ? settlementLevelSummary.map(item => item.label).join('，') : '无' }}
+        <template v-if="currentSettlementRecord">
+          <div class="feedback-card settlement-page-card">
+            <div class="card-section-label">结案记录</div>
+            <div class="feedback-chip" :class="patientFeedbackOutcome">
+              {{ currentSettlementRecord.outcomeLabel }}
+            </div>
+            <div class="feedback-body">
+              <p
+                v-for="(para, i) in splitParagraphs(currentSettlementRecord.closingNarrative || currentSettlementRecord.feedbackText)"
+                :key="`settlement-${i}`"
+              >{{ para }}</p>
+            </div>
+            <div class="settlement-summary">
+              <div class="settlement-stat">
+                <div class="settlement-stat-label">成功治愈</div>
+                <div class="settlement-stat-value">
+                  {{ settlementLevelSummary.length
+                    ? settlementLevelSummary.map(item => item.label).join('，')
+                    : '无' }}
+                </div>
+              </div>
+              <div class="settlement-stat">
+                <div class="settlement-stat-label">获得信用点</div>
+                <div class="settlement-stat-value">{{ currentSettlementRecord.collectedTotal }}</div>
               </div>
             </div>
-            <div class="settlement-stat">
-              <div class="settlement-stat-label">获得信用点</div>
-              <div class="settlement-stat-value">{{ currentSettlementRecord.collectedTotal }}</div>
+            <div class="feedback-actions">
+              <button class="btn-primary" @click="confirmSettlementAndReturn">返回主界面</button>
             </div>
           </div>
-          <div class="feedback-actions">
-            <button class="btn-primary" @click="confirmSettlementAndReturn">返回主界面</button>
-          </div>
-        </div>
+        </template>
+
+        <template v-else>
+          <div class="frame-empty">正在加载结算信息……</div>
+        </template>
       </div>
     </section>
     </Transition>
@@ -668,93 +817,6 @@
     </div>
     </Transition>
 
-    <Transition name="modal-fade">
-    <div v-if="showArchivePanel" class="modal-overlay" @click.self="closeArchivePanel">
-      <div class="modal-card archive-modal">
-        <div class="modal-kicker">患者档案库</div>
-        <div class="archive-panel-intro">按病例索引查看过往患者的诊断记录与背景故事。</div>
-        <div class="archive-layout">
-          <div v-if="!isMobileLayout || !showArchiveCaseDetail" class="archive-list">
-            <button
-              v-for="record in archiveCases"
-              :key="record.id"
-              class="archive-list-item"
-              :class="{ active: selectedArchiveCase?.id === record.id }"
-              @click="handleArchiveCaseSelect(record.id)"
-            >
-              <div class="archive-list-row">
-                <div class="archive-list-name">{{ record.name }}</div>
-                <div class="archive-list-outcome" :class="record.outcome">{{ record.outcomeLabel }}</div>
-              </div>
-              <div class="archive-list-job">{{ record.job }}</div>
-              <div class="archive-list-date">{{ formatArchiveDate(record) }}</div>
-            </button>
-          </div>
-
-          <div v-if="selectedArchiveCase && (!isMobileLayout || showArchiveCaseDetail)" class="archive-detail">
-            <div class="archive-scroll-container">
-              <div class="archive-detail-head">
-                <button v-if="isMobileLayout" class="archive-back-btn" @click="showArchiveCaseDetail = false">返回档案列表</button>
-              </div>
-
-              <div class="archive-header-card">
-                <div class="archive-header-name">{{ selectedArchiveCase.name }}</div>
-                <div class="archive-header-meta">
-                  <span>{{ selectedArchiveCase.job }}</span>
-                  <span>·</span>
-                  <span>{{ formatArchiveDate(selectedArchiveCase) }}</span>
-                  <span>·</span>
-                  <span>{{ selectedArchiveCase.outcomeLabel }}</span>
-                </div>
-                <div class="archive-header-sub">第 {{ selectedArchiveCase.visitCount }} 次来诊</div>
-              </div>
-
-              <div class="archive-section-title">病例摘要</div>
-              <div class="archive-record-block">
-                <div class="archive-record-text">{{ selectedArchiveCase.summary }}</div>
-              </div>
-
-              <div class="archive-section-title">背景档案</div>
-              <div class="archive-record-stack">
-                <div v-if="selectedArchiveCase.coreConcern" class="archive-record-block">
-                  <div class="archive-record-kicker">核心牵挂</div>
-                  <div class="archive-record-text">{{ selectedArchiveCase.coreConcern }}</div>
-                </div>
-                <div class="archive-record-block">
-                  <div class="archive-record-kicker">背景故事</div>
-                  <div class="archive-story">
-                    <p
-                      v-for="(para, i) in splitParagraphs(selectedArchiveCase.archiveStory || selectedArchiveCase.closingNarrative)"
-                      :key="`archive-story-${i}`"
-                    >{{ para }}</p>
-                  </div>
-                </div>
-              </div>
-
-              <div class="archive-section-title">诊断记录</div>
-              <div class="archive-record-stack">
-                <div
-                  v-for="(entry, index) in selectedArchiveCase.consultationHistory"
-                  :key="entry.id"
-                  class="archive-record-block archive-record-history"
-                >
-                  <div class="archive-record-kicker">
-                    第 {{ index + 1 }} 条 · {{ getArchiveEntryTypeLabel(entry) }}
-                  </div>
-                  <div class="archive-record-role">{{ entry.label || entry.speaker || '记录' }}</div>
-                  <div class="archive-record-text">{{ entry.text }}</div>
-                </div>
-              </div>
-            </div>
-          </div>
-        </div>
-        <div class="modal-actions">
-          <button class="btn-secondary" @click="closeArchivePanel">关闭</button>
-        </div>
-      </div>
-    </div>
-    </Transition>
-
   </div>
 </template>
 
@@ -766,15 +828,17 @@ import { useGameLogic } from './composables/useGameLogic'
 const contentEl = ref(null)
 const showFullHistory = ref(false)
 const showPhonePanel = ref(false)
-const showArchiveCaseDetail = ref(false)
+const localSelectedArchive = ref(null)
 
 const {
   phase,
+  consultStage, 
+  consultEntryStage,
   hasSave, hasArchiveSave, isCheckingSave,
   showConfirmNewGameModal, showUpgradeFailureModal, upgradeFailureMessage,
-  showProfilePanel, showArchivePanel, showSettlementModal, showNotesDrawer,
+  showProfilePanel, showSettlementModal, showNotesDrawer,
   isGeneratingText, typingEntryId, isEnvironmentLoading, narrativeError,
-  patientFeedbackText, patientFeedbackOutcome, pendingSettlementRecord, currentSettlementRecord,
+  patientFeedbackText, patientFeedbackOutcome, currentSettlementRecord, pendingSettlementRecord,
   backgroundPage, backgroundTotal,
   credits, gameDay,
   playerProfile,
@@ -790,19 +854,18 @@ const {
   confirmedDiagnosisDetails, confirmedDiagnosisSummary,
   treatmentDraftSummary,
   canSubmitDiagnosis, canEnterTreatment, canSubmitTreatment,
-  archiveCases, selectedArchiveCase, settlementLevelSummary, curedArchives,
+  archiveCases, settlementLevelSummary,
   totalEarnings, totalCuredCount, totalEquipmentLevel,
   latestArchiveLabel,
   canStartPatientFlow, patientArrivalStatusText,
   currentFeedbackActionLabel, feedbackOutcomeLabel,
   activePatientSummary, diagnosisAttemptLabel,
   diagnosisAttemptsLeft, diagnosisAttemptsTotal,
-  isMobileLayout,
   hubActions, senseConfigs, senseLabels, senseTargets,
-  equipmentExpanded, snapshotExpanded,
+  equipmentExpanded, snapshotExpanded,continueConsultFlow,
   startNewGame, confirmStartNewGame, cancelStartNewGame,
   continueGame, loadArchivedGame,
-  saveManualProgress, toggleProfilePanel, openArchivePanel, closeArchivePanel, selectArchiveCase,
+  saveManualProgress, toggleProfilePanel,
   updatePlayerName, updatePlayerAvatar,
   markPhoneMessagesRead,
   upgradeEquipmentModule, goHome,
@@ -818,9 +881,10 @@ const {
   advanceFromFeedback, confirmSettlementAndReturn,
   toggleEquipmentSection, toggleSnapshotSection,
   closeUpgradeFailureModal, toggleNotesDrawer,
+  refreshConsultOptions,
 } = useGameLogic()
 
-// ---- 对话历史处理 ----
+// ---- 对话历史 ----
 
 const safeConsultationHistory = computed(() => {
   return (consultationHistory.value || [])
@@ -837,7 +901,6 @@ const collapsedHistoryCount = computed(() =>
   Math.max(0, safeConsultationHistory.value.length - 2)
 )
 
-// 新消息来时收起历史，并自动滚到底部
 watch(() => safeConsultationHistory.value.length, () => {
   showFullHistory.value = false
   nextTick(() => {
@@ -851,61 +914,32 @@ watch(() => phase.value, () => {
   showPhonePanel.value = false
 })
 
-watch(() => showArchivePanel.value, value => {
-  if (!value) {
-    showArchiveCaseDetail.value = false
-    return
-  }
-
-  showArchiveCaseDetail.value = !isMobileLayout.value
-})
-
-watch(() => isMobileLayout.value, value => {
-  showArchiveCaseDetail.value = value ? false : !!selectedArchiveCase.value
-})
+// ---- 手机弹窗 ----
 
 function togglePhonePanel() {
   showPhonePanel.value = !showPhonePanel.value
   if (showPhonePanel.value) markPhoneMessagesRead()
 }
 
+// ---- 患者档案页导航 ----
+
+function openPatientRecords() {
+  localSelectedArchive.value = null
+  phase.value = 'patient_records'
+}
+
+function closePatientRecords() {
+  if (localSelectedArchive.value) {
+    localSelectedArchive.value = null
+  } else {
+    phase.value = 'hub'
+  }
+}
+
+// ---- 工具函数 ----
+
 function splitParagraphs(text = '') {
   return String(text).split(/\n+/).map(s => s.trim()).filter(Boolean)
-}
-
-function formatArchiveDate(record) {
-  const timestamp = Number(record?.resolvedAt || 0)
-
-  if (timestamp > 0) {
-    const formatter = new Intl.DateTimeFormat('zh-CN', {
-      year: 'numeric',
-      month: '2-digit',
-      day: '2-digit'
-    })
-    const dateText = formatter.format(timestamp).replace(/\//g, '.')
-    return record?.outcome === 'complete' ? `治愈日期 ${dateText}` : `归档日期 ${dateText}`
-  }
-
-  return record?.outcome === 'complete'
-    ? `治愈日期 第 ${record?.gameDay || '-'} 天`
-    : `归档日期 第 ${record?.gameDay || '-'} 天`
-}
-
-function getArchiveEntryTypeLabel(entry) {
-  const labelMap = {
-    arrival: '初诊',
-    question: '问诊',
-    answer: '患者反馈',
-    diagnosis: '诊断仪',
-    treatment_feedback: '治疗反馈'
-  }
-
-  return labelMap[entry?.type] || '记录'
-}
-
-function handleArchiveCaseSelect(caseId) {
-  selectArchiveCase(caseId)
-  showArchiveCaseDetail.value = true
 }
 
 function isChecked(mapping, sourceId, targetId) {
@@ -929,6 +963,49 @@ function triggerAvatarUpload() {
   }
   input.click()
 }
+
+function formatArchiveDate(record) {
+  const timestamp = Number(record?.resolvedAt || 0)
+  if (timestamp > 0) {
+    const d = new Intl.DateTimeFormat('zh-CN', { year: 'numeric', month: '2-digit', day: '2-digit' })
+      .format(timestamp).replace(/\//g, '.')
+    return `第 ${record?.gameDay || '-'} 天 · ${d}`
+  }
+  return `第 ${record?.gameDay || '-'} 天`
+}
+
+function getArchiveEntryTypeLabel(entry) {
+  const map = {
+    arrival: '初诊', question: '问诊', answer: '患者反馈',
+    diagnosis: '诊断仪', treatment_feedback: '治疗反馈',
+    narration: '旁白', doctor: '医生', patient: '患者', system: '系统'
+  }
+  return map[entry?.type] || map[entry?.speaker] || '记录'
+}
+
+async function retryArrivalNarrative() {
+  if (!activePatient.value || isGeneratingText.value) return
+  // 重置状态让 continueConsultFlow 可以执行
+  consultEntryStage.value = 'pre_consult'
+  await continueConsultFlow()
+}
+
+const isTypingActive = computed(() => !!typingEntryId.value)
+function handleTypingDone() {
+  typingEntryId.value = ''
+}
+
+async function handleRetryOptions() {
+  typingEntryId.value = ''
+  isGeneratingText.value = true
+  narrativeError.value = ''
+  try {
+    await refreshConsultOptions()
+  } finally {
+    isGeneratingText.value = false
+  }
+}
+
 </script>
 
 <style scoped>
@@ -1535,7 +1612,17 @@ function triggerAvatarUpload() {
   letter-spacing: 0.2em;
   color: var(--text-dim);
 }
-.hub-env-desc { font-size: 0.8rem; color: var(--text-muted); line-height: 1.78; margin-top: 0.1rem; }
+.hub-env-desc {
+  font-size: 0.8rem;
+  color: var(--text-muted);
+  line-height: 1.78;
+  margin-top: 0.1rem;
+  animation: envContentIn 0.5s ease;
+}
+@keyframes envContentIn {
+  from { opacity: 0; transform: translateY(4px); }
+  to   { opacity: 1; transform: translateY(0); }
+}
 
 .hub-menu-list { display: flex; flex-direction: column; gap: 0.5rem; }
 
@@ -1587,7 +1674,6 @@ function triggerAvatarUpload() {
   font-size: 0.8rem;
   color: #a08050;
   flex-shrink: 0;
-  transition: all 0.2s;
 }
 .primary-icon {
   background: rgba(200, 130, 10, 0.08);
@@ -1703,21 +1789,9 @@ function triggerAvatarUpload() {
   justify-content: center;
 }
 
-/* 环境卡加载状态 */
-.env-loading {
-  display: flex;
-  flex-direction: column;
-  gap: 0.55rem;
-  padding: 0.2rem 0;
-}
-
-/* 波形动画条（和问诊页加载动画同风格） */
-.env-loading-bars {
-  display: flex;
-  align-items: flex-end;
-  gap: 3px;
-  height: 18px;
-}
+/* 环境加载动画 */
+.env-loading { display: flex; flex-direction: column; gap: 0.55rem; padding: 0.2rem 0; }
+.env-loading-bars { display: flex; align-items: flex-end; gap: 3px; height: 18px; }
 .env-loading-bars span {
   display: block;
   width: 3px;
@@ -1730,12 +1804,10 @@ function triggerAvatarUpload() {
 .env-loading-bars span:nth-child(3) { animation-delay: 0.24s; }
 .env-loading-bars span:nth-child(4) { animation-delay: 0.36s; }
 .env-loading-bars span:nth-child(5) { animation-delay: 0.48s; }
-
 @keyframes envBarWave {
   0%, 100% { height: 4px; opacity: 0.25; }
   50%       { height: 18px; opacity: 0.9; }
 }
-
 .env-loading-text {
   font-family: 'Courier New', monospace;
   font-size: 0.65rem;
@@ -1743,25 +1815,286 @@ function triggerAvatarUpload() {
   letter-spacing: 0.2em;
   animation: envTextBreathe 2.2s ease-in-out infinite;
 }
-
 @keyframes envTextBreathe {
   0%, 100% { opacity: 0.4; }
   50%       { opacity: 0.85; }
 }
 
-/* 环境内容出现时淡入 */
-.hub-env-desc {
-  font-size: 0.8rem;
-  color: var(--text-muted);
-  line-height: 1.78;
-  margin-top: 0.1rem;
-  animation: envContentIn 0.5s ease;
+/* ============================================================
+   患者档案页
+============================================================ */
+
+.screen-patient-records {
+  background: var(--bg-paper);
+  overflow: hidden;
+  z-index: 5;
 }
 
-@keyframes envContentIn {
-  from { opacity: 0; transform: translateY(4px); }
-  to   { opacity: 1; transform: translateY(0); }
+.pr-scroll-area {
+  flex: 1;
+  overflow-y: auto;
+  -webkit-overflow-scrolling: touch;
+  scrollbar-width: none;
+  padding: 1rem 1.1rem 3rem;
+  display: flex;
+  flex-direction: column;
+  gap: 0.7rem;
 }
+.pr-scroll-area::-webkit-scrollbar { display: none; }
+
+.pr-list-header {
+  font-family: 'Courier New', monospace;
+  font-size: 0.6rem;
+  letter-spacing: 0.25em;
+  color: var(--amber);
+  padding-bottom: 0.5rem;
+  border-bottom: 1px solid var(--border-paper);
+}
+
+.pr-empty {
+  text-align: center;
+  font-size: 0.78rem;
+  color: var(--text-dim);
+  letter-spacing: 0.12em;
+  padding: 2.5rem 0;
+  font-family: 'Courier New', monospace;
+}
+
+.pr-list { display: flex; flex-direction: column; gap: 0.6rem; }
+
+.pr-card {
+  background: #ffffff;
+  border-radius: 14px;
+  border: 1px solid rgba(160, 130, 80, 0.14);
+  box-shadow: var(--shadow-sm);
+  padding: 0.95rem 1.05rem;
+  cursor: pointer;
+  transition: all 0.25s cubic-bezier(0.34, 1.56, 0.64, 1);
+  display: flex;
+  flex-direction: column;
+  gap: 0.32rem;
+  position: relative;
+  overflow: hidden;
+}
+.pr-card::before {
+  content: '';
+  position: absolute;
+  left: 0; top: 0; bottom: 0;
+  width: 3px;
+  background: var(--amber);
+  border-radius: 0 2px 2px 0;
+  opacity: 0;
+  transition: opacity 0.2s;
+}
+.pr-card:hover {
+  transform: translateY(-2px) translateX(2px);
+  border-color: rgba(200, 130, 10, 0.25);
+  box-shadow: var(--shadow-md);
+}
+.pr-card:hover::before { opacity: 1; }
+
+.pr-card-top {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 0.5rem;
+}
+
+.pr-outcome-tag {
+  font-family: 'Courier New', monospace;
+  font-size: 0.6rem;
+  letter-spacing: 0.1em;
+  padding: 0.18rem 0.55rem;
+  border-radius: 4px;
+  border: 1px solid var(--border-amber);
+  background: var(--amber-dim);
+  color: var(--amber);
+}
+.pr-outcome-tag.partial,
+.pr-outcome-tag.revisit {
+  border-color: var(--border-cyan);
+  background: var(--cyan-dim);
+  color: var(--cyan);
+}
+
+.pr-card-day {
+  font-family: 'Courier New', monospace;
+  font-size: 0.62rem;
+  color: var(--text-dim);
+  letter-spacing: 0.1em;
+}
+
+.pr-card-name {
+  font-size: 1.15rem;
+  color: var(--text-dark);
+  letter-spacing: 0.08em;
+  line-height: 1.2;
+}
+
+.pr-card-meta {
+  display: flex;
+  align-items: center;
+  gap: 0.28rem;
+  font-size: 0.75rem;
+  color: var(--text-muted);
+  flex-wrap: wrap;
+}
+.pr-dot { color: rgba(160, 130, 80, 0.35); }
+.pr-income { color: var(--amber); font-family: 'Courier New', monospace; }
+
+.pr-card-divider {
+  height: 1px;
+  background: linear-gradient(90deg, var(--border-paper), transparent);
+  margin: 0.05rem 0;
+}
+
+.pr-card-preview {
+  font-size: 0.78rem;
+  color: var(--text-muted);
+  line-height: 1.65;
+  letter-spacing: 0.03em;
+  display: -webkit-box;
+  -webkit-line-clamp: 2;
+  -webkit-box-orient: vertical;
+  overflow: hidden;
+}
+
+.pr-card-enter {
+  font-size: 0.65rem;
+  color: var(--border-warm);
+  letter-spacing: 0.1em;
+  text-align: right;
+  opacity: 0;
+  transition: opacity 0.2s;
+  font-family: 'Courier New', monospace;
+}
+.pr-card:hover .pr-card-enter { opacity: 1; color: var(--amber); }
+
+.pr-detail-header {
+  background: #ffffff;
+  border-radius: 14px;
+  border: 1px solid rgba(160, 130, 80, 0.15);
+  padding: 1.1rem;
+  box-shadow: var(--shadow-sm);
+  display: flex;
+  flex-direction: column;
+  gap: 0.28rem;
+}
+
+.pr-detail-name {
+  font-size: 1.4rem;
+  color: var(--text-dark);
+  letter-spacing: 0.12em;
+}
+
+.pr-detail-meta {
+  display: flex;
+  align-items: center;
+  gap: 0.28rem;
+  font-size: 0.75rem;
+  color: var(--text-muted);
+  flex-wrap: wrap;
+  font-family: 'Courier New', monospace;
+}
+
+.pr-detail-income {
+  font-family: 'Courier New', monospace;
+  font-size: 0.72rem;
+  color: var(--amber);
+  letter-spacing: 0.08em;
+  margin-top: 0.1rem;
+}
+
+.pr-section-title {
+  font-family: 'Courier New', monospace;
+  font-size: 0.6rem;
+  letter-spacing: 0.25em;
+  color: var(--amber);
+  padding-bottom: 0.38rem;
+  border-bottom: 1px solid var(--border-paper);
+  margin-top: 0.2rem;
+}
+
+.pr-text-card {
+  background: #ffffff;
+  border-radius: 10px;
+  border: 1px solid rgba(160, 130, 80, 0.13);
+  padding: 0.85rem 1rem;
+  box-shadow: var(--shadow-sm);
+  font-size: 0.86rem;
+  color: var(--text-main);
+  line-height: 1.9;
+  letter-spacing: 0.03em;
+}
+
+.pr-story p {
+  margin: 0 0 0.5rem 0;
+  font-size: 0.86rem;
+  color: var(--text-main);
+  line-height: 1.95;
+  letter-spacing: 0.04em;
+  text-indent: 2em;
+}
+.pr-story p:last-child { margin-bottom: 0; }
+
+.pr-consult-list { display: flex; flex-direction: column; gap: 0.5rem; }
+
+.pr-consult-entry {
+  background: #ffffff;
+  border-radius: 10px;
+  border: 1px solid rgba(160, 130, 80, 0.12);
+  border-left: 2px solid rgba(160, 130, 80, 0.2);
+  padding: 0.75rem 0.95rem;
+  box-shadow: var(--shadow-sm);
+}
+.pr-consult-entry.entry-doctor { border-left-color: var(--border-cyan); }
+.pr-consult-entry.entry-narration {
+  border-left-color: rgba(160, 130, 80, 0.3);
+  background: rgba(248, 240, 224, 0.5);
+}
+
+.pr-entry-label {
+  font-family: 'Courier New', monospace;
+  font-size: 0.6rem;
+  letter-spacing: 0.15em;
+  color: var(--text-dim);
+  margin-bottom: 0.38rem;
+}
+.pr-consult-entry.entry-doctor .pr-entry-label { color: var(--cyan); }
+.pr-consult-entry.entry-narration .pr-entry-label { color: var(--amber); }
+
+.pr-entry-text p {
+  margin: 0 0 0.35rem 0;
+  font-size: 0.84rem;
+  color: var(--text-main);
+  line-height: 1.9;
+  letter-spacing: 0.03em;
+}
+.pr-entry-text p:last-child { margin-bottom: 0; }
+.pr-consult-entry.entry-narration .pr-entry-text p {
+  color: #8a7058;
+  font-style: italic;
+}
+
+.pr-changelog {
+  background: #ffffff;
+  border-radius: 10px;
+  border: 1px solid rgba(160, 130, 80, 0.13);
+  padding: 0.75rem 1rem;
+  box-shadow: var(--shadow-sm);
+  display: flex;
+  flex-direction: column;
+}
+.pr-changelog-item {
+  font-size: 0.78rem;
+  color: var(--text-muted);
+  line-height: 1.75;
+  padding: 0.32rem 0;
+  border-bottom: 1px solid var(--border-paper);
+  font-family: 'Courier New', monospace;
+}
+.pr-changelog-item:last-child { border-bottom: none; }
+.pr-changelog-item:first-child { padding-top: 0; }
 
 /* ============================================================
    问诊页
@@ -1843,11 +2176,7 @@ function triggerAvatarUpload() {
 .patient-sep  { color: rgba(160, 130, 80, 0.35); }
 .patient-job  { color: #5a4820; }
 .patient-visit { color: var(--text-dim); font-family: 'Courier New', monospace; font-size: 0.72rem; }
-.patient-env-row {
-  font-size: 0.73rem;
-  color: #8a7050;
-  line-height: 1.6;
-}
+.patient-env-row { font-size: 0.73rem; color: #8a7050; line-height: 1.6; }
 
 .history-toggle-btn {
   display: flex;
@@ -1928,11 +2257,16 @@ function triggerAvatarUpload() {
 }
 .entry-doctor-arrow { color: var(--amber); flex-shrink: 0; font-size: 0.68rem; margin-top: 0.14rem; }
 
-.frame-empty {
+.frame-empty-area {
   flex: 1;
   display: flex;
+  flex-direction: column;
   align-items: center;
   justify-content: center;
+  gap: 1rem;
+}
+
+.frame-empty-text {
   font-size: 0.75rem;
   color: var(--text-dim);
   letter-spacing: 0.2em;
@@ -2073,6 +2407,58 @@ function triggerAvatarUpload() {
 .choice-title { display: block; font-size: 0.86rem; color: var(--text-dark); letter-spacing: 0.04em; }
 .choice-line  { display: block; font-size: 0.73rem; color: var(--text-muted); line-height: 1.5; }
 
+/* 结算入口区 */
+.consult-settlement-area {
+  border-top: 1px solid var(--border-paper);
+}
+
+.consult-settlement-card {
+  background: #ffffff;
+  border-radius: 10px;
+  border: 1px solid var(--border-amber);
+  padding: 0.9rem 1rem;
+  box-shadow: var(--shadow-sm);
+  display: flex;
+  flex-direction: column;
+  gap: 0.6rem;
+}
+
+.consult-settlement-copy {
+  font-size: 0.78rem;
+  color: var(--text-muted);
+  line-height: 1.7;
+  letter-spacing: 0.03em;
+}
+
+.consult-settlement-btn {
+  align-self: flex-start;
+}
+
+/* 重试按钮区 */
+.consult-retry-area {
+  flex-shrink: 0;
+  display: flex;
+  justify-content: center;
+  padding: 0.75rem 1rem;
+}
+
+.retry-btn {
+  padding: 0.55rem 1.4rem;
+  border-radius: 8px;
+  border: 1px solid var(--border-amber);
+  background: var(--amber-dim);
+  color: var(--amber);
+  font-family: inherit;
+  font-size: 0.82rem;
+  letter-spacing: 0.1em;
+  cursor: pointer;
+  transition: all 0.2s;
+}
+.retry-btn:hover {
+  background: rgba(200, 130, 10, 0.18);
+  transform: translateY(-1px);
+}
+
 .consult-fabs {
   position: fixed;
   right: 1rem;
@@ -2119,6 +2505,54 @@ function triggerAvatarUpload() {
 /* ============================================================
    病历记录抽屉
 ============================================================ */
+/* 右侧病历标签 */
+.notes-tab {
+  position: fixed;
+  right: 0;
+  top: 50%;
+  transform: translateY(-50%);
+  z-index: 45;
+
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 0.4rem;
+
+  background: rgba(236, 224, 200, 0.98);
+  border: 1px solid var(--border-amber);
+  border-right: none;
+  border-radius: 8px 0 0 8px;
+  padding: 0.9rem 0.45rem;
+  cursor: pointer;
+  box-shadow: -3px 0 12px rgba(0, 0, 0, 0.1);
+  transition: all 0.25s ease;
+}
+.notes-tab:hover {
+  background: rgba(248, 240, 224, 0.99);
+  box-shadow: -4px 0 16px rgba(200, 130, 10, 0.12);
+}
+.notes-tab.open {
+  right: min(296px, 84vw);
+}
+
+.notes-tab-text {
+  writing-mode: vertical-rl;
+  text-orientation: mixed;
+  font-size: 0.72rem;
+  color: var(--amber);
+  letter-spacing: 0.18em;
+  font-family: 'Courier New', monospace;
+  white-space: nowrap;
+}
+
+.notes-tab-arrow {
+  font-size: 0.7rem;
+  color: var(--text-muted);
+  transition: transform 0.25s ease;
+}
+.notes-tab.open .notes-tab-arrow {
+  transform: rotate(180deg);
+}
 
 .notes-drawer {
   position: fixed;
@@ -2126,26 +2560,34 @@ function triggerAvatarUpload() {
   z-index: 40;
   display: flex;
   justify-content: flex-end;
+  align-items: center;
 }
 
 .notes-backdrop {
   position: absolute;
   inset: 0;
-  background: rgba(20, 15, 10, 0.42);
-  backdrop-filter: blur(3px);
+  /* 背景变模糊效果 */
+  background: rgba(20, 15, 10, 0.2);
+  backdrop-filter: blur(4px);
+  -webkit-backdrop-filter: blur(4px);
+  cursor: pointer;
 }
 
 .notes-card {
   position: relative;
   z-index: 1;
   width: min(296px, 84vw);
-  height: 100%;
+  /* 不铺满全屏，自适应内容高度 */
+  max-height: 85vh;
+  height: auto;
   display: flex;
   flex-direction: column;
   overflow: hidden;
   background: rgba(236, 224, 200, 0.99);
-  border-left: 1px solid var(--border-amber);
-  box-shadow: -6px 0 28px rgba(0, 0, 0, 0.18);
+  border: 1px solid var(--border-amber);
+  /* 左边有圆角，右边贴边 */
+  border-radius: 14px 0 0 14px;
+  box-shadow: -4px 0 24px rgba(0, 0, 0, 0.15);
 }
 
 .notes-head {
@@ -2328,7 +2770,7 @@ function triggerAvatarUpload() {
 }
 
 /* ============================================================
-   通用顶栏（治疗页/反馈页）
+   通用顶栏
 ============================================================ */
 
 .phase-topbar {
@@ -2408,10 +2850,9 @@ function triggerAvatarUpload() {
 .treatment-actions { display: flex; gap: 0.6rem; }
 
 /* ============================================================
-   反馈页
+   结算页
 ============================================================ */
 
-.screen-feedback,
 .screen-settlement { background: var(--bg-paper); overflow: hidden; }
 
 .feedback-scroll-area {
@@ -2436,9 +2877,7 @@ function triggerAvatarUpload() {
   flex-direction: column;
   gap: 0.85rem;
 }
-.settlement-page-card {
-  max-width: 680px;
-}
+.settlement-page-card { max-width: 680px; }
 
 .feedback-chip {
   display: inline-block;
@@ -2465,6 +2904,26 @@ function triggerAvatarUpload() {
   line-height: 1.75;
 }
 .feedback-actions { display: flex; gap: 0.6rem; margin-top: 0.2rem; }
+
+.settlement-summary { display: flex; flex-direction: column; gap: 0.65rem; }
+.settlement-stat {
+  padding: 0.8rem 0.9rem;
+  border-radius: 8px;
+  border: 1px solid var(--border-paper);
+  background: rgba(255,255,255,0.42);
+}
+.settlement-stat-label {
+  font-size: 0.62rem;
+  color: var(--text-dim);
+  letter-spacing: 0.14em;
+  font-family: 'Courier New', monospace;
+}
+.settlement-stat-value {
+  margin-top: 0.28rem;
+  font-size: 0.88rem;
+  color: var(--text-main);
+  line-height: 1.75;
+}
 
 /* ============================================================
    弹窗
@@ -2599,224 +3058,6 @@ function triggerAvatarUpload() {
   margin-top: 0.2rem;
 }
 
-.settlement-modal { width: min(460px, calc(100vw - 2rem)); }
-.settlement-summary {
-  display: flex;
-  flex-direction: column;
-  gap: 0.65rem;
-}
-.settlement-stat {
-  padding: 0.8rem 0.9rem;
-  border-radius: 8px;
-  border: 1px solid var(--border-paper);
-  background: rgba(255,255,255,0.42);
-}
-.settlement-stat-label {
-  font-size: 0.62rem;
-  color: var(--text-dim);
-  letter-spacing: 0.14em;
-  font-family: 'Courier New', monospace;
-}
-.settlement-stat-value {
-  margin-top: 0.28rem;
-  font-size: 0.88rem;
-  color: var(--text-main);
-  line-height: 1.75;
-}
-
-.archive-modal { width: min(1020px, calc(100vw - 2rem)); }
-.archive-panel-intro {
-  margin-top: 0.18rem;
-  margin-bottom: 0.85rem;
-  font-size: 0.76rem;
-  color: var(--text-muted);
-  line-height: 1.6;
-}
-.archive-layout {
-  display: grid;
-  grid-template-columns: 280px 1fr;
-  gap: 1rem;
-  min-height: 520px;
-}
-.archive-list {
-  display: flex;
-  flex-direction: column;
-  gap: 0.55rem;
-  max-height: 62vh;
-  overflow-y: auto;
-  padding-right: 0.15rem;
-  scrollbar-width: none;
-}
-.archive-list::-webkit-scrollbar { display: none; }
-.archive-list-item {
-  width: 100%;
-  border-radius: 14px;
-  border: 1px solid var(--border-paper);
-  background:
-    linear-gradient(180deg, rgba(255,255,255,0.82), rgba(247,239,225,0.7));
-  padding: 0.92rem 0.95rem;
-  text-align: left;
-  cursor: pointer;
-  transition: all 0.2s ease;
-  font-family: inherit;
-  box-shadow: 0 10px 24px rgba(70, 46, 8, 0.06);
-}
-.archive-list-item:hover,
-.archive-list-item.active {
-  border-color: var(--border-amber);
-  background:
-    linear-gradient(180deg, rgba(255,251,244,0.96), rgba(249,241,226,0.9));
-  transform: translateX(3px);
-  box-shadow: 0 14px 28px rgba(110, 76, 20, 0.12);
-}
-.archive-list-row {
-  display: flex;
-  align-items: flex-start;
-  justify-content: space-between;
-  gap: 0.6rem;
-}
-.archive-list-name {
-  font-size: 0.98rem;
-  color: var(--text-dark);
-  line-height: 1.3;
-  font-weight: 600;
-}
-.archive-list-job {
-  margin-top: 0.42rem;
-  font-size: 0.74rem;
-  color: var(--text-main);
-  line-height: 1.6;
-}
-.archive-list-date {
-  margin-top: 0.35rem;
-  font-size: 0.66rem;
-  color: var(--text-dim);
-  letter-spacing: 0.04em;
-}
-.archive-list-outcome {
-  flex-shrink: 0;
-  padding: 0.18rem 0.46rem;
-  border-radius: 999px;
-  font-size: 0.6rem;
-  letter-spacing: 0.08em;
-  border: 1px solid var(--border-paper);
-  color: var(--text-dim);
-  background: rgba(255,255,255,0.72);
-}
-.archive-list-outcome.complete {
-  color: #8a5a00;
-  border-color: rgba(200, 130, 10, 0.35);
-  background: rgba(255, 245, 220, 0.94);
-}
-.archive-list-outcome.revisit {
-  color: #7b5f2a;
-  border-color: rgba(128, 112, 70, 0.24);
-  background: rgba(247, 240, 224, 0.94);
-}
-.archive-detail {
-  max-height: 62vh;
-  overflow-y: auto;
-  padding: 0.2rem 0.15rem 0.2rem 0.1rem;
-  scrollbar-width: none;
-}
-.archive-detail::-webkit-scrollbar { display: none; }
-.archive-scroll-container {
-  max-width: 520px;
-  margin: 0 auto;
-  display: flex;
-  flex-direction: column;
-  gap: 1rem;
-}
-.archive-detail-head {
-  display: flex;
-  align-items: center;
-  justify-content: flex-start;
-}
-.archive-back-btn {
-  display: inline-flex;
-  align-items: center;
-  justify-content: center;
-  padding: 0.32rem 0.72rem;
-  border: 1px solid rgba(160,130,80,0.2);
-  border-radius: 999px;
-  background: rgba(255,248,236,0.88);
-  color: var(--text-muted);
-  font: inherit;
-  font-size: 0.7rem;
-}
-.archive-header-card {
-  background: rgba(255, 255, 255, 0.86);
-  border: 1px solid var(--border-paper);
-  border-radius: 12px;
-  padding: 1.1rem 1rem;
-  box-shadow: 0 4px 15px rgba(0, 0, 0, 0.03);
-}
-.archive-header-name {
-  font-size: 1.12rem;
-  color: var(--text-dark);
-  letter-spacing: 0.12em;
-  margin-bottom: 0.45rem;
-}
-.archive-header-meta {
-  display: flex;
-  flex-wrap: wrap;
-  gap: 0.35rem;
-  font-size: 0.72rem;
-  color: var(--text-main);
-  line-height: 1.7;
-}
-.archive-header-sub {
-  margin-top: 0.5rem;
-  font-size: 0.62rem;
-  color: var(--text-muted);
-}
-.archive-section-title {
-  font-size: 0.65rem;
-  color: var(--amber);
-  font-weight: bold;
-  letter-spacing: 0.2em;
-  border-bottom: 1px solid var(--border-paper);
-  padding-bottom: 0.28rem;
-  margin-top: 0.2rem;
-}
-.archive-record-stack {
-  display: flex;
-  flex-direction: column;
-  gap: 0.7rem;
-}
-.archive-record-block {
-  background: rgba(255, 255, 255, 0.58);
-  border: 1px solid rgba(200, 170, 80, 0.12);
-  border-radius: 8px;
-  padding: 0.85rem 0.95rem;
-}
-.archive-record-kicker {
-  font-size: 0.64rem;
-  color: #8a6838;
-  letter-spacing: 0.14em;
-  margin-bottom: 0.45rem;
-}
-.archive-record-role {
-  font-size: 0.72rem;
-  color: var(--amber);
-  margin-bottom: 0.35rem;
-}
-.archive-record-text,
-.archive-story p {
-  font-size: 0.8rem;
-  color: var(--text-main);
-  line-height: 2;
-}
-.archive-story p {
-  margin: 0 0 0.42rem 0;
-}
-.archive-story p:last-child {
-  margin-bottom: 0;
-}
-.archive-record-history {
-  border-left: 2px solid rgba(200,170,80,0.24);
-}
-
 /* ============================================================
    移动端适配
 ============================================================ */
@@ -2833,6 +3074,9 @@ function triggerAvatarUpload() {
 
   .hub-scroll-area { padding: 0.8rem 0.85rem 5.5rem; gap: 0.6rem; }
 
+  .pr-scroll-area { padding: 0.85rem 0.85rem 3rem; }
+  .pr-card-name { font-size: 1rem; }
+
   .consult-frame { margin: 0.6rem 0.7rem 0; }
   .frame-content { padding: 0.8rem 0.88rem; }
   .patient-info-bar { padding: 0.5rem 0.88rem 0.45rem; }
@@ -2844,7 +3088,5 @@ function triggerAvatarUpload() {
 
   .modal-card { padding: 1.2rem; }
   .modal-stats-row { flex-direction: column; }
-  .archive-layout { grid-template-columns: 1fr; min-height: auto; }
-  .archive-list, .archive-detail { max-height: none; }
 }
 </style>

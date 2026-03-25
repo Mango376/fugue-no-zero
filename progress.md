@@ -66,3 +66,24 @@ Original prompt: 现在的问题。第一个客人就出现了二级症状，一
   - 完整结案或转复诊时，会先保留收尾剧情，再进入费用结算弹窗，展示本次治愈等级与获得的信用点。
   - 已完成病例会存入主界面的“患者档案库”，可查看诊断记录、后台摘要与背景故事。
   - `npm run build` 已通过。
+
+- 2026-03-25: 环境生成改为严格 AI 模式，不再使用本地兜底。
+  - 删除了 `gameContent.js` 里的 `ENVIRONMENT_PHASES` 预设环境表，环境不再从本地阶段表回退。
+  - 当前环境生成不再从描述补标题，也不再在最后一次尝试时回退到本地环境文本；AI 环境缺字段或格式不对会直接重试并最终失败。
+  - 患者局部环境也必须由 AI 返回 `name + description`，不再回退到全局环境。
+  - 读档跨天时会强制重新生成当前环境，保证继续游戏后的环境仍然来自 AI。
+  - `npm run build` 已通过。
+
+- TODO: 如果后续希望“环境失败时整个流程显式锁死”，可以再补一层 UI gating，例如禁用进入 hub/接诊按钮并直接展示环境生成失败态，而不是只依赖候诊队列生不出来。
+- 2026-03-25: 继续清理 Synesthesia 的本地内容池与文案兜底。  
+  - 删除了 `gameContent.js` 中未再使用的 `CONSULT_OPTION_LIBRARY` 与患者姓名/职业/牵挂/语气数据池，避免误导后续维护。  
+  - `generationPrompts.js` 改为环境只返回 `description`，全局环境和患者局部环境都不再生成或保存环境名称。  
+  - `promptBuilder.js` 不再在 prompt 中引用环境名称，环境上下文统一改为描述文本。  
+  - `useGameLogic.js` 去掉了后台追踪表、问诊选项、患者档案故事的本地补字逻辑；AI 缺字段时现在会直接报错，不再塞默认文案。  
+  - `node --check` 已通过 `gameContent.js`、`generationPrompts.js`、`promptBuilder.js`、`useGameLogic.js`；`npm run build` 已通过。  
+- 2026-03-25: 调整治疗后反馈链路，治疗结果不再切换到独立结果页。  
+  - `submitTreatment()` 现在会直接回到问诊页，把患者反馈写入问诊记录；`partial` 分支会在问诊页继续刷新后续问诊选项。  
+  - `complete` 分支会把 AI 生成的结尾剧情追加到问诊记录里，再等待玩家从问诊页进入结算；`revisit` 分支也同样留在问诊页等待进入结算。  
+  - 结算从原来的独立 `settlement` 页面改成了问诊页上的结算弹窗；原 `patient_feedback` / `settlement` 模板已停用，仅保留兼容结构。  
+  - 存档新增保存 `patientFeedbackOutcome` 与 `pendingSettlementRecord`，并在读档时把旧的 `patient_feedback` / `settlement` 相位收束回问诊页。  
+  - `npm run build` 已通过。尝试按 `develop-web-game` skill 跑 Playwright，但本机缺少 `playwright` 依赖，自动化截图验证未完成。  
