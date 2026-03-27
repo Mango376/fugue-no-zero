@@ -9,14 +9,13 @@ import {
   DIAGNOSIS_LIMIT,
   HUB_ACTIONS,
   PLAYER_PROFILE,
-  REAL_MS_PER_GAME_DAY,
   REVISIT_DELAY_DAYS,
-  TREATMENT_LIMIT,
   SENSE_CONFIGS,
   SENSE_LABELS,
   SENSE_TARGETS,
   SYSTEM_SNAPSHOT,
-  TITLE_CONTENT
+  TITLE_CONTENT,
+  TREATMENT_LIMIT
 } from '../data/gameContent'
 import {
   buildArrivalPrompt,
@@ -36,7 +35,7 @@ import { SYSTEM_PROMPT } from '../prompts/systemPrompt'
 
 const SCRIPT_ID = 'synesthesia'
 const ARCHIVE_PREFIX = `${SCRIPT_ID}-archive-`
-const VALID_PHASES = ['background_intro', 'hub', 'consult', 'treatment', 'patient_feedback', 'settlement']
+const VALID_PHASES = ['background_intro', 'hub', 'consult', 'treatment', 'patient_feedback', 'settlement','patient_records']
 const VALID_CONSULT_STAGES = ['arrival_intro', 'questioning']
 const VALID_CONSULT_ENTRY_STAGES = ['pre_consult', 'entering_consult', 'questioning']
 const AUTOSAVE_DELAY = 400
@@ -46,12 +45,14 @@ const DEFAULT_SYMPTOM_LEVEL = 1
 const MAX_SYMPTOM_LEVEL = 4
 const DEBT_BORROW_PROBABILITY = 0.1
 const DEBT_REPAY_DAILY_PROBABILITY = 0.1
+
 const TREATMENT_FEE_BY_LEVEL = {
   1: 50,
   2: 100,
   3: 150,
   4: 200
 }
+
 const UPGRADE_COST_BY_LEVEL = {
   1: 200,
   2: 400,
@@ -169,6 +170,25 @@ function cloneEnvironmentProfile(environment) {
   return { ...environment }
 }
 
+function cloneTrackingSheet(trackingSheet) {
+  if (!trackingSheet) return null
+  return {
+    ...trackingSheet,
+    patientProfile: { ...(trackingSheet.patientProfile ?? {}) },
+    environmentFactors: Array.isArray(trackingSheet.environmentFactors) ? [...trackingSheet.environmentFactors] : [],
+    symptomLedger: Array.isArray(trackingSheet.symptomLedger) ? [...trackingSheet.symptomLedger] : [],
+    changeLog: Array.isArray(trackingSheet.changeLog) ? [...trackingSheet.changeLog] : [],
+    originalMappings: cloneMapping(trackingSheet.originalMappings),
+    unresolvedMappings: cloneMapping(trackingSheet.unresolvedMappings),
+    confirmedMappings: cloneMapping(trackingSheet.confirmedMappings),
+    resolvedMappings: cloneMapping(trackingSheet.resolvedMappings),
+    mappingLevels: { ...(trackingSheet.mappingLevels ?? {}) },
+    healedMappings: cloneMapping(trackingSheet.healedMappings),
+    worsenedMappings: cloneMapping(trackingSheet.worsenedMappings),
+    newMappings: cloneMapping(trackingSheet.newMappings)
+  }
+}
+
 function clonePatient(patient) {
   if (!patient) return null
   const { _initialMappingLevels, ...rest } = patient
@@ -216,25 +236,6 @@ function cloneDebtRecord(record) {
 function clonePhoneMessage(message) {
   if (!message) return null
   return { ...message }
-}
-
-function cloneTrackingSheet(trackingSheet) {
-  if (!trackingSheet) return null
-  return {
-    ...trackingSheet,
-    patientProfile: { ...(trackingSheet.patientProfile ?? {}) },
-    environmentFactors: Array.isArray(trackingSheet.environmentFactors) ? [...trackingSheet.environmentFactors] : [],
-    symptomLedger: Array.isArray(trackingSheet.symptomLedger) ? [...trackingSheet.symptomLedger] : [],
-    changeLog: Array.isArray(trackingSheet.changeLog) ? [...trackingSheet.changeLog] : [],
-    originalMappings: cloneMapping(trackingSheet.originalMappings),
-    unresolvedMappings: cloneMapping(trackingSheet.unresolvedMappings),
-    confirmedMappings: cloneMapping(trackingSheet.confirmedMappings),
-    resolvedMappings: cloneMapping(trackingSheet.resolvedMappings),
-    mappingLevels: { ...(trackingSheet.mappingLevels ?? {}) },
-    healedMappings: cloneMapping(trackingSheet.healedMappings),
-    worsenedMappings: cloneMapping(trackingSheet.worsenedMappings),
-    newMappings: cloneMapping(trackingSheet.newMappings)
-  }
 }
 
 function sortRevisitQueue(queue = []) {
@@ -327,7 +328,6 @@ function buildDefaultGameState() {
     credits: DEFAULT_GAME_STATE.credits,
     patientCount: DEFAULT_GAME_STATE.patientCount,
     gameDay: DEFAULT_GAME_STATE.gameDay,
-    lastTimeSyncAt: Date.now(),
     nextPatientSerial: DEFAULT_GAME_STATE.nextPatientSerial,
     patientSeedBase: createPatientSeedBase(),
     environmentPhase: DEFAULT_GAME_STATE.environmentPhase,
@@ -353,12 +353,6 @@ function buildDefaultGameState() {
     revisitQueue: [],
     completedCases: []
   }
-}
-
-function buildEstimatedIncome(patient) {
-  const mappingCount = countMappings(patient?.originalMappings)
-  const revisitBonus = Number(patient?.visitCount || 1) > 1 ? 18 : 0
-  return 36 + mappingCount * 22 + revisitBonus
 }
 
 function normalizeLevelValue(level) {
@@ -483,7 +477,6 @@ function normalizeTrackingSheet(rawSheet, patient) {
     symptomLedger: requireGeneratedTextList(rawSheet?.symptomLedger, '后台追踪表症状记录'),
     changeLog: requireGeneratedTextList(rawSheet?.changeLog, '后台追踪表变更日志'),
     abnormalCount: countMappings(originalMappings),
-    estimatedIncome: buildEstimatedIncome(patient),
     originalMappings,
     unresolvedMappings,
     confirmedMappings: createEmptyMapping(),
@@ -519,6 +512,7 @@ function applyRevisitMutation(patient, environment, currentDay) {
   const unresolved = cloneMapping(nextSheet.unresolvedMappings)
   const seed = buildPseudoSeed(nextPatient, environment?.phase, currentDay)
   const unresolvedPairs = getMappingPairs(unresolved)
+
   if (unresolvedPairs.length) {
     const targetPair = unresolvedPairs[seed % unresolvedPairs.length]
     const sourceTargets = unresolved[targetPair.source]
@@ -542,6 +536,7 @@ function applyRevisitMutation(patient, environment, currentDay) {
       appendTrackingLog(nextSheet, `复诊加深：${formatPairLabel(targetPair.source, newTarget)}`)
     }
   }
+
   const sourceId = SENSE_CONFIGS[(seed + 5) % SENSE_CONFIGS.length].id
   const addableTargets = SENSE_TARGETS[sourceId].filter(target => !unresolved[sourceId].includes(target))
   if (addableTargets.length && seed % 100 < 45) {
@@ -552,6 +547,7 @@ function applyRevisitMutation(patient, environment, currentDay) {
     appendSymptomLedger(nextSheet, `新增：${formatPairLabel(sourceId, newTarget)}`)
     appendTrackingLog(nextSheet, `复诊新增：${formatPairLabel(sourceId, newTarget)}`)
   }
+
   nextSheet.environmentFactors = [environment?.name || '', environment?.description || ''].filter(Boolean)
   nextSheet.unresolvedMappings = cloneMapping(unresolved)
   nextSheet.abnormalCount = countMappings(unresolved)
@@ -626,21 +622,90 @@ function looksLikePromptLeak(text = '') {
   return (
     /生成\s*4\s*个下一步问诊选项/.test(cleaned)
     || /只输出\s*JSON/.test(cleaned)
-    || /"doctorLine"\s*:/.test(cleaned)
-    || /"promptFocus"\s*:/.test(cleaned)
-    || /"patientProfile"\s*:/.test(cleaned)
-    || /"unresolvedMappings"\s*:/.test(cleaned)
+    || /"doctorLine"\s*: /.test(cleaned)
+    || /"promptFocus"\s*: /.test(cleaned)
+    || /"patientProfile"\s*: /.test(cleaned)
+    || /"unresolvedMappings"\s*: /.test(cleaned)
     || /【最近问诊历史】|【本轮医生提问】|【玩家当前记录】|【已知基础资料】/.test(cleaned)
   )
 }
 
+// 改之后
+const JSON_FIELD_NAMES = [
+  'response', 'text', 'content', 'reply',
+  'narrative', 'answer', 'story', 'message', 'feedback'
+]
+
+function tryExtractFromJsonWrapper(text = '') {
+  const cleaned = stripCodeFence(text)
+
+  // 先尝试完整 JSON 解析
+  try {
+    const start = cleaned.indexOf('{')
+    const end = cleaned.lastIndexOf('}')
+    if (start !== -1 && end !== -1 && end > start) {
+      const parsed = JSON.parse(cleaned.slice(start, end + 1))
+      if (parsed && typeof parsed === 'object') {
+        for (const key of JSON_FIELD_NAMES) {
+          if (typeof parsed[key] === 'string' && parsed[key].trim()) {
+            return parsed[key].trim()
+          }
+        }
+      }
+    }
+  } catch {
+    // 解析失败，继续走正则兜底
+  }
+
+
+  // 匹配 "fieldName": "内容..." 或 "fieldName": "内容（不含结尾引号）
+// 正则兜底：只定位字段名和开头引号，剩余全部取出再清理尾部
+const fieldPattern = new RegExp(
+  `"(?:${JSON_FIELD_NAMES.join('|')})"\\s*:\\s*"`,
+  'i'
+)
+const match = cleaned.match(fieldPattern)
+if (match) {
+  // 从字段内容开始位置截取到末尾
+  const contentStart = match.index + match[0].length
+  const raw = cleaned.slice(contentStart)
+  // 去掉末尾的 JSON 结束符 " } 或 ", 等
+  const content = raw
+    .replace(/"\s*}\s*$/, '')
+    .replace(/",?\s*}\s*$/, '')
+    .replace(/\\n/g, '\n')
+    .replace(/\\"/g, '"')
+    .replace(/\\\\/g, '\\')
+    .trim()
+  if (content) return content
+}
+
+
+  return text
+}
+
+
+
+// 新增：检测文本是否以中文为主
+function looksLikeWrongLanguage(text = '') {
+  if (!text || text.length < 8) return false
+  // 统计中文字符占比
+  const chineseChars = (text.match(/[\u4e00-\u9fff]/g) || []).length
+  const totalChars = text.replace(/\s/g, '').length
+  if (totalChars === 0) return false
+  // 中文占比低于 20% 视为语言异常
+  return chineseChars / totalChars < 0.2
+}
+
 function sanitizeNarrativeReply(text = '') {
-  const cleaned = stripStructuredMarkers(stripCodeFence(text))
-  if (!cleaned || looksLikePromptLeak(cleaned)) {
+  const extracted = tryExtractFromJsonWrapper(text)
+  const cleaned = stripStructuredMarkers(stripCodeFence(extracted))
+  if (!cleaned || looksLikePromptLeak(cleaned) || looksLikeWrongLanguage(cleaned)) {
     return ''
   }
   return cleaned
 }
+
 
 function sanitizeHistoryEntries(entries = []) {
   if (!Array.isArray(entries)) return []
@@ -653,14 +718,14 @@ function sanitizeHistoryEntries(entries = []) {
 function sanitizeDoctorLine(text = '', label = '') {
   return String(text || '')
     .replace(/^[—\-–\s]+/, '')
-    .replace(new RegExp(`^${label}[：:、\\s-]*`), '')
+    .replace(new RegExp(`^${label}[：: 、\\s-]*`), '')
     .replace(/\s+/g, ' ')
     .trim()
 }
 
 function normalizeQuestionText(text = '') {
   return String(text || '')
-    .replace(/[—\-–\s，。！？、：:"""'`]/g, '')
+    .replace(/[—\-–\s，。！？、：:“”"'`]/g, '')
     .trim()
 }
 
@@ -702,12 +767,12 @@ function parseOptionPayload(text, recentDoctorLines = []) {
       )
     })
     .slice(0, 4)
+
   if (selected.length < 4) {
     throw new Error('AI 返回的有效问诊选项不足 4 个。')
   }
   return selected
 }
-
 
 export function useGameLogic() {
   const router = useRouter()
@@ -745,12 +810,10 @@ export function useGameLogic() {
   const earnedCreditsTotal = ref(0)
   const patientCount = ref(0)
   const gameDay = ref(1)
-  const lastTimeSyncAt = ref(Date.now())
   const nextPatientSerial = ref(1)
   const patientSeedBase = ref(createPatientSeedBase())
   const environmentPhase = ref(1)
   const currentEnvironmentProfile = ref(null)
-  const nowTick = ref(Date.now())
   const playerProfile = ref({ ...PLAYER_PROFILE })
   const equipmentOverview = ref(cloneEquipmentOverview())
   const waitingPatients = ref([])
@@ -775,22 +838,22 @@ export function useGameLogic() {
 
   let autosaveTimer = null
   let queueTimer = null
-  let consultRequestToken = 0
+  let consultRequestToken = Symbol()
   let environmentGenerationPromise = null
   let queueGenerationPromise = null
 
   function beginConsultRequest() {
-    consultRequestToken += 1
-    return consultRequestToken
-  }
+  consultRequestToken = Symbol()
+  return consultRequestToken
+}
 
-  function invalidateConsultRequest() {
-    consultRequestToken += 1
-  }
+function invalidateConsultRequest() {
+  consultRequestToken = Symbol()
+}
 
-  function isCurrentConsultRequest(token) {
-    return token === consultRequestToken
-  }
+function isCurrentConsultRequest(token) {
+  return token === consultRequestToken
+}
 
   function updateDiagnosisUses(value) {
     const nextValue = clamp(Number(value) || 0, 0, DIAGNOSIS_LIMIT)
@@ -843,13 +906,6 @@ export function useGameLogic() {
     }
   }
 
-  function normalizeGeneratedLevelMap(levelMap = {}, mapping = {}) {
-    return getMappingPairs(mapping).reduce((acc, pair) => {
-      acc[pair.key] = normalizeLevelValue(levelMap?.[pair.key] ?? DEFAULT_SYMPTOM_LEVEL)
-      return acc
-    }, createEmptyLevelMap())
-  }
-
   function normalizeGeneratedPatientPayload(rawPatient, { serial, seedBase = 0 }) {
     const name = String(rawPatient?.name || '').trim()
     const job = String(rawPatient?.job || '').trim()
@@ -857,14 +913,17 @@ export function useGameLogic() {
     const attachment = String(rawPatient?.attachment || '').trim()
     const emotionalTone = String(rawPatient?.emotionalTone || '').trim()
     const speechStyle = String(rawPatient?.speechStyle || '').trim()
+
     if (!name || !job || !jobContext || !attachment || !emotionalTone || !speechStyle) {
       throw new Error('AI 生成的患者基础资料不完整。')
     }
+
     const generatedMappings = normalizeMapping(rawPatient?.originalMappings)
     const generatedLevelMap = normalizeGeneratedLevelMap(rawPatient?.mappingLevels, generatedMappings)
     if (isEmptyMapping(generatedMappings)) {
       throw new Error('AI 生成的患者病症为空。')
     }
+
     return {
       id: `synesthesia-patient-${serial}-${Date.now()}`,
       serial,
@@ -943,9 +1002,11 @@ export function useGameLogic() {
     const existingPatients = collectExistingPatientReferences()
     const globalEnvironment = currentEnvironmentProfile.value
     let lastError = null
+
     if (!globalEnvironment) {
       throw new Error('当前环境尚未生成完成。')
     }
+
     for (let attempt = 0; attempt < 3; attempt += 1) {
       try {
         const payload = await generateStructuredReply(
@@ -964,6 +1025,7 @@ export function useGameLogic() {
         lastError = error
       }
     }
+
     throw lastError || new Error('AI 生成患者失败。')
   }
 
@@ -985,12 +1047,7 @@ export function useGameLogic() {
     await queueGenerationPromise
   }
 
-  function createPatient() {
-    throw new Error('Local patient generation has been disabled.')
-  }
-
   async function refreshPatientQueue(force = false) {
-    nowTick.value = Date.now()
     if (phase.value === 'title') return waitingPatients.value.length
     if (isEnvironmentLoading.value || !currentEnvironmentProfile.value) return waitingPatients.value.length
     if (waitingPatients.value.length >= PATIENT_QUEUE_MAX) return waitingPatients.value.length
@@ -1005,7 +1062,6 @@ export function useGameLogic() {
     } finally {
       isQueueGenerating.value = false
       lastQueueRollAt.value = Date.now()
-      nowTick.value = lastQueueRollAt.value
       scheduleProgressSave()
     }
   }
@@ -1016,7 +1072,7 @@ export function useGameLogic() {
       if (isEnvironmentLoading.value || !currentEnvironmentProfile.value) return
       if (waitingPatients.value.length >= PATIENT_QUEUE_MAX || queueGenerationPromise) return
       refreshPatientQueue(true).catch(error => {
-        console.warn('Synesthesia 候诊队列生成失败:', error)
+        console.warn('Synesthesia 候诊队列生成失败: ', error)
       })
     }, PATIENT_QUEUE_ROLL_INTERVAL_MS)
   }
@@ -1026,7 +1082,7 @@ export function useGameLogic() {
     const [nextPatient, ...rest] = waitingPatients.value
     waitingPatients.value = rest
     refreshPatientQueue(true).catch(error => {
-      console.warn('Synesthesia 候诊队列补位失败:', error)
+      console.warn('Synesthesia 候诊队列补位失败: ', error)
     })
     return clonePatient(nextPatient)
   }
@@ -1166,7 +1222,7 @@ export function useGameLogic() {
         const reply = await aiService.generateReply(prompt, SYSTEM_PROMPT)
         messageText = sanitizeNarrativeReply(reply?.trim())
       } catch (error) {
-        console.warn('Synesthesia 还款短信生成失败:', error)
+        console.warn('Synesthesia 还款短信生成失败: ', error)
       }
       if (!messageText) {
         statusNotice.value = '收到还款，但 AI 未生成短信内容。'
@@ -1228,7 +1284,7 @@ export function useGameLogic() {
       console.log('[archiveStory]', result?.slice(0, 50))
       return result
     } catch (error) {
-      console.warn('Synesthesia 患者背景故事生成失败:', error)
+      console.warn('Synesthesia 患者背景故事生成失败: ', error)
       return ''
     }
   }
@@ -1267,7 +1323,6 @@ export function useGameLogic() {
       earnedCreditsTotal: earnedCreditsTotal.value,
       patientCount: patientCount.value,
       gameDay: gameDay.value,
-      lastTimeSyncAt: lastTimeSyncAt.value,
       nextPatientSerial: nextPatientSerial.value,
       patientSeedBase: patientSeedBase.value,
       environmentPhase: environmentPhase.value,
@@ -1307,7 +1362,7 @@ export function useGameLogic() {
     }
     autosaveTimer = setTimeout(() => {
       saveProgress().catch(error => {
-        console.warn('Synesthesia 自动保存失败:', error)
+        console.warn('Synesthesia 自动保存失败: ', error)
       })
       autosaveTimer = null
     }, AUTOSAVE_DELAY)
@@ -1339,7 +1394,6 @@ export function useGameLogic() {
         : 0)
     patientCount.value = Number.isFinite(rawState.patientCount) ? rawState.patientCount : fallback.patientCount
     gameDay.value = Math.max(1, Number(rawState.gameDay ?? fallback.gameDay) || 1)
-    lastTimeSyncAt.value = Number.isFinite(rawState.lastTimeSyncAt) ? rawState.lastTimeSyncAt : fallback.lastTimeSyncAt
     nextPatientSerial.value = Math.max(1, Number(rawState.nextPatientSerial ?? fallback.nextPatientSerial) || 1)
     patientSeedBase.value = Number.isFinite(rawState.patientSeedBase) ? rawState.patientSeedBase : fallback.patientSeedBase
     currentEnvironmentProfile.value = cloneEnvironmentProfile(rawState.currentEnvironmentProfile)
@@ -1421,26 +1475,6 @@ export function useGameLogic() {
     }
   }
 
-  function settleElapsedGameTime(savedState) {
-    const hasActiveCase = !!savedState?.activePatient && ['consult', 'treatment', 'patient_feedback', 'settlement'].includes(savedState?.phase)
-    if (hasActiveCase) {
-      lastTimeSyncAt.value = Date.now()
-      return 0
-    }
-    const previousSyncAt = Number(savedState?.lastTimeSyncAt)
-    if (!previousSyncAt) {
-      lastTimeSyncAt.value = Date.now()
-      return 0
-    }
-    const elapsed = Math.max(0, Date.now() - previousSyncAt)
-    const passedDays = Math.floor(elapsed / REAL_MS_PER_GAME_DAY)
-    if (passedDays > 0) {
-      gameDay.value += passedDays
-    }
-    lastTimeSyncAt.value = Date.now()
-    return passedDays
-  }
-
   async function syncSaveStatus() {
     try {
       const saved = await saveService.load(SCRIPT_ID)
@@ -1448,7 +1482,7 @@ export function useGameLogic() {
       hasSave.value = !!saved
       hasArchiveSave.value = archiveSaves.value.length > 0
     } catch (error) {
-      console.error('Synesthesia 存档状态检查失败:', error)
+      console.error('Synesthesia 存档状态检查失败: ', error)
       hasSave.value = false
       hasArchiveSave.value = false
       archiveSaves.value = []
@@ -1461,16 +1495,15 @@ export function useGameLogic() {
     const snapshot = buildDefaultGameState()
     applyGameState(snapshot)
     phase.value = 'background_intro'
-    lastTimeSyncAt.value = Date.now()
     statusNotice.value = ''
     ensureCurrentEnvironmentProfile({ force: true })
       .then(() => {
         refreshPatientQueue(true).catch(error => {
-          console.warn('Synesthesia 新开局候诊队列初始化失败:', error)
+          console.warn('Synesthesia 新开局候诊队列初始化失败: ', error)
         })
       })
       .catch(error => {
-        console.warn('Synesthesia 新开局环境初始化失败:', error)
+        console.warn('Synesthesia 新开局环境初始化失败: ', error)
       })
     await saveProgress()
   }
@@ -1502,20 +1535,15 @@ export function useGameLogic() {
 
   async function restoreFromSave(saved) {
     applyGameState(saved)
-    const passedDays = settleElapsedGameTime(saved)
     narrativeError.value = ''
     await ensureCurrentEnvironmentProfile({
-      force: passedDays > 0 || !currentEnvironmentProfile.value,
+      force: !currentEnvironmentProfile.value,
       previousEnvironmentDescription: currentEnvironmentProfile.value?.description || ''
     })
     refreshPatientQueue(true).catch(error => {
-      console.warn('Synesthesia 读档后候诊队列刷新失败:', error)
+      console.warn('Synesthesia 读档后候诊队列刷新失败: ', error)
     })
-    if (passedDays > 0) {
-      statusNotice.value = `离线期间过去了 ${passedDays} 个游戏日。`
-    } else {
       statusNotice.value = ''
-    }
   }
 
   async function continueGame() {
@@ -1532,7 +1560,7 @@ export function useGameLogic() {
         await saveProgress()
       }
     } catch (error) {
-      console.error('Synesthesia 读取存档失败:', error)
+      console.error('Synesthesia 读取存档失败: ', error)
       hasSave.value = false
     }
   }
@@ -1545,7 +1573,7 @@ export function useGameLogic() {
       if (!saved) return
       await restoreFromSave(saved)
     } catch (error) {
-      console.error('Synesthesia 读取归档存档失败:', error)
+      console.error('Synesthesia 读取归档存档失败: ', error)
     }
   }
 
@@ -1554,7 +1582,7 @@ export function useGameLogic() {
       try {
         await saveProgress()
       } catch (error) {
-        console.warn('Synesthesia 离开前保存失败:', error)
+        console.warn('Synesthesia 离开前保存失败: ', error)
       }
     }
     router.push('/')
@@ -1585,7 +1613,7 @@ export function useGameLogic() {
     try {
       await saveProgress()
     } catch (error) {
-      console.warn('Synesthesia 返回 hub 前保存失败:', error)
+      console.warn('Synesthesia 返回 hub 前保存失败: ', error)
     }
   }
 
@@ -1640,17 +1668,18 @@ export function useGameLogic() {
   }
 
   async function generateTrackingSheet(patient) {
-    if (!patient) return null
-    const environment = currentEnvironmentProfile.value ?? patient.environmentProfile
-    if (!environment) {
-      throw new Error('当前环境尚未生成完成。')
-    }
-    const parsedSheet = await generateStructuredReply(
-      buildTrackingSheetPrompt({ patient, environment, estimatedIncome: buildEstimatedIncome(patient) }),
-      '后台追踪表'
-    )
-    return normalizeTrackingSheet(parsedSheet, patient)
+  if (!patient) return null
+  const environment = currentEnvironmentProfile.value ?? patient.environmentProfile
+  if (!environment) {
+    throw new Error('当前环境尚未生成完成。')
   }
+  const parsedSheet = await generateStructuredReply(
+    buildTrackingSheetPrompt({ patient, environment }), 
+    '后台追踪表'
+  )
+  return normalizeTrackingSheet(parsedSheet, patient)
+}
+
 
   async function generateArrivalNarrative(requestToken = null) {
     if (!activePatient.value) return
@@ -1686,6 +1715,41 @@ export function useGameLogic() {
         return
       }
       narrativeError.value = normalizeNarrativeError(error)
+    }
+  }
+
+  async function fetchArrivalNarrativeText(requestToken = null) {
+    if (!activePatient.value) return ''
+    narrativeError.value = ''
+    try {
+      const prompt = buildArrivalPrompt({
+        patient: activePatient.value,
+        environment: activeEnvironment.value,
+        trackingSheet: activePatient.value.trackingSheet
+      })
+      const reply = await aiService.generateReply(prompt, SYSTEM_PROMPT)
+      const trimmed = reply?.trim()
+
+      if (requestToken !== null && !isCurrentConsultRequest(requestToken)) {
+        return ''
+      }
+
+      if (!trimmed) {
+        throw new Error('AI 返回了空白内容。')
+      }
+
+      const safeText = sanitizeNarrativeReply(trimmed)
+      if (!safeText) {
+        throw new Error('AI 返回的到诊文本无效。')
+      }
+
+      return safeText
+    } catch (error) {
+      if (requestToken !== null && !isCurrentConsultRequest(requestToken)) {
+        return ''
+      }
+      narrativeError.value = normalizeNarrativeError(error)
+      return ''
     }
   }
 
@@ -1748,14 +1812,18 @@ export function useGameLogic() {
 
   async function continueConsultFlow() {
     if (!activePatient.value || isGeneratingText.value || consultEntryStage.value !== 'pre_consult') return
+
     const requestToken = beginConsultRequest()
     consultEntryStage.value = 'entering_consult'
     consultStage.value = 'arrival_intro'
     isConsultNarrativeReady.value = false
     isConsultOptionsReady.value = false
     isGeneratingText.value = true
+    typingEntryId.value = ''
     narrativeError.value = ''
+
     await saveProgress()
+
     try {
       if (activePatient.value && !activePatient.value.trackingSheetReady) {
         const generatedTrackingSheet = await generateTrackingSheet(activePatient.value)
@@ -1763,21 +1831,60 @@ export function useGameLogic() {
         activePatient.value.trackingSheet = generatedTrackingSheet
         activePatient.value.trackingSheetReady = true
       }
-      await generateArrivalNarrative(requestToken)
+
+      const arrivalText = await fetchArrivalNarrativeText(requestToken)
       if (!isCurrentConsultRequest(requestToken)) return
-      isConsultNarrativeReady.value = consultationHistory.value.length > 0
-      if (!isConsultNarrativeReady.value) {
+
+      if (!arrivalText) {
         consultEntryStage.value = 'pre_consult'
         return
       }
-      await refreshConsultOptions(requestToken)
+
+      const arrivalEntry = makeHistoryEntry({
+        speaker: 'narrator',
+        label: activePatient.value.visitCount > 1 ? '复诊来访' : '到诊记录',
+        text: arrivalText,
+        type: 'arrival'
+      })
+
+      const nextHistory = [arrivalEntry]
+
+      const recentDoctorLines = nextHistory
+        .filter(item => item?.speaker === 'doctor')
+        .slice(-3)
+        .map(item => item.text)
+
+      const prompt = buildConsultOptionsPrompt({
+        patient: activePatient.value,
+        environment: activeEnvironment.value,
+        trackingSheet: activePatient.value.trackingSheet,
+        consultationHistory: nextHistory.slice(-8),
+        consultNotes: consultNotes.value,
+        diagnosisDraft: diagnosisDraft.value,
+        confirmedDiagnosis: confirmedDiagnosis.value
+      })
+
+      const reply = await aiService.generateReply(prompt, SYSTEM_PROMPT)
       if (!isCurrentConsultRequest(requestToken)) return
-      isConsultOptionsReady.value = consultOptions.value.length > 0
+
+      const parsedOptions = parseOptionPayload(reply, recentDoctorLines)
+
+      if (!parsedOptions.length) {
+        throw new Error('AI 返回的问诊选项为空。')
+      }
+
+      consultationHistory.value = nextHistory
+      consultOptions.value = parsedOptions
+      isConsultNarrativeReady.value = true
+      isConsultOptionsReady.value = true
+      typingEntryId.value = arrivalEntry.id
       consultEntryStage.value = 'questioning'
       consultStage.value = 'questioning'
     } catch (error) {
       if (isCurrentConsultRequest(requestToken)) {
         consultEntryStage.value = 'pre_consult'
+        consultOptions.value = []
+        isConsultOptionsReady.value = false
         narrativeError.value = `后台追踪表生成失败：${normalizeNarrativeError(error)}`
       }
     } finally {
@@ -1793,14 +1900,15 @@ export function useGameLogic() {
   }
 
   async function refreshConsultOptions(requestToken = null) {
-    // 有待结算记录时不生成选项
     if (pendingSettlementRecord.value) {
       consultOptions.value = []
+      isConsultOptionsReady.value = false
       return []
     }
 
     if (!activePatient.value) {
       consultOptions.value = []
+      isConsultOptionsReady.value = false
       return consultOptions.value
     }
 
@@ -1814,7 +1922,7 @@ export function useGameLogic() {
         patient: activePatient.value,
         environment: activeEnvironment.value,
         trackingSheet: activePatient.value.trackingSheet,
-        consultationHistory: consultationHistory.value,
+        consultationHistory: consultationHistory.value.slice(-8),
         consultNotes: consultNotes.value,
         diagnosisDraft: diagnosisDraft.value,
         confirmedDiagnosis: confirmedDiagnosis.value
@@ -1826,6 +1934,7 @@ export function useGameLogic() {
       const parsedOptions = parseOptionPayload(reply, recentDoctorLines)
       if (parsedOptions.length > 0) {
         consultOptions.value = parsedOptions
+        isConsultOptionsReady.value = true
         return consultOptions.value
       }
       throw new Error('AI 返回的问诊选项为空。')
@@ -1833,23 +1942,58 @@ export function useGameLogic() {
       if (requestToken !== null && !isCurrentConsultRequest(requestToken)) {
         return []
       }
-      console.warn('Synesthesia 问诊选项生成失败:', error)
+      console.warn('Synesthesia 问诊选项生成失败: ', error)
       consultOptions.value = []
+      isConsultOptionsReady.value = false
       narrativeError.value = `问诊选项生成失败：${normalizeNarrativeError(error)}`
       return []
     }
   }
 
+  async function retryConsultOptions() {
+    if (!activePatient.value || pendingSettlementRecord.value) return []
+    const requestToken = beginConsultRequest()
+    isGeneratingText.value = true
+    narrativeError.value = ''
+    isConsultOptionsReady.value = false
+
+    // 改之后
+try {
+  const options = await refreshConsultOptions(requestToken)
+  if (!isCurrentConsultRequest(requestToken)) return []
+  isConsultOptionsReady.value = options.length > 0
+  if (options.length > 0) {
+    isConsultNarrativeReady.value = true  // 恢复叙事就绪，选项才能显示
+  }
+  return options
+}
+ catch (error) {
+      if (!isCurrentConsultRequest(requestToken)) return []
+      narrativeError.value = normalizeNarrativeError(error)
+      return []
+    // 改之后
+} finally {
+  isGeneratingText.value = false
+  if (isCurrentConsultRequest(requestToken)) {
+    await saveProgress()
+  }
+}
+
+  }
+
   async function chooseConsultOption(option) {
     if (!activePatient.value || isGeneratingText.value) return
+
     const requestToken = beginConsultRequest()
     const historyBeforeChoice = [...consultationHistory.value]
+
     const doctorEntry = makeHistoryEntry({
       speaker: 'doctor',
       label: '问诊',
       text: option.doctorLine,
       type: 'question'
     })
+
     consultStage.value = 'questioning'
     consultEntryStage.value = 'questioning'
     isGeneratingText.value = true
@@ -1857,47 +2001,91 @@ export function useGameLogic() {
     isConsultNarrativeReady.value = false
     isConsultOptionsReady.value = false
     narrativeError.value = ''
+
     try {
       const prompt = buildConsultReplyPrompt({
         patient: activePatient.value,
         environment: activeEnvironment.value,
         trackingSheet: activePatient.value.trackingSheet,
         option,
-        consultationHistory: [...historyBeforeChoice, doctorEntry],
+        consultationHistory: [...historyBeforeChoice, doctorEntry].slice(-8),
         consultNotes: consultNotes.value,
         diagnosisDraft: diagnosisDraft.value,
         confirmedDiagnosis: confirmedDiagnosis.value
       })
+
       const reply = await aiService.generateReply(prompt, SYSTEM_PROMPT)
       const trimmed = reply?.trim()
+
       if (!isCurrentConsultRequest(requestToken)) return
+
       if (!trimmed) {
         throw new Error('AI 返回了空白内容。')
       }
+
       const safeText = sanitizeNarrativeReply(trimmed)
       if (!safeText) {
         throw new Error('AI 返回的患者回复无效。')
       }
+
       const patientEntry = makeHistoryEntry({
         speaker: 'patient',
         label: activePatient.value.name,
         text: safeText,
         type: 'answer'
       })
-      consultationHistory.value = [...historyBeforeChoice, doctorEntry, patientEntry]
-      typingEntryId.value = patientEntry.id
+
+      const nextHistory = [...historyBeforeChoice, doctorEntry, patientEntry]
+
+      const recentDoctorLines = nextHistory
+        .filter(item => item?.speaker === 'doctor')
+        .slice(-3)
+        .map(item => item.text)
+
+      const optionPrompt = buildConsultOptionsPrompt({
+        patient: activePatient.value,
+        environment: activeEnvironment.value,
+        trackingSheet: activePatient.value.trackingSheet,
+        consultationHistory: nextHistory.slice(-8),
+        consultNotes: consultNotes.value,
+        diagnosisDraft: diagnosisDraft.value,
+        confirmedDiagnosis: confirmedDiagnosis.value
+      })
+
+      const optionReply = await aiService.generateReply(optionPrompt, SYSTEM_PROMPT)
+
+      if (!isCurrentConsultRequest(requestToken)) return
+
+      const parsedOptions = parseOptionPayload(optionReply, recentDoctorLines)
+
+      if (!parsedOptions.length) {
+        throw new Error('AI 返回的问诊选项为空。')
+      }
+
+      consultationHistory.value = nextHistory
+      consultOptions.value = parsedOptions
       isConsultNarrativeReady.value = true
+      isConsultOptionsReady.value = true
+      consultEntryStage.value = 'questioning'
+      consultStage.value = 'questioning'
+      typingEntryId.value = patientEntry.id
     } catch (error) {
-      if (!isCurrentConsultRequest(requestToken)) return
-      narrativeError.value = normalizeNarrativeError(error)
-    } finally {
-      if (!isCurrentConsultRequest(requestToken)) return
-      await refreshConsultOptions(requestToken)
-      isConsultOptionsReady.value = consultOptions.value.length > 0
-      isGeneratingText.value = false
+  if (isCurrentConsultRequest(requestToken)) {
+    narrativeError.value = normalizeNarrativeError(error)
+    consultOptions.value = []
+    isConsultOptionsReady.value = false
+    // 已有历史记录时，恢复叙事就绪状态，让重试按钮能正常出现
+    if (consultationHistory.value.length > 0) {
+      isConsultNarrativeReady.value = true
+    }
+  }
+  } finally {
+    isGeneratingText.value = false
+    if (isCurrentConsultRequest(requestToken)) {
       await saveProgress()
     }
   }
+}
 
   function toggleMappingTarget(mappingRef, sourceId, targetId) {
     const nextMapping = cloneMapping(mappingRef.value)
@@ -2065,10 +2253,6 @@ export function useGameLogic() {
     isConsultNarrativeReady.value = consultationHistory.value.length > 0
   }
 
-  // ================================================================
-  // submitTreatment：治疗完成后立即设置 pendingSettlementRecord
-  // archiveStory 移到 advanceFromFeedback 时生成
-  // ================================================================
   async function submitTreatment() {
     if (!activePatient.value || isGeneratingText.value || isEmptyMapping(treatmentDraft.value) || treatmentUsesLeft.value <= 0) return
 
@@ -2123,7 +2307,6 @@ export function useGameLogic() {
     treatmentDraft.value = cloneMapping(confirmedDiagnosis.value)
     patientFeedbackOutcome.value = 'partial'
 
-    // 关掉病历抽屉，回到问诊页
     moveToConsultAfterTreatment()
     showNotesDrawer.value = false
     pendingSettlementRecord.value = null
@@ -2134,16 +2317,13 @@ export function useGameLogic() {
       earnedCreditsTotal.value += settlementTotal
     }
 
-    // 判断结果
     if (isEmptyMapping(remainingMappings)) {
       patientFeedbackOutcome.value = 'complete'
       patientCount.value += 1
-      // 立即清空选项，防止重试按钮出现
       consultOptions.value = []
       isConsultOptionsReady.value = false
     } else if (treatmentUsesLeft.value <= 0) {
       patientFeedbackOutcome.value = 'revisit'
-      // 立即清空选项
       consultOptions.value = []
       isConsultOptionsReady.value = false
       const returnDay = gameDay.value + REVISIT_DELAY_DAYS
@@ -2152,7 +2332,6 @@ export function useGameLogic() {
       revisitQueue.value = sortRevisitQueue([...revisitQueue.value, revisitPatient])
     }
 
-    // 生成治疗反馈
     await generateTreatmentFeedback({
       resolvedMappings,
       remainingMappings,
@@ -2162,7 +2341,6 @@ export function useGameLogic() {
     appendTreatmentFeedbackToHistory(patientFeedbackText.value)
 
     if (patientFeedbackOutcome.value === 'complete' || patientFeedbackOutcome.value === 'revisit') {
-      // 立即建好记录，archiveStory 留空，点击结算按钮时再生成
       const record = buildCompletedCaseRecord(patientFeedbackOutcome.value, {
         settlementItems,
         settlementTotal,
@@ -2178,7 +2356,6 @@ export function useGameLogic() {
         ? '治疗已完成，点击进入结算。'
         : `已预约第 ${activePatient.value?.returnDay} 天后的复诊，点击进入结算。`
     } else {
-      // partial：继续问诊
       patientFeedbackText.value = ''
       statusNotice.value = '患者已经给出治疗后的反应，继续问诊后再决定下一轮治疗。'
       try {
@@ -2199,36 +2376,27 @@ export function useGameLogic() {
     await saveProgress()
   }
 
-  // ================================================================
-  // advanceFromFeedback：点击结算按钮时生成 archiveStory，完成后跳转
-  // ================================================================
   async function advanceFromFeedback() {
     await checkPendingDebts()
     if (!pendingSettlementRecord.value) return
 
-    // 进入加载状态
     isGeneratingText.value = true
     narrativeError.value = ''
 
     try {
-      // 生成结尾故事
       const archiveStory = await generateArchiveStory()
 
       if (archiveStory) {
-        // 写入对话记录
         appendNarrationToHistory(archiveStory, 'closing_story')
 
-        // 更新 pendingSettlementRecord 里的 archiveStory
         const updatedRecord = {
           ...pendingSettlementRecord.value,
           archiveStory,
           closingNarrative: archiveStory,
-          // 同步更新 consultationHistory 快照
           consultationHistory: consultationHistory.value.map(item => ({ ...item }))
         }
         pendingSettlementRecord.value = updatedRecord
 
-        // 同步更新 completedCases 里对应的记录
         completedCases.value = completedCases.value.map(item =>
           item.id === updatedRecord.id
             ? { ...item, archiveStory, closingNarrative: archiveStory, consultationHistory: updatedRecord.consultationHistory }
@@ -2236,8 +2404,7 @@ export function useGameLogic() {
         )
       }
     } catch (error) {
-      console.warn('Synesthesia 结尾故事生成失败:', error)
-      // 生成失败不阻断流程，继续进入结算
+      console.warn('Synesthesia 结尾故事生成失败: ', error)
     } finally {
       isGeneratingText.value = false
     }
@@ -2391,11 +2558,6 @@ export function useGameLogic() {
     return '门外暂时没人'
   })
 
-  const timeProgressPercent = computed(() => {
-    const elapsed = Math.max(0, nowTick.value - lastTimeSyncAt.value)
-    return Math.min(100, (elapsed / REAL_MS_PER_GAME_DAY) * 100)
-  })
-
   const currentConsultOptions = computed(() => consultOptions.value)
   const activeTrackingSheet = computed(() => activePatient.value?.trackingSheet ?? null)
   const confirmedDiagnosisSummary = computed(() => formatMappingSummary(confirmedDiagnosis.value))
@@ -2534,7 +2696,7 @@ export function useGameLogic() {
     syncSaveStatus()
     syncResponsiveState()
     refreshPatientQueue().catch(error => {
-      console.warn('Synesthesia 初始化候诊队列刷新失败:', error)
+      console.warn('Synesthesia 初始化候诊队列刷新失败: ', error)
     })
     ensureQueueTimer()
     window.addEventListener('resize', syncResponsiveState)
@@ -2603,7 +2765,6 @@ export function useGameLogic() {
     hubStats,
     equipmentSummary,
     equipmentModuleRows,
-    timeProgressPercent,
     currentConsultOptions,
     canShowConsultChoices,
     activeTrackingSheet,
@@ -2632,7 +2793,7 @@ export function useGameLogic() {
     diagnosisAttemptLabel,
     backgroundPages: BACKGROUND_PAGES,
     backgroundTotal: BACKGROUND_PAGES.length,
-    titleContent: TITLE_CONTENT,
+        titleContent: TITLE_CONTENT,
     hubActions: HUB_ACTIONS,
     senseConfigs: SENSE_CONFIGS,
     senseLabels: SENSE_LABELS,
@@ -2676,6 +2837,7 @@ export function useGameLogic() {
     closeUpgradeFailureModal,
     toggleSnapshotSection,
     refreshConsultOptions,
+    retryConsultOptions,
     toggleNotesDrawer
   }
 }

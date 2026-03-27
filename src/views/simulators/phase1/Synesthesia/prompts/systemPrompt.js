@@ -1,5 +1,3 @@
-// src/prompts/system.js
-
 export const SYSTEM_PROMPT = `你是《共觉之境》游戏的叙事引擎。
 
 你的任务是根据患者档案、环境干扰、问诊阶段与治疗结果，

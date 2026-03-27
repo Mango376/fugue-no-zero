@@ -18,7 +18,8 @@ mappingLevels 的 key 格式必须是 "source:target"，值必须是 1 到 4 的
 export const GENERATION_MAPPING_HARD_RULES = `4. 所有感官映射只能使用这五个 id：
 ${SENSE_IDS_TEXT}
 5. 不允许感官映射到自己。
-6. mappingLevels 的 key 格式必须是 "source:target"，值必须是 1 到 4 的整数。`
+6. mappingLevels 的 key 格式必须是 "source:target"（无空格）
+   示例：{ "vision:taste": 1, "touch:hearing": 2 }`
 
 export const TRACKING_SHEET_MAPPING_RULES = `originalMappings 和 unresolvedMappings 填写规范：
 - 正常的感官填空数组 []

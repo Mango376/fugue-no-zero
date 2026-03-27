@@ -21,43 +21,38 @@ import {
 export const LEVEL_EXP = [0, 0, 60, 150, 270, 420, 600, 810, 1050, 1320, 1620]
 
 export const ACHIEVEMENT_CONFIG = {
-  first_cry:    { name: '初啼',     drops: 100,  title: null,      desc: '完成第一个剧本，结局为完满终止或协奏' },
-  perfect_tone: { name: '完满之音', drops: 0,    title: '治愈者',  desc: '达成3次完满终止结局' },
-  abyss_glance: { name: '深渊回眸', drops: 500,  title: null,      desc: '在神经载荷≤10的情况下完成剧本，累计5次' },
-  not_abandon:  { name: '不弃',     drops: 0,    title: '守望者',  desc: '走了弯路，但没有放弃' },
-  breakthrough: { name: '势如破竹', drops: 0,    title: '破局者',  desc: '同一局内使用3个不同道具，且成功通关' },
-  silent_listen:{ name: '静默聆听', drops: 500,  title: null,      desc: '有时候什么都不做，才是最难的事' },
-  echo_location:{ name: '回声定位', drops: 0,    title: '洞察者',  desc: '无道具辅助触达核心，达成完满终止' },
-  survivor:     { name: '生还者',   drops: 200,  title: null,      desc: '在神经载荷归零后，成功完成逃脱判定' },
-  brave_game:   { name: '勇者游戏', drops: 0,    title: '孤勇者',  desc: '在不携带道具的情况下完成五星剧本' },
-  silent_one:   { name: '静默者',   drops: 0,    title: null,      desc: '连续3个剧本不使用一次性道具通关(≥3星)' },
-  mirror_person:{ name: '镜中人',   drops: 3000, title: null,      desc: '完成20个五星剧本，全部达成完满终止' },
-  silent_witness: {
-    name: '无声见证',
-    drops: 0,
-    title: null,
-    desc: '见证患者在诊断后出现实质性好转'
-  }
+  first_cry:      { name: '初啼',     drops: 100,  title: null,      desc: '完成第一个剧本，结局为完满终止或协奏' },
+  perfect_tone:   { name: '完满之音', drops: 0,    title: '治愈者',  desc: '达成3次完满终止结局' },
+  abyss_glance:   { name: '深渊回眸', drops: 500,  title: null,      desc: '在神经载荷≤10的情况下完成剧本，累计5次' },
+  not_abandon:    { name: '不弃',     drops: 0,    title: '守望者',  desc: '走了弯路，但没有放弃' },
+  breakthrough:   { name: '势如破竹', drops: 0,    title: '破局者',  desc: '同一局内使用3个不同道具，且成功通关' },
+  silent_listen:  { name: '静默聆听', drops: 500,  title: null,      desc: '有时候什么都不做，才是最难的事' },
+  echo_location:  { name: '回声定位', drops: 0,    title: '洞察者',  desc: '无道具辅助触达核心，达成完满终止' },
+  survivor:       { name: '生还者',   drops: 200,  title: null,      desc: '在神经载荷归零后，成功完成逃脱判定' },
+  brave_game:     { name: '勇者游戏', drops: 0,    title: '孤勇者',  desc: '在不携带道具的情况下完成五星剧本' },
+  silent_one:     { name: '静默者',   drops: 0,    title: null,      desc: '连续3个剧本不使用一次性道具通关(≥3星)' },
+  mirror_person:  { name: '镜中人',   drops: 3000, title: null,      desc: '完成20个五星剧本，全部达成完满终止' },
+  silent_witness: { name: '无声见证', drops: 0,    title: null,      desc: '见证患者在诊断后出现实质性好转' },
 }
 
 export const shopItems = [
-  { id: 'bandage',      name: '绷带卷',       type: 'consumable', price: 10,   desc: '简单处理意识创伤，神经载荷+8。廉价且实用，适合作为保底手段。',                         minLevel: 1 },
-  { id: 'incense',      name: '静谧香薰',     type: 'consumable', price: 30,   desc: '点燃后在周围制造宁静区域，免疫本轮全部神经载荷损伤。',                                   minLevel: 1 },
-  { id: 'sponge',       name: '共情海绵',     type: 'consumable', price: 35,   desc: '吸收周围的情感污染，神经载荷+15。使用后该轮进入消化状态，无法再使用其他道具。',           minLevel: 1 },
-  { id: 'prism',        name: '记忆棱镜',     type: 'consumable', price: 45,   desc: '折射患者的记忆碎片，显示当前场景隐藏的创伤信息，共振深度+3%。',                         minLevel: 1 },
-  { id: 'watch',        name: '锚定怀表',     type: 'consumable', price: 70,   desc: '强行锚定当前时间节点。若本轮选择导致灾难性后果，可回溯至上一轮重新选择。每局限一次。',   minLevel: 4 },
-  { id: 'tranquilizer', name: '镇定剂',       type: 'consumable', price: 80,   desc: '立即恢复40点神经载荷。可在载荷归零后的濒死状态下使用，每局限一次。',                     minLevel: 4 },
-  { id: 'mask',         name: '镜像面具',     type: 'consumable', price: 90,   desc: '戴上后可替患者承受一次致命冲击。自身载荷归零，必须立即进入逃脱判定。',                   minLevel: 4 },
-  { id: 'pendulum',     name: '破碎钟摆',     type: 'consumable', price: 125,  desc: '让局部时间流速减缓，危机延后三轮爆发，为玩家争取应对时间。',                           minLevel: 4 },
-  { id: 'pass13',       name: '第13层通行证', type: 'consumable', price: 150,  desc: '可直接跳过当前剧本中最困难的一轮危机。每局限一次。',                                   minLevel: 7 },
-  { id: 'lullaby',      name: '重生摇篮曲',   type: 'consumable', price: 200,  desc: '载荷归零时自动触发，恢复30点载荷并继续当前剧本，每局限一次。',                         minLevel: 7 },
-  { id: 'sutureThread', name: '意识缝合线',   type: 'consumable', price: 400,  desc: '高级修复工具，共振深度直接+30%。使用后神经载荷清零，必须立即进入逃脱判定。',           minLevel: 7 },
-  { id: 'candle',       name: '沉默烛台',     type: 'permanent',  price: 1200, desc: '【持续型】每轮自动抵抗2点神经载荷损伤。',                                               minLevel: 1 },
-  { id: 'bell',         name: '共鸣铃铛',     type: 'permanent',  price: 1700, desc: '【持续型】共振深度变化效率+20%（按百分比系数计算）。',                                   minLevel: 1 },
-  { id: 'overcoat',     name: '守望者大衣',   type: 'permanent',  price: 2300, desc: '【持续型】神经载荷上限+20，逃脱判定+15。',                                               minLevel: 1 },
-  { id: 'knapsack',     name: '旅者行囊',     type: 'permanent',  price: 3500, desc: '【持续型】道具栏+2，不占用原有栏位。',                                                   minLevel: 1 },
-  { id: 'echoOld',      name: '旧日回响',     type: 'permanent',  price: 4200, desc: '【持续型】每局开始时随机获得一件免费一次性道具（与静默者称号不叠加）。',                 minLevel: 1 },
-  { id: 'crystal',      name: '回声结晶',     type: 'permanent',  price: 6000, desc: '【持续型】神经载荷上限+10，每轮自动抵抗3点载荷损伤，共振效率+50%。',                     minLevel: 1 },
+  { id: 'bandage',      name: '绷带卷',       type: 'consumable', price: 10,   desc: '简单处理意识创伤，神经载荷+8。廉价且实用，适合作为保底手段。',                       minLevel: 1 },
+  { id: 'incense',      name: '静谧香薰',     type: 'consumable', price: 30,   desc: '点燃后在周围制造宁静区域，免疫本轮全部神经载荷损伤。',                                 minLevel: 1 },
+  { id: 'sponge',       name: '共情海绵',     type: 'consumable', price: 35,   desc: '吸收周围的情感污染，神经载荷+15。使用后该轮进入消化状态，无法再使用其他道具。',         minLevel: 1 },
+  { id: 'prism',        name: '记忆棱镜',     type: 'consumable', price: 45,   desc: '折射患者的记忆碎片，显示当前场景隐藏的创伤信息，共振深度+3%。',                       minLevel: 1 },
+  { id: 'watch',        name: '锚定怀表',     type: 'consumable', price: 70,   desc: '强行锚定当前时间节点。若本轮选择导致灾难性后果，可回溯至上一轮重新选择。每局限一次。', minLevel: 4 },
+  { id: 'tranquilizer', name: '镇定剂',       type: 'consumable', price: 80,   desc: '立即恢复40点神经载荷。可在载荷归零后的濒死状态下使用，每局限一次。',                   minLevel: 4 },
+  { id: 'mask',         name: '镜像面具',     type: 'consumable', price: 90,   desc: '戴上后可替患者承受一次致命冲击。自身载荷归零，必须立即进入逃脱判定。',                 minLevel: 4 },
+  { id: 'pendulum',     name: '破碎钟摆',     type: 'consumable', price: 125,  desc: '让局部时间流速减缓，危机延后三轮爆发，为玩家争取应对时间。',                         minLevel: 4 },
+  { id: 'pass13',       name: '第13层通行证', type: 'consumable', price: 150,  desc: '可直接跳过当前剧本中最困难的一轮危机。每局限一次。',                                 minLevel: 7 },
+  { id: 'lullaby',      name: '重生摇篮曲',   type: 'consumable', price: 200,  desc: '载荷归零时自动触发，恢复30点载荷并继续当前剧本，每局限一次。',                       minLevel: 7 },
+  { id: 'sutureThread', name: '意识缝合线',   type: 'consumable', price: 400,  desc: '高级修复工具，共振深度直接+30%。使用后神经载荷清零，必须立即进入逃脱判定。',         minLevel: 7 },
+  { id: 'candle',       name: '沉默烛台',     type: 'permanent',  price: 1200, desc: '【持续型】每轮自动抵抗2点神经载荷损伤。',                                             minLevel: 1 },
+  { id: 'bell',         name: '共鸣铃铛',     type: 'permanent',  price: 1700, desc: '【持续型】共振深度变化效率+20%（按百分比系数计算）。',                                 minLevel: 1 },
+  { id: 'overcoat',     name: '守望者大衣',   type: 'permanent',  price: 2300, desc: '【持续型】神经载荷上限+20，逃脱判定+15。',                                             minLevel: 1 },
+  { id: 'knapsack',     name: '旅者行囊',     type: 'permanent',  price: 3500, desc: '【持续型】道具栏+2，不占用原有栏位。',                                                 minLevel: 1 },
+  { id: 'echoOld',      name: '旧日回响',     type: 'permanent',  price: 4200, desc: '【持续型】每局开始时随机获得一件免费一次性道具（与静默者称号不叠加）。',               minLevel: 1 },
+  { id: 'crystal',      name: '回声结晶',     type: 'permanent',  price: 6000, desc: '【持续型】神经载荷上限+10，每轮自动抵抗3点载荷损伤，共振效率+50%。',                   minLevel: 1 },
 ]
 
 export const diffLevels = [
@@ -93,21 +88,26 @@ export function useGameLogic(fileInputRef, narrativeEl) {
   const showItemSelectModal = ref(false)
   const showBreath = ref(false)
   const activePermanentDesc = ref(null)
-  const showHandbook = ref(false)           // 手册列表是否显示
-const selectedPatient = ref(null)         // 当前查看的患者记录
-const patientCurrentStatus = ref('')      // AI生成的现状
-const isGeneratingStatus = ref(false)     // 正在生成现状
-const showPatientStatusModal = ref(false) // 现状弹窗
-
+  const showHandbook = ref(false)
+  const selectedPatient = ref(null)
+  const patientCurrentStatus = ref('')
+  const isGeneratingStatus = ref(false)
+  const showPatientStatusModal = ref(false)
 
   // ---------- 剧本列表 ----------
   const isGeneratingScripts = ref(false)
   const scriptPreviews = ref([])
-  const refreshCount = ref(0)
+  const scriptGenError = ref('')          // 脚本生成失败提示
   const selectedScript = ref(null)
   const pendingScript = ref(null)
   const scriptContext = ref('')
-  const scriptTracking = ref('') 
+  const scriptTracking = ref('')
+
+  // ---------- 重试系统 ----------
+  // 统一的重试状态：所有阶段的 AI 失败都通过这里驱动重试按钮
+  const canRetry = ref(false)
+  const retryFn = ref(null)
+  const retryLabel = ref('重新生成')
 
   // ---------- 玩家数据 ----------
   const playerName = ref('调律者')
@@ -135,7 +135,7 @@ const showPatientStatusModal = ref(false) // 现状弹窗
   // ---------- 游戏数值 ----------
   const neuralLoad = ref(100)
   const maxLoad = ref(100)
-  const baseMaxLoad = ref(100) 
+  const baseMaxLoad = ref(100)
   const resonance = ref(0)
   const currentRound = ref(0)
   const isDying = ref(false)
@@ -160,7 +160,7 @@ const showPatientStatusModal = ref(false) // 现状弹窗
   // ---------- 现实回响 ----------
   const echoPhase = ref('act1')
   const echoChoices = ref([])
-  const echoResonanceDelta = ref(0)   // 现实回响对共振的最终影响
+  const echoResonanceDelta = ref(0)
 
   // ---------- 结算 ----------
   const finalResult = ref('')
@@ -177,15 +177,14 @@ const showPatientStatusModal = ref(false) // 现状弹窗
   const levelUpChoiceQueue = ref([])
   const pendingLevelUpChoice = ref(null)
   const showBreathDismissBtn = ref(false)
-  const showDeathModal = ref(false)    // 调律者陨落弹窗
-  const deathSummary = ref(null)       // 生涯总结数据
-
+  const showDeathModal = ref(false)
+  const deathSummary = ref(null)
 
   // ---------- 弹窗提示 ----------
-  const silentOneReward = ref(null)      // 静默者获得的道具
-  const showSilentOneModal = ref(false)  // 静默者弹窗
-  const lostItemsOnDeath = ref([])       // 离调失去的道具列表
-  const showLostItemsModal = ref(false)  // 离调道具弹窗
+  const silentOneReward = ref(null)
+  const showSilentOneModal = ref(false)
+  const lostItemsOnDeath = ref([])
+  const showLostItemsModal = ref(false)
 
   // ---------- 道具 ----------
   const equippedItems = ref([])
@@ -193,7 +192,7 @@ const showPatientStatusModal = ref(false) // 现状弹窗
   const selectedLoadout = ref([])
   const watchUsed = ref(false)
   const lastRoundSnapshot = ref(null)
-  const pendulumRoundsLeft = ref(0)   // ✅ 新增：破碎钟摆剩余轮数
+  const pendulumRoundsLeft = ref(0)
 
   // ---------- 成就追踪 ----------
   const consecutiveResonanceDrop = ref(0)
@@ -203,11 +202,34 @@ const showPatientStatusModal = ref(false) // 现状弹窗
   const watcherProcUsed = ref(false)
   const insightUsesLeft = ref(0)
   const insightHint = ref('')
+  // 修复 breakthrough：本局实际使用过的道具 ID 集合
+  const usedItemIds = ref(new Set())
 
   // ---------- 内部变量 ----------
   let abortController = null
   let scriptGenController = null
   let activeSaveData = null
+
+  // ========== 重试系统函数 ==========
+
+  function setRetry(label, fn) {
+    retryLabel.value = label
+    retryFn.value = fn
+    canRetry.value = true
+  }
+
+  function clearRetry() {
+    canRetry.value = false
+    retryFn.value = null
+    retryLabel.value = '重新生成'
+  }
+
+  async function executeRetry() {
+    if (!canRetry.value || !retryFn.value) return
+    const fn = retryFn.value
+    clearRetry()
+    await fn()
+  }
 
   // ========== computed ==========
 
@@ -259,24 +281,31 @@ const showPatientStatusModal = ref(false) // 现状弹窗
   }
 
   function parseAIResponse(rawText) {
-    const narrative = extractSection(rawText, 'NARRATIVE')
-    const optionsRaw = extractSection(rawText, 'OPTIONS')
-    const inner = extractSection(rawText, 'INNER')
-    const tagsRaw = extractSection(rawText, 'TAGS') || rawText
-    const options = []
-    for (const line of optionsRaw.split('\n')) {
-      if (!/^[A-C]\./i.test(line.trim())) continue
-      const typeMatch = line.match(/\[OPT_TYPE:(accompany|action|inquiry)\]/i)
-      const text = line.replace(/^[A-C]\.\s*/i, '').replace(/\[OPT_TYPE:[^\]]+\]/gi, '').trim()
-      if (text) options.push({ text, value: text, type: typeMatch?.[1] ?? 'action' })
-    }
-    return {
-      narrative: narrative || rawText.split('---')[0].trim(),
-      options, inner,
-      impact: tagsRaw.match(/\[IMPACT:(none|light|medium|heavy|critical)\]/i)?.[1] ?? 'light',
-      resonanceTag: tagsRaw.match(/\[RESONANCE:(surge|rise|neutral|fall|drop)\]/i)?.[1] ?? 'neutral',
-    }
+  const narrative = extractSection(rawText, 'NARRATIVE')
+  const optionsRaw = extractSection(rawText, 'OPTIONS')
+  const inner = extractSection(rawText, 'INNER')
+  const tagsRaw = extractSection(rawText, 'TAGS') || rawText
+  const options = []
+  for (const line of optionsRaw.split('\n')) {
+    if (!/^[A-C]\./i.test(line.trim())) continue
+    // ✅ 冒号后空格改为可选
+    const typeMatch = line.match(/\[OPT_TYPE:?\s*(accompany|action|inquiry)\]/i)
+    // ✅ 同步修改替换正则
+    const text = line
+      .replace(/^[A-C]\.\s*/i, '')
+      .replace(/\[OPT_TYPE:?\s*[^\]]+\]/gi, '')
+      .trim()
+    if (text) options.push({ text, value: text, type: typeMatch?.[1] ?? 'action' })
   }
+  return {
+    narrative: narrative || rawText.split('---')[0].trim(),
+    options,
+    inner,
+    impact:       tagsRaw.match(/\[IMPACT:(none|light|medium|heavy|critical)\]/i)?.[1] ?? 'light',
+    resonanceTag: tagsRaw.match(/\[RESONANCE:(surge|rise|neutral|fall|drop)\]/i)?.[1] ?? 'neutral',
+  }
+}
+
 
   // ========== AI 调用 ==========
 
@@ -317,96 +346,84 @@ const showPatientStatusModal = ref(false) // 现状弹窗
     streamingText.value = text
   }
 
-// ========== 存读档 ==========
-function savePlayerData() {
-  try {
-    // ✅ completedScripts 存档时剔除 conversationHistory，避免超出 localStorage 限制
-    const scriptsToSave = completedScripts.value.map(s => {
-      const { conversationHistory, ...rest } = s
-      return rest
-    })
+  // ========== 存读档 ==========
 
-    const data = {
-      version: 2,
-      playerName: playerName.value,
-      playerAvatar: playerAvatar.value,
-      pureDrops: pureDrops.value,
-      playerLevel: playerLevel.value,
-      totalExp: totalExp.value,
-      totalRoundsPlayed: totalRoundsPlayed.value,
-      totalDropsEarned: totalDropsEarned.value,
-      ownedConsumables: ownedConsumables.value,
-      ownedPermanents: ownedPermanents.value,
-      completedScripts: scriptsToSave,  // ✅ 用精简版
-      achievements: achievements.value,
-      unlockedTitles: unlockedTitles.value,
-      activeTitles: activeTitles.value,
-      lowLoadCompletions: lowLoadCompletions.value,
-      silentStreakCount: silentStreakCount.value,
-      pendingLevelUpChoice: pendingLevelUpChoice.value,
-      maxLoad: baseMaxLoad.value,
+  function savePlayerData() {
+    try {
+      const scriptsToSave = completedScripts.value.map(s => {
+        const { conversationHistory: _ch, ...rest } = s
+        return rest
+      })
+      const data = {
+        version: 2,
+        playerName: playerName.value,
+        playerAvatar: playerAvatar.value,
+        pureDrops: pureDrops.value,
+        playerLevel: playerLevel.value,
+        totalExp: totalExp.value,
+        totalRoundsPlayed: totalRoundsPlayed.value,
+        totalDropsEarned: totalDropsEarned.value,
+        ownedConsumables: ownedConsumables.value,
+        ownedPermanents: ownedPermanents.value,
+        completedScripts: scriptsToSave,
+        achievements: achievements.value,
+        unlockedTitles: unlockedTitles.value,
+        activeTitles: activeTitles.value,
+        lowLoadCompletions: lowLoadCompletions.value,
+        silentStreakCount: silentStreakCount.value,
+        pendingLevelUpChoice: pendingLevelUpChoice.value,
+        maxLoad: baseMaxLoad.value,
+      }
+      const json = JSON.stringify(data)
+      console.log('[存档] 数据大小: ', (json.length / 1024).toFixed(1), 'KB')
+      localStorage.setItem(PLAYER_SAVE_KEY, json)
+    } catch (err) {
+      console.error('永久存档写入失败: ', err)
     }
-
-    const json = JSON.stringify(data)
-    console.log('[存档] 数据大小:', (json.length / 1024).toFixed(1), 'KB')  // ✅ 监控大小
-    localStorage.setItem(PLAYER_SAVE_KEY, json)
-  } catch (err) {
-    console.error('永久存档写入失败:', err)
   }
-}
 
-
-function loadPlayerData() {
-  try {
-    const raw = localStorage.getItem(PLAYER_SAVE_KEY)
-    if (!raw) return
-
-    const data = JSON.parse(raw)
-
-    if (data.version === undefined) {
-      console.log('检测到旧版存档，执行迁移')
+  function loadPlayerData() {
+    try {
+      const raw = localStorage.getItem(PLAYER_SAVE_KEY)
+      if (!raw) return
+      const data = JSON.parse(raw)
+      if (data.playerName !== undefined)           playerName.value = data.playerName
+      if (data.playerAvatar !== undefined)         playerAvatar.value = data.playerAvatar
+      if (data.pureDrops !== undefined)            pureDrops.value = data.pureDrops
+      if (data.playerLevel !== undefined)          playerLevel.value = data.playerLevel
+      if (data.totalExp !== undefined)             totalExp.value = data.totalExp
+      if (data.totalRoundsPlayed !== undefined)    totalRoundsPlayed.value = data.totalRoundsPlayed
+      if (data.totalDropsEarned !== undefined)     totalDropsEarned.value = data.totalDropsEarned
+      if (data.ownedConsumables !== undefined)     ownedConsumables.value = { ...ownedConsumables.value, ...data.ownedConsumables }
+      if (data.ownedPermanents !== undefined)      ownedPermanents.value = data.ownedPermanents
+      if (data.achievements !== undefined)         achievements.value = data.achievements
+      if (data.unlockedTitles !== undefined)       unlockedTitles.value = data.unlockedTitles
+      if (data.activeTitles !== undefined)         activeTitles.value = data.activeTitles
+      if (data.lowLoadCompletions !== undefined)   lowLoadCompletions.value = data.lowLoadCompletions
+      if (data.silentStreakCount !== undefined)    silentStreakCount.value = data.silentStreakCount
+      if (data.pendingLevelUpChoice !== undefined) pendingLevelUpChoice.value = data.pendingLevelUpChoice
+      if (data.maxLoad !== undefined)              baseMaxLoad.value = data.maxLoad > 0 ? data.maxLoad : 100
+      if (data.completedScripts !== undefined) {
+        completedScripts.value = data.completedScripts.map(s => ({
+          ...s,
+          conversationHistory: s.conversationHistory ?? [],
+          patientName:         s.patientName         ?? '未知患者',
+          patientAge:          s.patientAge           ?? '??',
+          patientProfession:   s.patientProfession    ?? '未知职业',
+          scriptContext:       s.scriptContext         ?? '',
+          patientFutureText:   s.patientFutureText     ?? '',
+          statusHistory:       s.statusHistory         ?? [],
+        }))
+      }
+    } catch (err) {
+      console.warn('永久存档读取失败: ', err)
     }
-
-    if (data.playerName !== undefined)           playerName.value = data.playerName
-    if (data.playerAvatar !== undefined)         playerAvatar.value = data.playerAvatar
-    if (data.pureDrops !== undefined)            pureDrops.value = data.pureDrops
-    if (data.playerLevel !== undefined)          playerLevel.value = data.playerLevel
-    if (data.totalExp !== undefined)             totalExp.value = data.totalExp
-    if (data.totalRoundsPlayed !== undefined)    totalRoundsPlayed.value = data.totalRoundsPlayed
-    if (data.totalDropsEarned !== undefined)     totalDropsEarned.value = data.totalDropsEarned
-    if (data.ownedConsumables !== undefined)     ownedConsumables.value = { ...ownedConsumables.value, ...data.ownedConsumables }
-    if (data.ownedPermanents !== undefined)      ownedPermanents.value = data.ownedPermanents
-    if (data.achievements !== undefined)         achievements.value = data.achievements
-    if (data.unlockedTitles !== undefined)       unlockedTitles.value = data.unlockedTitles
-    if (data.activeTitles !== undefined)         activeTitles.value = data.activeTitles
-    if (data.lowLoadCompletions !== undefined)   lowLoadCompletions.value = data.lowLoadCompletions
-    if (data.silentStreakCount !== undefined)    silentStreakCount.value = data.silentStreakCount
-    if (data.pendingLevelUpChoice !== undefined) pendingLevelUpChoice.value = data.pendingLevelUpChoice
-    if (data.maxLoad !== undefined)              baseMaxLoad.value = data.maxLoad > 0 ? data.maxLoad : 100
-
-    // ✅ 存档迁移：补全旧存档缺失的字段
-    if (data.completedScripts !== undefined) {
-      completedScripts.value = data.completedScripts.map(s => ({
-        ...s,
-        conversationHistory: s.conversationHistory ?? [],  // 旧数据有就用，没有就空数组
-        patientName:         s.patientName         ?? '未知患者',
-        patientAge:          s.patientAge           ?? '??',
-        patientProfession:   s.patientProfession    ?? '未知职业',
-        scriptContext:       s.scriptContext         ?? '',
-        patientFutureText:   s.patientFutureText     ?? '',
-        statusHistory:       s.statusHistory         ?? [],
-      }))
-    }
-    
-
-  } catch (err) {
-    console.warn('永久存档读取失败:', err)
   }
-}
 
-async function saveProgress() {
+  async function saveProgress() {
   try {
     const plain = JSON.parse(JSON.stringify({
+      // 游戏进度
       phase: phase.value,
       gameStage: gameStage.value,
       selectedScript: selectedScript.value,
@@ -424,17 +441,18 @@ async function saveProgress() {
       echoChoices: echoChoices.value,
       echoPhase: echoPhase.value,
       currentNarrative: currentNarrative.value,
-      equippedItems: equippedItems.value
+      equippedItems: equippedItems.value,
     }))
     await saveService.save(SCRIPT_ID, plain)
     hasSave.value = true
-  } catch (err) { console.warn('自动存档失败:', err) }
+  } catch (err) { console.warn('自动存档失败: ', err) }
 }
 
-async function restoreFromSave(saved) {
-  phase.value = saved.phase ?? 'dream'
+
+  async function restoreFromSave(saved) {
+  phase.value = saved.phase ?? 'hub'
   gameStage.value = saved.gameStage ?? 'dream'
-  selectedScript.value = saved.selectedScript
+  selectedScript.value = saved.selectedScript ?? null
   neuralLoad.value = saved.neuralLoad ?? 100
   maxLoad.value = saved.maxLoad ?? 100
   resonance.value = saved.resonance ?? 0
@@ -451,15 +469,17 @@ async function restoreFromSave(saved) {
   currentNarrative.value = saved.currentNarrative ?? ''
   equippedItems.value = saved.equippedItems ?? []
   isLoading.value = false
+  clearRetry()
   await nextTick()
   await scrollToBottom(narrativeEl)
 }
 
-async function checkSave() {
-  const saved = await saveService.load(SCRIPT_ID)
-  hasSave.value = !!saved
-}
 
+
+  async function checkSave() {
+    const saved = await saveService.load(SCRIPT_ID)
+    hasSave.value = !!saved
+  }
 
   // ========== 头像 ==========
 
@@ -471,7 +491,7 @@ async function checkSave() {
     const file = event.target.files[0]
     if (!file) return
     if (!file.type.startsWith('image/')) { alert('系统提示：只能注入图像格式的意识数据。'); return }
-    if (file.size > 2 * 1024 * 1024) { alert('系统提示：图像数据过大(>2MB)，可能导致意识接口过载。请压缩后重试。'); return }
+    if (file.size > 2 * 1024 * 1024) { alert('系统提示：图像数据过大(>2MB)。请压缩后重试。'); return }
     const reader = new FileReader()
     reader.onload = (e) => { playerAvatar.value = e.target.result }
     reader.readAsDataURL(file)
@@ -576,11 +596,9 @@ async function checkSave() {
   function useInsight() {
     if (insightUsesLeft.value <= 0) return
     insightUsesLeft.value--
-
     const diff = selectedScript.value?.difficulty ?? 1
     const round = currentRound.value
     const estimated = estimatedRounds.value
-
     let hint = ''
     if (round >= estimated - 2) {
       hint = '下一轮接近尾声，意识空间趋于收束'
@@ -591,7 +609,6 @@ async function checkSave() {
     } else {
       hint = '下一轮意识空间相对平稳'
     }
-
     insightHint.value = hint
     displayHistory.value.push({
       type: 'system',
@@ -603,78 +620,62 @@ async function checkSave() {
     if (isGeneratingStatus.value) return
     isGeneratingStatus.value = true
     patientCurrentStatus.value = ''
-  
     const keyChoices = patient.conversationHistory
-      .slice(-5)
-      .map(h => h.playerAction)
-      .join('；')
-  
+      .slice(-5).map(h => h.playerAction).join('；')
     const prompt = `【患者背景档案】
-  ${patient.scriptContext?.slice(0, 400) ?? '无档案'}
-  
-  【本次诊断结局】${patient.result}
-  【最终共振深度】基于结局判断
-  【诊断时的关键行动】${keyChoices}
-  【上次生成的患者状态】${patient.patientFutureText ?? '无记录'}
-  
-  请根据以上信息，生成这位患者在当前时间点的真实状态（150-250字）。
-  
-  要求：
-  · 语气像一份简短的跟踪报告，客观陈述
-  · 患者不一定有所改变，可能只是醒了但问题仍在，可能更差了，也可能有微小的正向变化
-  · 不渲染，不总结，结尾留白
-  · 在正文末尾附加判断标记：
-  [STATUS:positive|neutral|negative]
-  positive = 患者有具体的、可观察的正向变化
-  neutral  = 状态无明显变化
-  negative = 状态更差或有退步
-  
-  ---CURRENT_STATUS---
-  （正文）`
-  
+${patient.scriptContext?.slice(0, 400) ?? '无档案'}
+
+【本次诊断结局】${patient.result}
+【最终共振深度】基于结局判断
+【诊断时的关键行动】${keyChoices}
+【上次生成的患者状态】${patient.patientFutureText ?? '无记录'}
+
+请根据以上信息，生成这位患者在当前时间点的真实状态（150-250字）。
+
+要求：
+· 语气像一份简短的跟踪报告，客观陈述
+· 患者不一定有所改变，可能只是醒了但问题仍在，可能更差了，也可能有微小的正向变化
+· 不渲染，不总结，结尾留白
+· 在正文末尾附加判断标记：
+[STATUS: positive|neutral|negative]
+positive = 患者有具体的、可观察的正向变化
+neutral  = 状态无明显变化
+negative = 状态更差或有退步
+
+---CURRENT_STATUS---
+（正文）`
     try {
       const raw = await callAISilent(prompt)
       const text = extractSection(raw, 'CURRENT_STATUS') || raw.trim()
-      // 剥离标记，只留正文
-      patientCurrentStatus.value = text.replace(/\[STATUS:[^\]]+\]/i, '').trim()
-  // ✅ 写入患者记录的调查历史
-const record = completedScripts.value.find(s => s.time === selectedPatient.value?.time)
-if (record) {
-  if (!record.statusHistory) record.statusHistory = []
-  record.statusHistory.push({
-    count: record.statusHistory.length + 1,
-    time: new Date().toLocaleDateString('zh-CN'),
-    content: patientCurrentStatus.value
-  })
-  // 同步更新 selectedPatient
-  selectedPatient.value = { ...record }
-  savePlayerData()
-}
-
-      // ✅ 解析标记，判断是否触发成就
-      const statusMatch = raw.match(/\[STATUS:(positive|neutral|negative)\]/i)
-      const statusTag = statusMatch?.[1] ?? 'neutral'
-  
-      if (statusTag === 'positive' && !achievements.value['silent_witness']) {
+      patientCurrentStatus.value = text.replace(/\[STATUS: [^\]]+\]/i, '').trim()
+      const record = completedScripts.value.find(s => s.time === selectedPatient.value?.time)
+      if (record) {
+        if (!record.statusHistory) record.statusHistory = []
+        record.statusHistory.push({
+          count: record.statusHistory.length + 1,
+          time: new Date().toLocaleDateString('zh-CN'),
+          content: patientCurrentStatus.value
+        })
+        selectedPatient.value = { ...record }
+        savePlayerData()
+      }
+      const statusMatch = raw.match(/\[STATUS: (positive|neutral|negative)\]/i)
+      if (statusMatch?.[1] === 'positive' && !achievements.value['silent_witness']) {
         unlockAchievement('silent_witness')
       }
-  
     } catch {
       patientCurrentStatus.value = '无法获取当前状态。'
     }
-  
     isGeneratingStatus.value = false
     showPatientStatusModal.value = true
   }
-  
+
   // ========== 锚定怀表 ==========
 
   function useWatch() {
     if (watchUsed.value) return
     if (!lastRoundSnapshot.value) return
-
     const snap = lastRoundSnapshot.value
-
     neuralLoad.value = snap.neuralLoad
     resonance.value = snap.resonance
     currentRound.value = snap.currentRound
@@ -682,21 +683,15 @@ if (record) {
     innerText.value = snap.innerText
     equippedItems.value = snap.equippedItems
     conversationHistory.value = snap.conversationHistory
-
-    // ✅ 截断 displayHistory，删掉本轮产生的所有记录
     displayHistory.value = displayHistory.value.slice(0, snap.displayHistoryLen)
-
-    // ✅ 恢复选项，让玩家重新选
     choices.value = snap.choices
-
     watchUsed.value = true
     lastRoundSnapshot.value = null
-
+    clearRetry()
     displayHistory.value.push({
       type: 'system',
       content: '⌚ 锚定怀表：时间已回溯，重新做出选择'
     })
-
     bottomTab.value = 'choices'
     historyCollapsed.value = true
   }
@@ -746,42 +741,34 @@ if (record) {
   function parsePreview(raw, difficulty) {
     const text = extractSection(raw, 'PREVIEW') || raw
     return {
-      name: text.match(/姓名[：:]\s*(.+)/)?.[1]?.trim() ?? '未知',
-      age: text.match(/年龄[：:]\s*(\d+)/)?.[1]?.trim() ?? '??',
-      profession: text.match(/职业[：:]\s*(.+)/)?.[1]?.trim() ?? '未知',
-      dormDuration: text.match(/昏迷时长[：:]\s*(.+)/)?.[1]?.trim() ?? '数日',
-      preview: text.match(/意象预览[：:]\s*(.+)/)?.[1]?.trim() ?? '梦境深处，有什么在等待。',
+      name:         text.match(/姓名[：:]\s*(.+)/)?.[1]?.trim() ?? '',
+      age:          text.match(/年龄[：:]\s*(\d+)/)?.[1]?.trim() ?? '',
+      profession:   text.match(/职业[：:]\s*(.+)/)?.[1]?.trim() ?? '',
+      dormDuration: text.match(/昏迷时长[：:]\s*(.+)/)?.[1]?.trim() ?? '',
+      preview:      text.match(/意象预览[：:]\s*(.+)/)?.[1]?.trim() ?? '',
       difficulty
     }
   }
 
-  function getFallbackPreviews(difficulties) {
-    const pool = [
-      { name: '陈以南', age: '23', profession: '设计师',   dormDuration: '第8天',  preview: '倒置的候鸟群穿过云层，向上方的城市飞去。' },
-      { name: '林暮',   age: '31', profession: '产品经理', dormDuration: '第15天', preview: '水下城市里，所有时钟都在走，时间各不相同。' },
-      { name: '苏晴',   age: '27', profession: '小学教师', dormDuration: '第21天', preview: '温室里的植物从不往上生长，它们学会了拐弯。' },
-    ]
-    return difficulties.map((d, i) => ({ ...pool[i % pool.length], difficulty: d }))
-  }
-
+  // 生成患者档案列表，全部由 AI 完成，无兜底角色，无刷新次数限制
   async function generateScripts() {
     isGeneratingScripts.value = true
+    scriptGenError.value = ''
     scriptPreviews.value = []
-    const difficulties = generateThreeDifficulties()
-    const hasConfig = await checkAIConfig()
+    clearRetry()
 
+    const hasConfig = await checkAIConfig()
     if (!hasConfig) {
-      await delay(800)
-      scriptPreviews.value = getFallbackPreviews(difficulties)
+      scriptGenError.value = 'AI 尚未配置，请先在全局设置中完成接入配置。'
       isGeneratingScripts.value = false
       return
     }
 
+    const difficulties = generateThreeDifficulties()
     scriptGenController = new AbortController()
 
     for (const d of difficulties) {
       if (scriptGenController.signal.aborted) break
-
       try {
         const previewPrompt = `请为《第13层梦境》生成一个剧本预览信息。难度：${d}星。
 严格按以下格式输出：
@@ -803,27 +790,32 @@ if (record) {
         })
 
         const basicInfo = parsePreview(result, d)
-
-        if (basicInfo.name === '未知' || basicInfo.age === '??') {
-          scriptPreviews.value.push(getFallbackPreviews([d])[0])
-          continue
+        if (!basicInfo.name || !basicInfo.age || !basicInfo.profession) {
+          throw new Error('生成数据不完整')
         }
-
         scriptPreviews.value.push({ ...basicInfo })
 
       } catch (err) {
         if (scriptGenController.signal.aborted) break
-        console.warn('单张生成失败，使用备用:', err.message)
-        scriptPreviews.value.push(getFallbackPreviews([d])[0])
+        console.warn('单张生成失败，跳过此槽位: ', err.message)
+        // 不使用兜底角色，跳过该槽位
       }
+    }
+
+    if (scriptPreviews.value.length === 0) {
+      scriptGenError.value = '全部档案生成失败，请检查 AI 连接后重试。'
+      setRetry('重新扫描档案', generateScripts)
     }
 
     isGeneratingScripts.value = false
   }
 
+  // 无次数限制的刷新
   async function refreshScripts() {
-    if (refreshCount.value >= 2) return
-    refreshCount.value++
+    if (scriptGenController) {
+      scriptGenController.abort()
+      scriptGenController = null
+    }
     await generateScripts()
   }
 
@@ -845,7 +837,10 @@ if (record) {
 
   async function enterScriptSelect() {
     phase.value = 'script_select'
-    if (isGeneratingScripts.value || scriptPreviews.value.length > 0) return
+    clearRetry()
+    scriptGenError.value = ''
+    scriptPreviews.value = []
+    if (isGeneratingScripts.value) return
     await generateScripts()
   }
 
@@ -863,11 +858,14 @@ if (record) {
   }
 
   async function confirmStartNewGame() {
-    showConfirmNewGameModal.value = false
-    await saveService.deleteSave(SCRIPT_ID)
-    hasSave.value = false
-    executeStartNewGame()
-  }
+  showConfirmNewGameModal.value = false
+  // ✅ 玩家主动选择覆盖，两套存档都删
+  await saveService.deleteSave(SCRIPT_ID)
+  localStorage.removeItem(PLAYER_SAVE_KEY)
+  hasSave.value = false
+  executeStartNewGame()
+}
+
 
   function executeStartNewGame() {
     pureDrops.value = 2000
@@ -902,26 +900,28 @@ if (record) {
     baseMaxLoad.value = 100
     resonance.value = 0
     scriptPreviews.value = []
-    refreshCount.value = 0
+    scriptGenError.value = ''
     pendingLevelUpChoice.value = null
-    console.log('[新游戏] 正在清除存档')
-    console.trace()
+    clearRetry()
     localStorage.removeItem(PLAYER_SAVE_KEY)
     goStory(1)
   }
 
   async function continueGame() {
-    if (!hasSave.value) return
-    try {
-      activeSaveData = await saveService.load(SCRIPT_ID)
-      if (!activeSaveData) { hasSave.value = false; return }
-      phase.value = 'hub'
-      await aiService._ensureInit()
-    } catch (err) {
-      console.error('读档失败:', err)
-      hasSave.value = false
-    }
+  if (!hasSave.value) return
+  try {
+    activeSaveData = await saveService.load(SCRIPT_ID)
+    if (!activeSaveData) { hasSave.value = false; return }
+    // ✅ 直接恢复，不再停在 hub 等用户点击
+    await restoreFromSave(activeSaveData)
+    activeSaveData = null
+    await aiService._ensureInit()
+  } catch (err) {
+    console.error('读档失败: ', err)
+    hasSave.value = false
   }
+}
+
 
   async function handleHubPrimaryAction() {
     if (hasSave.value) {
@@ -938,31 +938,29 @@ if (record) {
   }
 
   async function pauseAndReturn() {
-    try { await saveProgress() } catch (err) { console.error('存档失败:', err) }
-    showPauseModal.value = false
+  try {
     phase.value = 'hub'
-    hasSave.value = true
-  }
+    await saveProgress()  // ✅ 保存 hub 状态
+  } catch (err) { console.error('存档失败: ', err) }
+  showPauseModal.value = false
+  hasSave.value = true
+}
+
+
 
   function confirmPause() { showPauseModal.value = true }
 
   // ========== 游戏核心 ==========
-
-  function getDefaultChoices() {
-    return [
-      { text: '在她旁边坐下，什么都不说。', value: '在她旁边坐下，什么都不说。', type: 'accompany' },
-      { text: '轻声问她现在的感受。',       value: '轻声问她现在的感受。',       type: 'inquiry' },
-      { text: '慢慢靠近，观察周围的环境。', value: '慢慢靠近，观察周围的环境。', type: 'action' },
-    ]
-  }
 
   async function startGame(script) {
     isLoading.value = true
     gameStage.value = 'dream'
     activeItem.value = null
     selectedScript.value = script
+    clearRetry()
+    usedItemIds.value = new Set()
 
-    // 第一步：同步重置
+        // 第一步：同步重置
     currentRound.value = 0
     displayHistory.value = []
     conversationHistory.value = []
@@ -988,6 +986,7 @@ if (record) {
     watchUsed.value = false
     lastRoundSnapshot.value = null
     pendulumRoundsLeft.value = 0
+    insightHint.value = ''
 
     if (activeTitles.value.includes('洞察者')) {
       const diff = script.difficulty
@@ -995,22 +994,17 @@ if (record) {
     } else {
       insightUsesLeft.value = 0
     }
-    insightHint.value = ''
 
     // 第二步：初始化载荷
-   // ✅ 加保底，防止 baseMaxLoad 为 0 导致 NaN
-let computedMaxLoad = baseMaxLoad.value > 0 ? baseMaxLoad.value : 100
-if (ownedPermanents.value.includes('overcoat')) computedMaxLoad += 20
-if (ownedPermanents.value.includes('crystal'))  computedMaxLoad += 10
-if (activeTitles.value.includes('孤勇者'))      computedMaxLoad -= 10
-maxLoad.value = Math.max(10, computedMaxLoad)  // ✅ 至少10，不会出现0
-neuralLoad.value = maxLoad.value
+    let computedMaxLoad = baseMaxLoad.value > 0 ? baseMaxLoad.value : 100
+    if (ownedPermanents.value.includes('overcoat')) computedMaxLoad += 20
+    if (ownedPermanents.value.includes('crystal'))  computedMaxLoad += 10
+    if (activeTitles.value.includes('孤勇者'))      computedMaxLoad -= 10
+    maxLoad.value = Math.max(10, computedMaxLoad)
+    neuralLoad.value = maxLoad.value
 
-
-    // 第三步：初始化道具栏
-    equippedItems.value = [
-      { id: 'needle', name: '逻辑缝合针', type: 'consumable', count: 99, desc: '修复一处意识碎片，共振深度+5%' }
-    ]
+    // 第三步：初始化道具栏（移除逻辑缝合针，全部由 AI 驱动）
+    equippedItems.value = []
     for (const itemId of selectedLoadout.value) {
       const itemDef = shopItems.find(i => i.id === itemId)
       const owned = ownedConsumables.value[itemId] || 0
@@ -1039,53 +1033,72 @@ neuralLoad.value = maxLoad.value
         const existing = equippedItems.value.find(i => i.id === freeItem.id)
         if (existing) {
           existing.count += 1
-        } else if (equippedItems.value.length - 1 < maxItemSlots.value) {
+        } else if (equippedItems.value.length < maxItemSlots.value) {
           equippedItems.value.push({ ...freeItem, count: 1 })
         }
         displayHistory.value.push({ type: 'system', content: `✨ 旧日回响：获赠一件 [${freeItem.name}]` })
       }
     }
 
-    // ✅ 静默者：每局随机获得一件道具（与旧日回响不叠加）
-if (achievements.value['silent_one'] && !ownedPermanents.value.includes('echoOld')) {
-    const freeItem = rollFreeItemFromEcho()
-    if (freeItem) {
-      const existing = equippedItems.value.find(i => i.id === freeItem.id)
-      if (existing) {
-        existing.count += 1
-      } else {
-        equippedItems.value.push({ ...freeItem, count: 1 })
+    if (achievements.value['silent_one'] && !ownedPermanents.value.includes('echoOld')) {
+      const freeItem = rollFreeItemFromEcho()
+      if (freeItem) {
+        const existing = equippedItems.value.find(i => i.id === freeItem.id)
+        if (existing) {
+          existing.count += 1
+        } else {
+          equippedItems.value.push({ ...freeItem, count: 1 })
+        }
+        silentOneReward.value = freeItem
+        showSilentOneModal.value = true
       }
-      silentOneReward.value = freeItem
-      showSilentOneModal.value = true
     }
-  }
-  
+
     selectedLoadout.value = []
 
-    // 6级选择共振起始+10%
+    // 6级选择：共振起始+10%
     if (pendingLevelUpChoice.value?.level === 6 && pendingLevelUpChoice.value?.choice === 'resonance') {
       resonance.value = 10
     }
 
     // 第四步：生成剧本档案
+    await _generateScriptInit(script)
+  }
+
+  // 生成剧本档案（可独立重试）
+  async function _generateScriptInit(script) {
     if (!scriptContext.value) {
       displayHistory.value.push({ type: 'system', content: `正在构建 ${script.name} 的意识追踪档案……` })
-      const initRaw = await callAISilent(buildScriptInitPrompt(script))
-      scriptContext.value = initRaw.replace('[SCRIPT_READY]', '').trim()
-    
-      // ✅ 解析追踪表，存起来
-      const trackingMatch = initRaw.match(/---PROFILE---([\s\S]*?)---PROFILE_END---/i)
-if (trackingMatch) {
-  scriptTracking.value = trackingMatch[1].trim()
-} else {
-  scriptTracking.value = ''
-}
-
+      try {
+        const initRaw = await callAISilent(buildScriptInitPrompt(script))
+        scriptContext.value = initRaw.replace('[SCRIPT_READY]', '').trim()
+        const trackingMatch = initRaw.match(/---PROFILE---([\s\S]*?)---PROFILE_END---/i)
+        scriptTracking.value = trackingMatch ? trackingMatch[1].trim() : ''
+      } catch (err) {
+        if (abortController?.signal.aborted) { isLoading.value = false; return }
+        console.error(err)
+        displayHistory.value.push({ type: 'system', content: '⚠ 档案构建失败' })
+        setRetry('重新构建档案', () => _generateScriptInit(script))
+        isLoading.value = false
+        return
+      }
     }
-    
+    // 档案成功，进入开场
+    await _generateOpening()
+  }
+
+  // 生成开场叙事（可独立重试）
+  async function _generateOpening() {
+    isLoading.value = true
+    streamingText.value = ''
+    currentNarrative.value = ''
+    innerText.value = ''
+    choices.value = []
+    clearRetry()
+
+    displayHistory.value.push({ type: 'system', content: '正在进入意识空间……' })
+
     try {
-      displayHistory.value.push({ type: 'system', content: `正在进入 ${script.name} 的意识空间……` })
       abortController = new AbortController()
       let openingRaw = ''
       await aiService.sendStream({
@@ -1096,6 +1109,8 @@ if (trackingMatch) {
       })
 
       const parsed = parseAIResponse(openingRaw)
+      if (!parsed.narrative) throw new Error('开场叙事内容为空')
+
       isLoading.value = false
       await typewriterDisplay(parsed.narrative)
       streamingText.value = ''
@@ -1111,16 +1126,98 @@ if (trackingMatch) {
       })
 
       await nextTick()
-      choices.value = parsed.options.length > 0 ? parsed.options : getDefaultChoices()
       await scrollToBottom(narrativeEl)
-      saveProgress().catch(err => console.warn('存档失败:', err))
+      saveProgress().catch(err => console.warn('存档失败: ', err))
+
+      // 开场成功后生成第一批选项
+      await _generateChoices()
+
     } catch (err) {
+      if (abortController?.signal.aborted) { isLoading.value = false; return }
       console.error(err)
-      displayHistory.value.push({ type: 'system', content: '意识连接中断，请检查AI配置。' })
       isLoading.value = false
+      displayHistory.value.push({ type: 'system', content: '⚠ 开场叙事生成失败' })
+      setRetry('重新生成开场', _generateOpening)
     }
   }
 
+  // 单独生成选项（可独立重试，用于开场后和每轮结束）
+  async function _generateChoices(contextHistory = null) {
+  isLoading.value = true
+  choices.value = []
+  clearRetry()
+  await nextTick() 
+  const historyForPrompt = contextHistory ?? conversationHistory.value
+
+  // ✅ 独立的 controller，不覆盖主流程的 abortController
+  const choicesController = new AbortController()
+
+  try {
+    const wbInjection = buildWorldBookInjection({
+      round: currentRound.value,
+      gameStage: gameStage.value,
+      hasItem: false
+    })
+
+    const optionPrompt = `【剧本背景】${scriptContext.value}
+${wbInjection}
+
+【当前状态】
+轮次：${currentRound.value} / 预计${estimatedRounds.value}轮
+神经载荷：${neuralLoad.value} | 共振深度：${resonance.value}%
+濒死状态：${isDying.value ? '是' : '否'}
+
+【最近对话历史】
+${historyForPrompt.slice(-4).map(h =>
+  `[玩家]${h.playerAction}\n[叙事]${h.narrative?.slice(0, 120)}…`
+).join('\n\n')}
+
+请根据以上信息，生成三个下一步行动选项。
+选项必须符合当前场景，有真实代价，无明显最优解。
+禁止提示道具使用。
+
+---OPTIONS---
+A. （选项）[OPT_TYPE: accompany|action|inquiry]
+B. （选项）[OPT_TYPE: accompany|action|inquiry]
+C. （选项）[OPT_TYPE: accompany|action|inquiry]`
+
+    let optRaw = ''
+    await aiService.sendStream({
+      messages: [{ role: 'user', content: optionPrompt }],
+      systemPrompt: SYSTEM_PROMPT,
+      onChunk: (text) => { optRaw = text },
+      signal: choicesController.signal  // ✅ 用独立的
+    })
+
+    const parsed = parseAIResponse(optRaw)
+    if (!parsed.options || parsed.options.length === 0) {
+      throw new Error('选项内容为空')
+    }
+
+    choices.value = parsed.options
+    isLoading.value = false
+    await scrollToBottom(narrativeEl)
+
+  } catch (err) {
+    // ✅ 只检查自己的 controller，不受主流程影响
+    if (choicesController.signal.aborted) {
+      isLoading.value = false
+      return
+    }
+    console.error(err)
+    isLoading.value = false
+    displayHistory.value.push({ type: 'system', content: '⚠ 选项生成失败' })
+    // ✅ 一定会走到这里
+    setRetry('重新生成选项', () => _generateChoices(contextHistory))
+  }
+}
+
+async function retryChoicesEmergency() {
+  isLoading.value = true      // ✅ 立刻切换 loading 状态
+  choices.value = []
+  await nextTick()
+  await _generateChoices()
+}
   async function generateNextRound(playerAction, usedItem = null) {
     const wasAlreadyDying = isDying.value
     isLoading.value = true
@@ -1130,6 +1227,7 @@ if (trackingMatch) {
     innerText.value = ''
     choices.value = []
     currentNarrative.value = ''
+    clearRetry()
 
     const wbInjection = buildWorldBookInjection({
       round: currentRound.value,
@@ -1164,13 +1262,18 @@ if (trackingMatch) {
       })
 
       const parsed = parseAIResponse(rawText)
+      if (!parsed.narrative) throw new Error('叙事内容为空')
+
       applyValueChanges(parsed.impact, parsed.resonanceTag, usedItem)
 
       conversationHistory.value.push({
-        roundNum: currentRound.value, playerAction,
-        narrative: parsed.narrative, impactTag: parsed.impact,
+        roundNum: currentRound.value,
+        playerAction,
+        narrative: parsed.narrative,
+        impactTag: parsed.impact,
         resonanceTag: parsed.resonanceTag,
-        loadAfter: neuralLoad.value, resonanceAfter: resonance.value
+        loadAfter: neuralLoad.value,
+        resonanceAfter: resonance.value
       })
 
       isLoading.value = false
@@ -1179,71 +1282,79 @@ if (trackingMatch) {
       currentNarrative.value = parsed.narrative
       if (parsed.inner) innerText.value = parsed.inner
 
-      await nextTick()
-      choices.value = parsed.options.length > 0 ? parsed.options : getDefaultChoices()
-
-         if (!wasAlreadyDying && isDying.value) {
-      // 本轮首次归零
-      dyingRoundsLeft.value = 2
-      displayHistory.value.push({ 
-        type: 'system', 
-        content: '⚠ 神经载荷归零——剩余 2 轮，拒绝撤离将永久离调' 
-      })
-      historyCollapsed.value = false
-
-    } else if (wasAlreadyDying && !isDying.value) {
-      // 道具救回来了，解除濒死
-      dyingRoundsLeft.value = 0
-
-    } else if (wasAlreadyDying && isDying.value) {
-      // 玩家无视继续走，倒计时递减
-      dyingRoundsLeft.value--
-
-      if (dyingRoundsLeft.value <= 0) {
-        // 倒计时归零，强制死亡
-        displayHistory.value.push({ 
-          type: 'system', 
-          content: '✖ 意识彻底断裂——调律者永久离调' 
-        })
-        choices.value = []
-        await scrollToBottom(narrativeEl)
-        await delay(800)
-        escapeSuccess.value = false
-        await goToSettlement()
-        return   // 直接结束，不往下走
-      } else {
-        displayHistory.value.push({ 
-          type: 'system', 
-          content: `⚠ 最后警告：仅剩 ${dyingRoundsLeft.value} 轮，再不撤离将永久离调` 
+      // 濒死状态处理
+      if (!wasAlreadyDying && isDying.value) {
+        dyingRoundsLeft.value = 2
+        displayHistory.value.push({
+          type: 'system',
+          content: '⚠ 神经载荷归零——剩余 2 轮，拒绝撤离将永久离调'
         })
         historyCollapsed.value = false
+      } else if (wasAlreadyDying && !isDying.value) {
+        dyingRoundsLeft.value = 0
+      } else if (wasAlreadyDying && isDying.value) {
+        dyingRoundsLeft.value--
+        if (dyingRoundsLeft.value <= 0) {
+          displayHistory.value.push({
+            type: 'system',
+            content: '✖ 意识彻底断裂——调律者永久离调'
+          })
+          choices.value = []
+          await scrollToBottom(narrativeEl)
+          await delay(800)
+          escapeSuccess.value = false
+          await goToSettlement()
+          return
+        } else {
+          displayHistory.value.push({
+            type: 'system',
+            content: `⚠ 最后警告：仅剩 ${dyingRoundsLeft.value} 轮，再不撤离将永久离调`
+          })
+          historyCollapsed.value = false
+        }
       }
-    }
 
-    // 共振满提示，保持不变
-    if (resonance.value >= 100) {
-      displayHistory.value.push({ 
-        type: 'system', 
-        content: '▲ 共振深度100%——立即撤离' 
-      })
-    }
-
+      if (resonance.value >= 100) {
+        displayHistory.value.push({
+          type: 'system',
+          content: '▲ 共振深度100%——立即撤离'
+        })
+      }
 
       await scrollToBottom(narrativeEl)
-      saveProgress().catch(err => console.warn('存档失败:', err))
+      saveProgress().catch(err => console.warn('存档失败: ', err))
+
+      // 叙事成功后生成选项
+      if (!mustEvacuate.value && !isDying.value) {
+        await _generateChoices()
+      } else if (isDying.value && dyingRoundsLeft.value > 0) {
+        // 濒死状态也需要选项（让玩家决定继续还是撤离）
+        await _generateChoices()
+      }
+
     } catch (err) {
+      if (abortController?.signal.aborted) { isLoading.value = false; return }
       console.error(err)
+
+      // 回滚轮次计数
+      currentRound.value = Math.max(0, currentRound.value - 1)
+      totalRoundsPlayed.value = Math.max(0, totalRoundsPlayed.value - 1)
+
       streamingText.value = ''
-      displayHistory.value.push({ type: 'system', content: `⚠ ${err.message || 'AI连接中断'}` })
-      choices.value = getDefaultChoices()
       isLoading.value = false
+      displayHistory.value.push({
+        type: 'system',
+        content: `⚠ AI 响应失败：${err.message || '连接中断'}`
+      })
+      setRetry('重新生成本轮', () => generateNextRound(playerAction, usedItem))
     }
   }
 
   async function onChoiceSelect({ choice }) {
     bottomTab.value = 'choices'
+    clearRetry()
 
-    // ✅ 在玩家点击选项前保存快照，供锚定怀表回溯用
+    // 保存快照供锚定怀表使用
     if (!watchUsed.value) {
       lastRoundSnapshot.value = {
         neuralLoad: neuralLoad.value,
@@ -1268,6 +1379,7 @@ if (trackingMatch) {
         const eqItem = equippedItems.value.find(i => i.id === usedItem.id)
         if (eqItem) eqItem.count--
         ownedConsumables.value[usedItem.id]--
+        usedItemIds.value.add(usedItem.id)
       }
       activeItem.value = null
     }
@@ -1303,13 +1415,12 @@ if (trackingMatch) {
       medium:   [ [4,6],   [4,8],   [6,9],   [8,12],  [10,15] ],
       heavy:    [ [7,9],   [8,12],  [11,16], [14,20], [18,25] ],
       critical: [ [10,14], [13,18], [17,23], [22,28], [28,35] ]
-    }    
+    }
 
     const safeImpact = damageMatrix[impact] ? impact : 'medium'
     const range = damageMatrix[safeImpact][diffIdx]
     let loadDelta = -rand(range[0], range[1])
 
-    // ✅ 破碎钟摆：剩余轮数内冲击减半
     if (pendulumRoundsLeft.value > 0 && loadDelta < 0) {
       loadDelta = Math.floor(loadDelta / 2)
       pendulumRoundsLeft.value--
@@ -1318,30 +1429,27 @@ if (trackingMatch) {
       }
     }
 
-   // ✅ neutral 基础值按难度递减，低难度保底涨幅更高
-const neutralBase = [0, 4, 3, 2, 1, 1][selectedScript.value?.difficulty ?? 1]
+    const neutralBase = [0, 4, 3, 2, 1, 1][selectedScript.value?.difficulty ?? 1]
+    let resDelta = {
+      surge:   rand(10, 16),
+      rise:    rand(5, 10),
+      neutral: rand(neutralBase, neutralBase + 3),
+      fall:    -rand(3, 7),
+      drop:    -rand(8, 15)
+    }[resonanceTag] ?? 0
 
-let resDelta = {
-  surge:   rand(10, 16),
-  rise:    rand(5, 10),
-  neutral: rand(neutralBase, neutralBase + 3),
-  fall:    -rand(3, 7),
-  drop:    -rand(8, 15)
-}[resonanceTag] ?? 0
-  
-
-    // 10级每轮共振+2
     if (playerLevel.value >= 10) resDelta += 2
 
     let isImmune = false
     if (usedItem) {
       switch (usedItem.id) {
-        case 'needle':       resDelta += 5; break
         case 'bandage':
           neuralLoad.value = Math.min(maxLoad.value, neuralLoad.value + 8)
           displayHistory.value.push({ type: 'system', content: '🩹 绷带卷：神经载荷+8' })
           break
-        case 'incense':      isImmune = true; break
+        case 'incense':
+          isImmune = true
+          break
         case 'sponge':
           neuralLoad.value = Math.min(maxLoad.value, neuralLoad.value + 15)
           displayHistory.value.push({ type: 'system', content: '🧽 共情海绵：神经载荷+15，进入消化状态' })
@@ -1383,13 +1491,13 @@ let resDelta = {
             displayHistory.value.push({ type: 'system', content: '🎭 镜像面具代价：神经载荷归零，必须立即撤离！' })
           }, 500)
           break
+        case 'lullaby':
+          break
       }
     }
 
-    // 持续型道具减伤
     if (loadDelta < 0 && ownedPermanents.value.includes('candle'))  loadDelta = Math.min(0, loadDelta + 2)
     if (loadDelta < 0 && ownedPermanents.value.includes('crystal')) loadDelta = Math.min(0, loadDelta + 3)
-    // 10级每轮抵抗2点
     if (loadDelta < 0 && playerLevel.value >= 10)                   loadDelta = Math.min(0, loadDelta + 2)
 
     if (isImmune && loadDelta < 0) {
@@ -1401,26 +1509,19 @@ let resDelta = {
 
     neuralLoad.value = Math.max(0, Math.min(maxLoad.value, neuralLoad.value + loadDelta))
 
-    // 共振加成
     if (resDelta > 0 && ownedPermanents.value.includes('bell'))    resDelta = Math.ceil(resDelta * 1.2)
     if (resDelta > 0 && ownedPermanents.value.includes('crystal')) resDelta = Math.ceil(resDelta * 1.5)
     if (resDelta > 0 && activeTitles.value.includes('孤勇者'))     resDelta = Math.ceil(resDelta * 1.3)
     if (activeTitles.value.includes('治愈者') || activeTitles.value.includes('破局者')) resDelta += 1
 
-    // 在 resonance.value 更新之前加
-// ✅ 共振软上限：根据故事进度决定能涨到多少
-const progressRatio = currentRound.value / estimatedRounds.value
-const diff = selectedScript.value?.difficulty ?? 1
-const resonanceCap =
-  diff <= 2
-    ? 100  // ✅ 1-2星不限制，可以随时涨满
-    : progressRatio < 0.4 ? 60
-    : progressRatio < 0.7 ? 85
-    : 100
+    const progressRatio = currentRound.value / estimatedRounds.value
+    const diff = selectedScript.value?.difficulty ?? 1
+    const resonanceCap =
+      diff <= 2 ? 100 :
+      progressRatio < 0.4 ? 60 :
+      progressRatio < 0.7 ? 85 : 100
 
-
-  resonance.value = Math.max(0, Math.min(resonanceCap, resonance.value + resDelta))
-
+    resonance.value = Math.max(0, Math.min(resonanceCap, resonance.value + resDelta))
 
     // 重生摇篮曲
     if (neuralLoad.value <= 0 && !isDying.value) {
@@ -1433,13 +1534,9 @@ const resonanceCap =
       }
     }
 
-    // 守望者：30%概率规避一次载荷归零，每局限一次
+    // 守望者：30%概率规避一次载荷归零
     if (neuralLoad.value <= 0 && !isDying.value) {
-      if (
-        activeTitles.value.includes('守望者') &&
-        !watcherProcUsed.value &&
-        Math.random() < 0.3
-      ) {
+      if (activeTitles.value.includes('守望者') && !watcherProcUsed.value && Math.random() < 0.3) {
         neuralLoad.value = 1
         watcherProcUsed.value = true
         displayHistory.value.push({ type: 'system', content: '🛡 守望者：意识屏障触发，险险撑住了' })
@@ -1447,16 +1544,15 @@ const resonanceCap =
     }
 
     if (neuralLoad.value <= 0) {
-  isDying.value = true
-} else if (isDying.value) {
-  // 道具（镇定剂/摇篮曲/绷带）恢复了载荷，解除濒死
-  isDying.value = false
-  dyingRoundsLeft.value = 0
-  displayHistory.value.push({ 
-    type: 'system', 
-    content: '✦ 神经载荷已恢复——意识连接重新稳定' 
-  })
-}
+      isDying.value = true
+    } else if (isDying.value) {
+      isDying.value = false
+      dyingRoundsLeft.value = 0
+      displayHistory.value.push({
+        type: 'system',
+        content: '✦ 神经载荷已恢复——意识连接重新稳定'
+      })
+    }
 
     if (resonanceTag === 'fall' || resonanceTag === 'drop') {
       consecutiveResonanceDrop.value++
@@ -1479,7 +1575,6 @@ const resonanceCap =
     val += usableCount * 5
     if (ownedPermanents.value.includes('overcoat')) val += 15
     if (activeTitles.value.includes('守望者'))       val += 15
-    // 9级选择：逃脱额外+1次机会（通过 maxEscapeAttempts 体现，这里不改判定值）
     return val >= 60 ? 'success' : val >= 40 ? 'near' : 'fail'
   }
 
@@ -1488,9 +1583,11 @@ const resonanceCap =
     innerText.value = ''
     phase.value = 'escape'
     isLoading.value = true
+    clearRetry()
     escapeAttempts.value++
     const result = calcEscapeJudge()
     const escapeType = isDying.value ? 'dying' : 'normal'
+
     try {
       const raw = await callAISilent(buildEscapePrompt({
         escapeType, result,
@@ -1499,6 +1596,8 @@ const resonanceCap =
         resonance: resonance.value
       }))
       const parsed = parseAIResponse(raw)
+      if (!parsed.narrative) throw new Error('逃脱叙事内容为空')
+
       displayHistory.value.push({ type: 'narrative', content: parsed.narrative })
       await scrollToBottom(narrativeEl)
 
@@ -1513,7 +1612,6 @@ const resonanceCap =
         escapeDone.value = true
       } else {
         neuralLoad.value = Math.max(0, neuralLoad.value - 10)
-        // 守望者延长1轮，9级选择延长1轮，可叠加
         let maxEscapeAttempts = 2
         if (activeTitles.value.includes('守望者')) maxEscapeAttempts++
         if (pendingLevelUpChoice.value?.level === 9 && pendingLevelUpChoice.value?.choice === 'escape') maxEscapeAttempts++
@@ -1527,11 +1625,15 @@ const resonanceCap =
         }
       }
       isLoading.value = false
-    } catch {
+
+    } catch (err) {
+      if (abortController?.signal.aborted) { isLoading.value = false; return }
+      console.error(err)
       isLoading.value = false
-      escapeSuccess.value = true
-      escapeDone.value = true
-      escapeResultText.value = '意识已撤离梦境。'
+      displayHistory.value.push({ type: 'system', content: '⚠ 逃脱叙事生成失败' })
+      // 回滚本次逃脱尝试次数
+      escapeAttempts.value = Math.max(0, escapeAttempts.value - 1)
+      setRetry('重新生成逃脱叙事', initiateEscape)
     }
   }
 
@@ -1543,14 +1645,6 @@ const resonanceCap =
 
   // ========== 现实回响 ==========
 
-  function getDefaultEchoChoices() {
-    return [
-      { text: '"嗯。我知道。"',           value: '"嗯。我知道。"',           type: 'action' },
-      { text: '在她旁边坐下，什么都不说。', value: '在她旁边坐下，什么都不说。', type: 'accompany' },
-      { text: '"你现在感觉怎么样？"',       value: '"你现在感觉怎么样？"',       type: 'inquiry' },
-    ]
-  }
-
   async function enterRealEcho() {
     phase.value = 'dream'
     gameStage.value = 'realecho'
@@ -1558,10 +1652,13 @@ const resonanceCap =
     echoChoices.value = []
     echoResonanceDelta.value = 0
     isLoading.value = true
-    currentNarrative.value = ''   // ✅ 加这行
-  innerText.value = ''          // ✅ 加这行
-  streamingText.value = ''      // ✅ 加这行
+    currentNarrative.value = ''
+    innerText.value = ''
+    streamingText.value = ''
+    clearRetry()
+
     displayHistory.value.push({ type: 'system', content: '— 意识撤离完成 · 现实时间恢复 —' })
+
     try {
       const raw = await callAISilent(buildRealEchoPrompt({
         act: 'act1', playerAction: '',
@@ -1569,15 +1666,25 @@ const resonanceCap =
         resonance: resonance.value
       }))
       const parsed = parseAIResponse(raw)
+      if (!parsed.narrative) throw new Error('现实回响叙事为空')
+
       displayHistory.value.push({ type: 'narrative', content: parsed.narrative })
       currentNarrative.value = parsed.narrative
-      echoChoices.value = parsed.options.length > 0 ? parsed.options : getDefaultEchoChoices()
+      echoChoices.value = parsed.options.length > 0 ? parsed.options : []
+
+      if (echoChoices.value.length === 0) {
+        throw new Error('现实回响选项为空')
+      }
+
       isLoading.value = false
       await scrollToBottom(narrativeEl)
-    } catch {
+
+    } catch (err) {
+      if (abortController?.signal.aborted) { isLoading.value = false; return }
+      console.error(err)
       isLoading.value = false
-      echoPhase.value = 'final'
-      echoChoices.value = []
+      displayHistory.value.push({ type: 'system', content: '⚠ 现实回响生成失败' })
+      setRetry('重新生成现实回响', enterRealEcho)
     }
   }
 
@@ -1585,8 +1692,11 @@ const resonanceCap =
     displayHistory.value.push({ type: 'choice', content: choice.text })
     echoChoices.value = []
     isLoading.value = true
+    clearRetry()
+
     const nextAct = echoPhase.value === 'act1' ? 'act2' : 'final'
     echoPhase.value = nextAct
+
     try {
       const raw = await callAISilent(buildRealEchoPrompt({
         act: nextAct, playerAction: choice.text,
@@ -1594,7 +1704,6 @@ const resonanceCap =
         resonance: resonance.value
       }))
 
-      // ✅ 现实回响数值影响：根据选择类型微调共振
       if (choice.type === 'accompany') {
         echoResonanceDelta.value += 2
       } else if (choice.type === 'inquiry') {
@@ -1603,10 +1712,11 @@ const resonanceCap =
 
       if (nextAct === 'final') {
         const narrative = extractSection(raw, 'NARRATIVE') || raw
+        if (!narrative) throw new Error('离别叙事为空')
+
         displayHistory.value.push({ type: 'narrative', content: narrative })
         currentNarrative.value = narrative
 
-        // ✅ 现实回响结束，应用共振微调（±5%上限）
         const clampedDelta = Math.max(-5, Math.min(5, echoResonanceDelta.value))
         if (clampedDelta !== 0) {
           resonance.value = Math.max(0, Math.min(100, resonance.value + clampedDelta))
@@ -1618,94 +1728,99 @@ const resonanceCap =
           })
         }
 
-        // ✅ 现实回响表现良好时额外纯真滴露
         if (echoResonanceDelta.value >= 3) {
-          const bonus = Math.floor(Math.random() * 11) + 5  // 5-15
+          const bonus = Math.floor(Math.random() * 11) + 5
           pureDrops.value += bonus
           displayHistory.value.push({ type: 'system', content: `💧 现实回响奖励：+${bonus} 纯真滴露` })
         }
 
       } else {
         const parsed = parseAIResponse(raw)
+        if (!parsed.narrative) throw new Error('现实回响叙事为空')
+        if (parsed.options.length === 0) throw new Error('现实回响选项为空')
+
         displayHistory.value.push({ type: 'narrative', content: parsed.narrative })
         currentNarrative.value = parsed.narrative
-        echoChoices.value = parsed.options.length > 0 ? parsed.options : []
+        echoChoices.value = parsed.options
       }
+
       isLoading.value = false
       await scrollToBottom(narrativeEl)
-    } catch {
+
+    } catch (err) {
+      if (abortController?.signal.aborted) { isLoading.value = false; return }
+      console.error(err)
       isLoading.value = false
+      // 回滚幕次，让玩家重试
+      echoPhase.value = echoPhase.value === 'final' ? 'act2' : 'act1'
+      displayHistory.value.push({ type: 'system', content: '⚠ 现实回响生成失败' })
+      setRetry('重新生成此幕', () => onEchoChoiceSelect({ choice }))
     }
   }
 
   // ========== 结算 ==========
+
   async function goToSettlement() {
-    if (!escapeSuccess.value) {
-      // ✅ 调律者陨落，走特殊流程
-      deathSummary.value = {
-        playerName: playerName.value,
-        playerLevel: playerLevel.value,
-        totalScripts: completedScripts.value.length,
-        perfectCount: completedScripts.value.filter(s => s.result === 'perfect').length,
-        harmonyCount: completedScripts.value.filter(s => s.result === 'harmony').length,
-        totalDropsEarned: totalDropsEarned.value,
-        totalRoundsPlayed: totalRoundsPlayed.value,
-      }
-      phase.value = 'settlement'
-      showDeathModal.value = true
-      return   // ✅ 不走后续正常结算流程
+  if (!escapeSuccess.value) {
+    deathSummary.value = {
+      playerName: playerName.value,
+      playerLevel: playerLevel.value,
+      totalScripts: completedScripts.value.length,
+      perfectCount: completedScripts.value.filter(s => s.result === 'perfect').length,
+      harmonyCount: completedScripts.value.filter(s => s.result === 'harmony').length,
+      totalDropsEarned: totalDropsEarned.value,
+      totalRoundsPlayed: totalRoundsPlayed.value,
     }
+
+    // 道具损失展示
+    const lostList = []
+    for (const item of equippedItems.value) {
+      if (item.count > 0) {
+        lostList.push({ name: item.name, count: item.count })
+      }
+    }
+    if (lostList.length > 0) {
+      lostItemsOnDeath.value = lostList
+      setTimeout(() => { showLostItemsModal.value = true }, 2000)
+    }
+
+    // ✅ 死亡：两套存档全部删除，一切清零
+    await saveService.deleteSave(SCRIPT_ID)
+    localStorage.removeItem(PLAYER_SAVE_KEY)
+    hasSave.value = false
+
+    phase.value = 'settlement'
+    showDeathModal.value = true
+    return
+  }
+
     let result
-    if (resonance.value >= 100) result = 'perfect'
-    else if (resonance.value >= 70)  result = 'harmony'
-    else                             result = 'disqualified'
+    if (resonance.value >= 100)     result = 'perfect'
+    else if (resonance.value >= 70) result = 'harmony'
+    else                            result = 'disqualified'
 
     finalResult.value = result
     const map = {
       perfect:      { name: '完满终止', label: '演奏结束' },
       harmony:      { name: '协奏',     label: '演奏结束' },
       disqualified: { name: '失格',     label: '演奏中断' },
-      lost:         { name: '离调',     label: '意识迷失' }
     }
     finalResultName.value = map[result].name
     resultLabel.value = map[result].label
 
     const diff = selectedScript.value?.difficulty ?? 1
-const baseDrop = [0, 20, 35, 55, 80, 120][diff] ?? 20
-const coeffMap = { perfect: 1, harmony: 0.8, disqualified: 0.4 }
-const coeff = coeffMap[result] ?? 0
-let dropBonus = activeTitles.value.includes('引渡者') ? 1.2 : 1.0
+    const baseDrop = [0, 20, 35, 55, 80, 120][diff] ?? 20
+    const coeffMap = { perfect: 1, harmony: 0.8, disqualified: 0.4 }
+    const coeff = coeffMap[result] ?? 0
+    let dropBonus = activeTitles.value.includes('引渡者') ? 1.2 : 1.0
 
-dropsGained.value = Math.floor(baseDrop * coeff * dropBonus)
-if (playerLevel.value === 10) dropsGained.value += Math.floor(baseDrop * coeff * 0.2)
-pureDrops.value += dropsGained.value
-totalDropsEarned.value += dropsGained.value
+    dropsGained.value = Math.floor(baseDrop * coeff * dropBonus)
+    if (playerLevel.value === 10) dropsGained.value += Math.floor(baseDrop * coeff * 0.2)
+    pureDrops.value += dropsGained.value
+    totalDropsEarned.value += dropsGained.value
 
-expGained.value = Math.floor(diff * 15 * coeff)
-totalExp.value += expGained.value  // ✅ 加这行，经验才会真正累计
-
-
-    if (result === 'lost') {
-        // ✅ 记录并扣除本局道具
-        const lostList = []
-        for (const item of equippedItems.value) {
-          if (item.id !== 'needle' && item.count > 0) {
-            lostList.push({ name: item.name, count: item.count })
-            const remaining = ownedConsumables.value[item.id] ?? 0
-            ownedConsumables.value[item.id] = Math.max(0, remaining - item.count)
-          }
-        }
-        if (lostList.length > 0) {
-          lostItemsOnDeath.value = lostList
-          setTimeout(() => { showLostItemsModal.value = true }, 4500)
-        }
-        // 原有的经验惩罚逻辑，不动
-        const currentLvlExp = LEVEL_EXP[playerLevel.value]
-        const penalty = Math.floor((totalExp.value - currentLvlExp) * 0.1)
-        totalExp.value = Math.max(currentLvlExp, totalExp.value - penalty)
-        expGained.value = -penalty
-      }
-      
+    expGained.value = Math.floor(diff * 15 * coeff)
+    totalExp.value += expGained.value
 
     levelUpRewards.value = []
     levelUpChoiceNeeded.value = false
@@ -1724,77 +1839,111 @@ totalExp.value += expGained.value  // ✅ 加这行，经验才会真正累计
 
     newAchievements.value = []
     completedScripts.value.push({
-      id: SCRIPT_ID,
+      id: `${SCRIPT_ID}-${Date.now()}-${Math.random().toString(36).slice(2, 8)}`,
       diff,
       result,
       time: Date.now(),
-      // ✅ 新增
-      patientName: selectedScript.value?.name ?? '未知',
-      patientAge: selectedScript.value?.age ?? '??',
-      patientProfession: selectedScript.value?.profession ?? '未知',
-      scriptContext: scriptContext.value,
+      patientName:       selectedScript.value?.name       ?? '未知',
+      patientAge:        selectedScript.value?.age         ?? '??',
+      patientProfession: selectedScript.value?.profession  ?? '未知',
+      scriptContext:     scriptContext.value,
       conversationHistory: JSON.parse(JSON.stringify(conversationHistory.value)),
-      patientFutureText: '',   // 结算后填入
+      patientFutureText: '',
       statusHistory: [],
     })
-    
-    checkAllAchievements({ finalResult: result, escapeSuccess: escapeSuccess.value, finalLoad: neuralLoad.value })
+
+    checkAllAchievements({ finalResult: result, escapeSuccess: escapeSuccess.value })
     savePlayerData()
 
     phase.value = 'settlement'
     gameStage.value = 'dream'
     showBreath.value = true
     showBreathDismissBtn.value = false
-    
-    // ✅ 同时生成两段内容，不再分开等待
-    const keyChoices = conversationHistory.value.slice(-3).map(h => h.playerAction).join('；')
+    clearRetry()
+
+    await _generateSettlementTexts()
+  }
+
+  async function _generateSettlementTexts() {
+  isLoading.value = true
+  clearRetry()
+
+  const keyChoices = conversationHistory.value.slice(-3).map(h => h.playerAction).join('；')
+
+  try {
     const [breathRaw, futureRaw] = await Promise.all([
       callAISimple(buildBreathPrompt({
         result: finalResultName.value,
         keyChoices,
         scriptContext: scriptContext.value
-      })).catch(() => null),
+      })).catch(e => { throw new Error(`呼吸页生成失败: ${e.message}`) }),
       callAISilent(buildPatientFuturePrompt({
         result: finalResultName.value,
         scriptContext: scriptContext.value,
         resonance: resonance.value
-      })).catch(() => null)
+      })).catch(e => { throw new Error(`患者后续生成失败: ${e.message}`) })
     ])
-    
+
     breathText.value = breathRaw
       ? (extractSection(breathRaw, 'BREATH') || breathRaw.trim())
       : '一切都过去了。你从那个深处归来，带着你看见的一切。'
-    
-      const rawFuture = futureRaw
+
+    const rawFuture = futureRaw
       ? (extractSection(futureRaw, 'PATIENT_FUTURE') || futureRaw.trim())
       : ''
-    // ✅ 剥离可能残留的 STATUS 标签
-    patientFuture.value = rawFuture.replace(/\[STATUS:[^\]]+\]/gi, '').trim()
-    
-    
-    // ✅ 存入患者记录
+    patientFuture.value = rawFuture.replace(/\[STATUS: [^\]]+\]/gi, '').trim()
+
     const last = completedScripts.value[completedScripts.value.length - 1]
     if (last) last.patientFutureText = patientFuture.value
-    
+
     savePlayerData()
-    showBreathDismissBtn.value = true  // ✅ 生成完成后显示按钮
-    
-    await saveService.deleteSave(SCRIPT_ID)
-    hasSave.value = false
+    isLoading.value = false
+    showBreathDismissBtn.value = true
+
+  } catch (err) {
+    if (abortController?.signal.aborted) { isLoading.value = false; return }
+    console.error(err)
+    isLoading.value = false
+    if (!breathText.value) {
+      breathText.value = '一切都过去了。你从那个深处归来，带着你看见的一切。'
+    }
+    showBreathDismissBtn.value = true
+    setRetry('重新生成结算文本', _generateSettlementTexts)
+    return  // ✅ 失败时不继续执行，等玩家重试
   }
+
+  // ✅ 正常结算完成，重置游戏状态为 hub 并保存
+  // 不删档，让刷新后能回到 hub
+  phase.value = 'hub'
+  selectedScript.value = null
+  scriptContext.value = ''
+  scriptTracking.value = ''
+  conversationHistory.value = []
+  displayHistory.value = []
+  choices.value = []
+  currentNarrative.value = ''
+  innerText.value = ''
+  streamingText.value = ''
+  isDying.value = false
+  resonance.value = 0
+  currentRound.value = 0
+
+  await saveProgress()  // ✅ 保存 hub 状态
+}
+
+
 
   function restartSelect() {
     if (scriptGenController) {
       scriptGenController.abort()
       scriptGenController = null
     }
-    
     phase.value = 'script_select'
     gameStage.value = 'dream'
     scriptContext.value = ''
     scriptTracking.value = ''
     scriptPreviews.value = []
-    refreshCount.value = 0
+    scriptGenError.value = ''
     neuralLoad.value = 100
     resonance.value = 0
     currentRound.value = 0
@@ -1810,7 +1959,7 @@ totalExp.value += expGained.value  // ✅ 加这行，经验才会真正累计
     escapeCanRetry.value = false
     echoChoices.value = []
     selectedScript.value = null
-
+    clearRetry()
     generateScripts()
   }
 
@@ -1818,13 +1967,14 @@ totalExp.value += expGained.value  // ✅ 加这行，经验才会真正累计
     showBreath.value = false
     showBreathDismissBtn.value = false
   }
-  
+
   function confirmDeath() {
-    showDeathModal.value = false
-    deathSummary.value = null
-    // 重置所有数据，相当于新调律者上任
-    executeStartNewGame()
-  }
+  showDeathModal.value = false
+  deathSummary.value = null
+  executeStartNewGame()  // 从零开始，无需额外处理
+}
+
+
   // ========== 成就 ==========
 
   function unlockAchievement(id) {
@@ -1850,47 +2000,26 @@ totalExp.value += expGained.value  // ✅ 加这行，经验才会真正累计
     }
     if (hasReachedDropThreshold.value && gameResult.finalResult === 'perfect') unlockAchievement('not_abandon')
 
-    const uniqueItemsUsed = new Set(
-      equippedItems.value
-        .filter(i => i.count < (shopItems.find(s => s.id === i.id)?.count || 0))
-        .map(i => i.id)
-    ).size
-    if (uniqueItemsUsed >= 3 && gameResult.escapeSuccess) unlockAchievement('breakthrough')
+    // breakthrough 修复：用 usedItemIds 记录本局使用过的道具
+    if (usedItemIds.value.size >= 3 && gameResult.escapeSuccess) unlockAchievement('breakthrough')
+
     if (hasReachedAccompanyThreshold.value && gameResult.escapeSuccess) unlockAchievement('silent_listen')
     if (isDying.value && gameResult.escapeSuccess) unlockAchievement('survivor')
 
-    // 回声定位：无消耗品+完满终止
-    const consumableUsed = equippedItems.value
-      .filter(i => i.id !== 'needle' && i.count < 99)
-      .length
+    const consumableUsed = usedItemIds.value.size
     if (consumableUsed === 0 && gameResult.finalResult === 'perfect') {
       unlockAchievement('echo_location')
     }
-
-    // 勇者游戏：五星无道具通关
-    if (
-      selectedScript.value?.difficulty === 5 &&
-      consumableUsed === 0 &&
-      gameResult.escapeSuccess
-    ) {
+    if (selectedScript.value?.difficulty === 5 && consumableUsed === 0 && gameResult.escapeSuccess) {
       unlockAchievement('brave_game')
     }
-
-    // 静默者：连续3局不用消耗品通关（≥3星）
-    if (
-      selectedScript.value?.difficulty >= 3 &&
-      consumableUsed === 0 &&
-      gameResult.escapeSuccess
-    ) {
+    if (selectedScript.value?.difficulty >= 3 && consumableUsed === 0 && gameResult.escapeSuccess) {
       silentStreakCount.value++
       if (silentStreakCount.value >= 3) unlockAchievement('silent_one')
     } else {
       silentStreakCount.value = 0
     }
-
-    // 镜中人：20个五星全完满
-    const fiveStarPerfect = completedScripts.value
-      .filter(s => s.diff === 5 && s.result === 'perfect').length
+    const fiveStarPerfect = completedScripts.value.filter(s => s.diff === 5 && s.result === 'perfect').length
     if (fiveStarPerfect >= 20) unlockAchievement('mirror_person')
   }
 
@@ -1903,11 +2032,9 @@ totalExp.value += expGained.value  // ✅ 加这行，经验才会真正累计
       if (totalExp.value >= LEVEL_EXP[i]) { newLevel = i; break }
     }
     if (newLevel <= playerLevel.value) return
-
     for (let lv = playerLevel.value + 1; lv <= newLevel; lv++) {
       applyLevelReward(lv)
     }
-
     playerLevel.value = newLevel
     justLeveledUp.value = true
   }
@@ -1937,7 +2064,7 @@ totalExp.value += expGained.value  // ✅ 加这行，经验才会真正累计
         levelUpChoiceQueue.value.push({
           level: 6,
           choices: [
-            { id: 'load', label: '神经载荷上限 +15', desc: '大幅提升意识承载能力' },
+            { id: 'load',      label: '神经载荷上限 +15', desc: '大幅提升意识承载能力' },
             { id: 'resonance', label: '共振深度起始 +10%', desc: '每局开始时共振深度不再从0起步' }
           ]
         })
@@ -1952,7 +2079,7 @@ totalExp.value += expGained.value  // ✅ 加这行，经验才会真正累计
         levelUpChoiceQueue.value.push({
           level: 9,
           choices: [
-            { id: 'load', label: '神经载荷上限 +15', desc: '大幅提升意识承载能力' },
+            { id: 'load',   label: '神经载荷上限 +15',   desc: '大幅提升意识承载能力' },
             { id: 'escape', label: '逃脱判定额外 +1 次机会', desc: '逃脱失败后可多一次尝试' }
           ]
         })
@@ -1965,7 +2092,6 @@ totalExp.value += expGained.value  // ✅ 加这行，经验才会真正累计
         levelUpRewards.value.push('纯真滴露结算 +20%')
         break
     }
-
     if (lv >= 5 && !unlockedTitles.value.includes('引渡者')) {
       unlockedTitles.value.push('引渡者')
     }
@@ -1974,40 +2100,22 @@ totalExp.value += expGained.value  // ✅ 加这行，经验才会真正累计
   function confirmLevelUpChoice(choiceId) {
     const current = levelUpChoiceQueue.value[0]
     if (!current) return
-
     const lv = current.level
-
     if (lv === 5) {
-      if (choiceId === 'load') {
-        baseMaxLoad.value += 10
-        levelUpRewards.value.push('神经载荷上限 +10')
-      } else {
-        levelUpRewards.value.push('每局起始道具 +1')
-      }
+      if (choiceId === 'load') { baseMaxLoad.value += 10; levelUpRewards.value.push('神经载荷上限 +10') }
+      else { levelUpRewards.value.push('每局起始道具 +1') }
     }
-
     if (lv === 6) {
-      if (choiceId === 'load') {
-        baseMaxLoad.value += 15
-        levelUpRewards.value.push('神经载荷上限 +15')
-      } else {
-        levelUpRewards.value.push('共振深度起始 +10%')
-      }
+      if (choiceId === 'load') { baseMaxLoad.value += 15; levelUpRewards.value.push('神经载荷上限 +15') }
+      else { levelUpRewards.value.push('共振深度起始 +10%') }
     }
-
     if (lv === 9) {
-      if (choiceId === 'load') {
-        baseMaxLoad.value += 15
-        levelUpRewards.value.push('神经载荷上限 +15')
-      } else {
-        levelUpRewards.value.push('逃脱判定额外 +1 次机会')
-      }
+      if (choiceId === 'load') { baseMaxLoad.value += 15; levelUpRewards.value.push('神经载荷上限 +15') }
+      else { levelUpRewards.value.push('逃脱判定额外 +1 次机会') }
     }
-
     pendingLevelUpChoice.value = { level: lv, choice: choiceId }
     levelUpChoiceQueue.value.shift()
     savePlayerData()
-
     if (levelUpChoiceQueue.value.length > 0) {
       const next = levelUpChoiceQueue.value[0]
       levelUpChoices.value = next.choices
@@ -2038,6 +2146,7 @@ totalExp.value += expGained.value  // ✅ 加这行，经验才会真正累计
 
   onUnmounted(() => {
     if (abortController) abortController.abort()
+    if (scriptGenController) scriptGenController.abort()
     store.setGlobalApiBtn(false)
   })
 
@@ -2045,94 +2154,93 @@ totalExp.value += expGained.value  // ✅ 加这行，经验才会真正累计
   watch(playerAvatar, () => { savePlayerData() })
 
   // ========== return ==========
-return {
+  return {
+    // UI 状态
+    phase, gameStage, bottomTab, historyCollapsed,
+    titleReady, hasSave, storyReady, aiConfigured,
+    showGuide, showDiffGuide,
+    showPauseModal, showConfirmNewGameModal, showItemSelectModal,
+    showBreath, activePermanentDesc,
 
-  // ========== UI 状态 ==========
-  phase, gameStage, bottomTab, historyCollapsed,
-  titleReady, hasSave, storyReady, aiConfigured,
-  showGuide, showDiffGuide,
-  showPauseModal, showConfirmNewGameModal, showItemSelectModal,
-  showBreath, activePermanentDesc,
+    // 剧本
+    isGeneratingScripts, scriptPreviews, scriptGenError, selectedScript,
+    scriptTracking,
 
-  // ========== 剧本 ==========
-  isGeneratingScripts, scriptPreviews, refreshCount, selectedScript,
-  scriptTracking,
+    // 重试系统
+    canRetry, retryLabel, executeRetry,retryChoicesEmergency,
 
-  // ========== 玩家数据 ==========
-  playerName, playerAvatar,
-  pureDrops, playerLevel, totalExp,
-  totalRoundsPlayed, totalDropsEarned,
-  completedScripts, achievements,
-  unlockedTitles, activeTitles,
-  newAchievements, justLeveledUp,
-  ownedConsumables, ownedPermanents,
-  scriptStats,
+    // 玩家数据
+    playerName, playerAvatar,
+    pureDrops, playerLevel, totalExp,
+    totalRoundsPlayed, totalDropsEarned,
+    completedScripts, achievements,
+    unlockedTitles, activeTitles,
+    newAchievements, justLeveledUp,
+    ownedConsumables, ownedPermanents,
+    scriptStats,
 
-  // ========== 游戏数值 ==========
-  neuralLoad, maxLoad, baseMaxLoad,
-  resonance, currentRound, isDying,
-  dyingRoundsLeft,
-  mustEvacuate, estimatedRounds,
+    // 游戏数值
+    neuralLoad, maxLoad, baseMaxLoad,
+    resonance, currentRound, isDying,
+    dyingRoundsLeft,
+    mustEvacuate, estimatedRounds,
 
-  // ========== 叙事内容 ==========
-  conversationHistory, displayHistory,
-  streamingText, innerText, currentNarrative,
-  choices, isLoading,
+    // 叙事内容
+    conversationHistory, displayHistory,
+    streamingText, innerText, currentNarrative,
+    choices, isLoading,
 
-  // ========== 逃脱 ==========
-  escapeAttempts, escapeResultText,
-  escapeCanRetry, escapeDone, escapeSuccess,
+    // 逃脱
+    escapeAttempts, escapeResultText,
+    escapeCanRetry, escapeDone, escapeSuccess,
 
-  // ========== 现实回响 ==========
-  echoPhase, echoChoices, echoActLabel, echoResonanceDelta,
+    // 现实回响
+    echoPhase, echoChoices, echoActLabel, echoResonanceDelta,
 
-  // ========== 结算 ==========
-  finalResult, finalResultName, resultLabel,
-  dropsGained, expGained, breathText, patientFuture,
+    // 结算
+    finalResult, finalResultName, resultLabel,
+    dropsGained, expGained, breathText, patientFuture,
 
-  // ========== 升级系统 ==========
-  showLevelUpModal, levelUpRewards,
-  levelUpChoiceNeeded, levelUpChoices, levelUpChoiceQueue,
-  confirmLevelUpChoice, skipLevelUpModal,
+    // 升级系统
+    showLevelUpModal, levelUpRewards,
+    levelUpChoiceNeeded, levelUpChoices, levelUpChoiceQueue,
+    confirmLevelUpChoice, skipLevelUpModal,
 
-  // ========== 调律者陨落 ==========
-  showDeathModal, deathSummary, confirmDeath,
+    // 调律者陨落
+    showDeathModal, deathSummary, confirmDeath,
 
-  // ========== 弹窗提示 ==========
-  silentOneReward, showSilentOneModal,
-  lostItemsOnDeath, showLostItemsModal,showBreathDismissBtn,
+    // 弹窗提示
+    silentOneReward, showSilentOneModal,
+    lostItemsOnDeath, showLostItemsModal, showBreathDismissBtn,
 
-  // ========== 道具 ==========
-  equippedItems, activeItem, selectedLoadout, maxItemSlots,
-  watchUsed, lastRoundSnapshot, useWatch,
-  pendulumRoundsLeft,
+    // 道具
+    equippedItems, activeItem, selectedLoadout, maxItemSlots,
+    watchUsed, lastRoundSnapshot, useWatch,
+    pendulumRoundsLeft,
 
-  // ========== 洞察者 ==========
-  insightUsesLeft, insightHint, useInsight,
+    // 洞察者
+    insightUsesLeft, insightHint, useInsight,
 
+    // 患者手册
+    showHandbook, selectedPatient,
+    patientCurrentStatus, isGeneratingStatus,
+    showPatientStatusModal, generatePatientCurrentStatus,
 
-  // ========== 患者手册 ==========
-  showHandbook, selectedPatient,
-  patientCurrentStatus, isGeneratingStatus,
-  showPatientStatusModal, generatePatientCurrentStatus,
+    // 游戏流程函数
+    startNewGame, continueGame, confirmStartNewGame,
+    goStory, goToScriptSelect,
+    handleHubPrimaryAction, enterScriptSelect,
+    selectScript, refreshScripts,
+    confirmItemSelect, skipItemSelect, toggleLoadoutItem,
+    selectItemForRound, buyItem, toggleTitle,
+    triggerAvatarUpload, handleAvatarUpload,
+    onChoiceSelect, onEchoChoiceSelect,
+    confirmPause, pauseAndReturn,
+    initiateEscape, retryEscape, enterRealEcho,
+    goToSettlement, restartSelect, saveProgress,
+    splitParagraphs, dismissBreath,
 
-  // ========== 游戏流程函数 ==========
-  startNewGame, continueGame, confirmStartNewGame,
-  goStory, goToScriptSelect,
-  handleHubPrimaryAction, enterScriptSelect,
-  selectScript, refreshScripts,
-  confirmItemSelect, skipItemSelect, toggleLoadoutItem,
-  selectItemForRound, buyItem, toggleTitle,
-  triggerAvatarUpload, handleAvatarUpload,
-  onChoiceSelect, onEchoChoiceSelect,
-  confirmPause, pauseAndReturn,
-  initiateEscape, retryEscape, enterRealEcho,
-  goToSettlement, restartSelect, saveProgress,
-  splitParagraphs,dismissBreath,
-
-
-  // ========== 静态配置数据 ==========
-  LEVEL_EXP, ACHIEVEMENT_CONFIG, shopItems, diffLevels,
- }
+    // 静态配置数据
+    LEVEL_EXP, ACHIEVEMENT_CONFIG, shopItems, diffLevels,
+  }
 }
-

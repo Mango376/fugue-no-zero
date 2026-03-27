@@ -96,7 +96,6 @@ export function buildTrackingSheetPrompt({ patient, environment, estimatedIncome
 情绪状态：${patient.emotionalTone || ''}
 当前来诊次数：第 ${patient.visitCount || 1} 次
 环境描述：${environment.description || environment.effect || ''}
-预计收入：${estimatedIncome}
 
 【已确定的感官异常基底（必须严格参照，不可擅自改写）】${formatSensorMap(patient.originalMappings)}
 【异常强度等级（必须严格参照）】${formatMappingLevels(patient.initialMappingLevels || patient.mappingLevels)}
@@ -124,7 +123,6 @@ ${JSON_OBJECT_ONLY_RULE}
     "初诊建档：……"
   ],
   "abnormalCount": 0,
-  "estimatedIncome": ${estimatedIncome},
   "originalMappings": {
     "vision": [],
     "hearing": [],
@@ -312,19 +310,19 @@ ${logStr}
 【可选行动类型】
 
 ● 继续追问
-  - 追问症状细节（这个感觉是怎么触发的）
-  - 追问触发条件（什么情况下有，什么情况下没有）
+  - 追问症状详情（这个症状是在什么时候出想的，当时在做什么）
+  - 追问症状的感觉（出现问题时的具体感受）
   - 追问时间频率（多久了，一直有还是时好时坏）
   - 追问近期生活（工作、睡眠、最近有没有变化）
   - 追问和以前的区别（从什么时候开始的）
 
 ● 做一个测试
-  - 视觉刺激：开灯、手电照、出示某个颜色的东西
-  - 听觉刺激：敲桌子、开设备声音、让诊所安静下来
-  - 触觉刺激：轻碰手臂、让患者摸某个表面、温度测试
-  - 味觉刺激：递一杯水、放试纸
-  - 嗅觉刺激：打开消毒液、让患者闻某样东西
-  - 感官隔离：让患者闭眼、用隔音耳塞、捂住鼻子
+  - 视觉刺激：用强光照射眼睛、出示某个颜色的东西
+  - 听觉刺激：在无声环境下触发声音
+  - 触觉刺激：用不同材质的物品触碰皮肤表面
+  - 味觉刺激：用不同味道的饮品刺激味觉
+  - 嗅觉刺激：让患者闻某样味道刺激的东西
+  - 感官隔离：封闭某个或者某些感官，从而测试他感官
   - 交叉验证：同时做两件事，看哪个触发了反应
 
 ================================================================
