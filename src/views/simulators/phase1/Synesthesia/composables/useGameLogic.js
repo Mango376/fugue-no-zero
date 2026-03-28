@@ -9,14 +9,16 @@ import {
   DIAGNOSIS_LIMIT,
   HUB_ACTIONS,
   PLAYER_PROFILE,
-  REVISIT_DELAY_DAYS,
+  REVISIT_DELAY_MS,
   SENSE_CONFIGS,
   SENSE_LABELS,
   SENSE_TARGETS,
   SYSTEM_SNAPSHOT,
   TITLE_CONTENT,
-  TREATMENT_LIMIT
+  TREATMENT_LIMIT,
+  getPresetRule
 } from '../data/gameContent'
+
 import {
   buildArrivalPrompt,
   buildConsultOptionsPrompt,
@@ -35,7 +37,7 @@ import { SYSTEM_PROMPT } from '../prompts/systemPrompt'
 
 const SCRIPT_ID = 'synesthesia'
 const ARCHIVE_PREFIX = `${SCRIPT_ID}-archive-`
-const VALID_PHASES = ['background_intro', 'hub', 'consult', 'treatment', 'patient_feedback', 'settlement','patient_records']
+const VALID_PHASES = ['background_intro', 'hub', 'consult', 'treatment', 'patient_feedback', 'settlement', 'patient_records']
 const VALID_CONSULT_STAGES = ['arrival_intro', 'questioning']
 const VALID_CONSULT_ENTRY_STAGES = ['pre_consult', 'entering_consult', 'questioning']
 const AUTOSAVE_DELAY = 400
@@ -44,7 +46,7 @@ const PATIENT_QUEUE_ROLL_INTERVAL_MS = 60 * 1000
 const DEFAULT_SYMPTOM_LEVEL = 1
 const MAX_SYMPTOM_LEVEL = 4
 const DEBT_BORROW_PROBABILITY = 0.1
-const DEBT_REPAY_DAILY_PROBABILITY = 0.1
+const DEBT_REPAY_CHECK_PROBABILITY = 0.4   // 每次半小时判定的成功概率
 
 const TREATMENT_FEE_BY_LEVEL = {
   1: 50,
@@ -58,6 +60,10 @@ const UPGRADE_COST_BY_LEVEL = {
   2: 400,
   3: 600
 }
+
+// ================================================================
+// 工具函数
+// ================================================================
 
 function createEmptyMapping() {
   return Object.fromEntries(SENSE_CONFIGS.map(item => [item.id, []]))
@@ -202,27 +208,6 @@ function clonePatient(patient) {
   }
 }
 
-function reconcilePatientSeverityWithEquipment(patient, equipmentList = []) {
-  const nextPatient = clonePatient(patient)
-  if (!nextPatient) return null
-  const baseMapping = nextPatient.originalMappings ?? nextPatient.hiddenMappings
-  const normalizedLevels = clampLevelMapToEquipment(
-    nextPatient.initialMappingLevels ?? {},
-    baseMapping,
-    equipmentList
-  )
-  if (Object.keys(normalizedLevels).length > 0) {
-    nextPatient.initialMappingLevels = normalizedLevels
-  }
-  if (Number(nextPatient.visitCount || 1) <= 1 && nextPatient.trackingSheet) {
-    nextPatient.trackingSheet.mappingLevels = normalizeMappingLevelsForPairs(
-      nextPatient.initialMappingLevels ?? normalizedLevels,
-      nextPatient.trackingSheet.unresolvedMappings ?? nextPatient.hiddenMappings
-    )
-  }
-  return nextPatient
-}
-
 function cloneCompletedCase(record) {
   if (!record) return null
   return { ...record }
@@ -240,8 +225,8 @@ function clonePhoneMessage(message) {
 
 function sortRevisitQueue(queue = []) {
   return [...queue].sort((a, b) => {
-    const returnDayDelta = (a.returnDay ?? Number.POSITIVE_INFINITY) - (b.returnDay ?? Number.POSITIVE_INFINITY)
-    if (returnDayDelta !== 0) return returnDayDelta
+    const returnAtDelta = (a.returnAt ?? Number.POSITIVE_INFINITY) - (b.returnAt ?? Number.POSITIVE_INFINITY)
+    if (returnAtDelta !== 0) return returnAtDelta
     return (a.serial ?? 0) - (b.serial ?? 0)
   })
 }
@@ -250,10 +235,6 @@ function rotateArray(list, offset = 0) {
   if (!list.length) return []
   const normalizedOffset = ((offset % list.length) + list.length) % list.length
   return [...list.slice(normalizedOffset), ...list.slice(0, normalizedOffset)]
-}
-
-function pickFrom(list, seed) {
-  return rotateArray(list, seed)[0]
 }
 
 function sanitizeInlineText(text = '') {
@@ -265,34 +246,6 @@ function sanitizeInlineText(text = '') {
 
 function createPatientSeedBase() {
   return Date.now() + Math.floor(Math.random() * 1000000)
-}
-
-function shuffleArray(list = []) {
-  const next = [...list]
-  for (let index = next.length - 1; index > 0; index -= 1) {
-    const swapIndex = Math.floor(Math.random() * (index + 1))
-    ;[next[index], next[swapIndex]] = [next[swapIndex], next[index]]
-  }
-  return next
-}
-
-function createIndexPool(size, avoidFirstIndex = null) {
-  if (size <= 0) return []
-  const deck = shuffleArray(Array.from({ length: size }, (_, index) => index))
-  if (size > 1 && avoidFirstIndex !== null && deck[0] === avoidFirstIndex) {
-    const swapIndex = deck.findIndex(index => index !== avoidFirstIndex)
-    if (swapIndex > 0) {
-      ;[deck[0], deck[swapIndex]] = [deck[swapIndex], deck[0]]
-    }
-  }
-  return deck
-}
-
-function normalizeIndexPool(pool, size) {
-  const valid = Array.isArray(pool)
-    ? [...new Set(pool.filter(index => Number.isInteger(index) && index >= 0 && index < size))]
-    : []
-  return valid.length ? valid : createIndexPool(size)
 }
 
 function makeHistoryEntry({ speaker, label, text, type = 'dialogue' }) {
@@ -312,11 +265,29 @@ function makePhoneMessage({ sender, title, text, gameDay, type = 'system', read 
     sender,
     title,
     text,
-    gameDay,
     type,
     read,
     createdAt: Date.now()
   }
+}
+
+// ================================================================
+// 半小时判定时间计算
+// 例：4:40 → 5:00，6:10 → 6:30，6:30:01 → 7:00
+// ================================================================
+function getNextHalfHourMark(from = Date.now()) {
+  const date = new Date(from)
+  const clone = new Date(date)
+  clone.setSeconds(0, 0)
+
+  if (date.getMinutes() < 30) {
+    clone.setMinutes(30)
+  } else {
+    clone.setMinutes(0)
+    clone.setHours(clone.getHours() + 1)
+  }
+
+  return clone.getTime()
 }
 
 function buildDefaultGameState() {
@@ -327,7 +298,6 @@ function buildDefaultGameState() {
     backgroundPage: DEFAULT_GAME_STATE.backgroundPage,
     credits: DEFAULT_GAME_STATE.credits,
     patientCount: DEFAULT_GAME_STATE.patientCount,
-    gameDay: DEFAULT_GAME_STATE.gameDay,
     nextPatientSerial: DEFAULT_GAME_STATE.nextPatientSerial,
     patientSeedBase: createPatientSeedBase(),
     environmentPhase: DEFAULT_GAME_STATE.environmentPhase,
@@ -335,6 +305,7 @@ function buildDefaultGameState() {
     playerProfile: { ...PLAYER_PROFILE },
     equipmentOverview: cloneEquipmentOverview(),
     earnedCreditsTotal: 0,
+    patientsSinceEnvChange: 0, 
     waitingPatients: [],
     lastQueueRollAt: Date.now(),
     activePatient: null,
@@ -379,7 +350,13 @@ function normalizeMappingLevelsForPairs(levelMap = {}, mapping = {}) {
 
 function normalizeGeneratedLevelMap(levelMap = {}, mapping = {}) {
   return getMappingPairs(mapping).reduce((acc, pair) => {
-    acc[pair.key] = normalizeLevelValue(levelMap?.[pair.key] ?? DEFAULT_SYMPTOM_LEVEL)
+    // pair.key 格式是 "vision:taste"（无空格）
+    // AI 有时会返回 "vision: taste"（带空格），两种都要兼容
+    const level =
+      levelMap?.[pair.key] ??
+      levelMap?.[`${pair.source}: ${pair.target}`] ??
+      DEFAULT_SYMPTOM_LEVEL
+    acc[pair.key] = normalizeLevelValue(level)
     return acc
   }, createEmptyLevelMap())
 }
@@ -426,15 +403,6 @@ function buildInitialMappingLevels(patient, rule = null) {
   }, createEmptyLevelMap())
 }
 
-function parseTrackingSheetPayload(text) {
-  const cleaned = String(text || '').trim().replace(/^```json\s*/i, '').replace(/^```\s*/i, '').replace(/\s*```$/, '')
-  const parsed = JSON.parse(cleaned)
-  if (!parsed || typeof parsed !== 'object' || Array.isArray(parsed)) {
-    throw new Error('tracking sheet payload must be an object')
-  }
-  return parsed
-}
-
 function requireGeneratedText(value, fieldLabel) {
   const text = typeof value === 'string' ? value.trim() : ''
   if (!text) {
@@ -457,7 +425,8 @@ function requireGeneratedTextList(value, fieldLabel) {
 function normalizeTrackingSheet(rawSheet, patient) {
   const originalMappings = cloneMapping(patient.originalMappings)
   const unresolvedMappings = cloneMapping(patient.hiddenMappings)
-  const mappingLevels = buildInitialMappingLevels(patient)
+  const rule = getPresetRule(patient.serial)
+  const mappingLevels = buildInitialMappingLevels(patient, rule)
   const lockedMappingLevels = normalizeMappingLevelsForPairs(
     patient?.initialMappingLevels ?? mappingLevels,
     unresolvedMappings
@@ -530,7 +499,7 @@ function applyRevisitMutation(patient, environment, currentDay) {
       )
       nextSheet.worsenedMappings[targetPair.source] = [...new Set([
         ...nextSheet.worsenedMappings[targetPair.source],
-        ...unresolved[targetPair.source]
+        newTarget
       ])]
       appendSymptomLedger(nextSheet, `加重：~~${oldSummary}~~ -> ${sourceLabel} -> ${unresolved[targetPair.source].map(item => SENSE_LABELS[item]).join('、')}`)
       appendTrackingLog(nextSheet, `复诊加深：${formatPairLabel(targetPair.source, newTarget)}`)
@@ -622,15 +591,14 @@ function looksLikePromptLeak(text = '') {
   return (
     /生成\s*4\s*个下一步问诊选项/.test(cleaned)
     || /只输出\s*JSON/.test(cleaned)
-    || /"doctorLine"\s*: /.test(cleaned)
-    || /"promptFocus"\s*: /.test(cleaned)
-    || /"patientProfile"\s*: /.test(cleaned)
-    || /"unresolvedMappings"\s*: /.test(cleaned)
+    || /"doctorLine"\s*:/.test(cleaned)
+    || /"promptFocus"\s*:/.test(cleaned)
+    || /"patientProfile"\s*:/.test(cleaned)
+    || /"unresolvedMappings"\s*:/.test(cleaned)
     || /【最近问诊历史】|【本轮医生提问】|【玩家当前记录】|【已知基础资料】/.test(cleaned)
   )
 }
 
-// 改之后
 const JSON_FIELD_NAMES = [
   'response', 'text', 'content', 'reply',
   'narrative', 'answer', 'story', 'message', 'feedback'
@@ -638,8 +606,6 @@ const JSON_FIELD_NAMES = [
 
 function tryExtractFromJsonWrapper(text = '') {
   const cleaned = stripCodeFence(text)
-
-  // 先尝试完整 JSON 解析
   try {
     const start = cleaned.indexOf('{')
     const end = cleaned.lastIndexOf('}')
@@ -657,43 +623,32 @@ function tryExtractFromJsonWrapper(text = '') {
     // 解析失败，继续走正则兜底
   }
 
-
-  // 匹配 "fieldName": "内容..." 或 "fieldName": "内容（不含结尾引号）
-// 正则兜底：只定位字段名和开头引号，剩余全部取出再清理尾部
-const fieldPattern = new RegExp(
-  `"(?:${JSON_FIELD_NAMES.join('|')})"\\s*:\\s*"`,
-  'i'
-)
-const match = cleaned.match(fieldPattern)
-if (match) {
-  // 从字段内容开始位置截取到末尾
-  const contentStart = match.index + match[0].length
-  const raw = cleaned.slice(contentStart)
-  // 去掉末尾的 JSON 结束符 " } 或 ", 等
-  const content = raw
-    .replace(/"\s*}\s*$/, '')
-    .replace(/",?\s*}\s*$/, '')
-    .replace(/\\n/g, '\n')
-    .replace(/\\"/g, '"')
-    .replace(/\\\\/g, '\\')
-    .trim()
-  if (content) return content
-}
-
+  const fieldPattern = new RegExp(
+    `"(?:${JSON_FIELD_NAMES.join('|')})"\\s*:\\s*"`,
+    'i'
+  )
+  const match = cleaned.match(fieldPattern)
+  if (match) {
+    const contentStart = match.index + match[0].length
+    const raw = cleaned.slice(contentStart)
+    const content = raw
+      .replace(/"\s*}\s*$/, '')
+      .replace(/",?\s*}\s*$/, '')
+      .replace(/\\n/g, '\n')
+      .replace(/\\"/g, '"')
+      .replace(/\\\\/g, '\\')
+      .trim()
+    if (content) return content
+  }
 
   return text
 }
 
-
-
-// 新增：检测文本是否以中文为主
 function looksLikeWrongLanguage(text = '') {
   if (!text || text.length < 8) return false
-  // 统计中文字符占比
   const chineseChars = (text.match(/[\u4e00-\u9fff]/g) || []).length
   const totalChars = text.replace(/\s/g, '').length
   if (totalChars === 0) return false
-  // 中文占比低于 20% 视为语言异常
   return chineseChars / totalChars < 0.2
 }
 
@@ -706,7 +661,6 @@ function sanitizeNarrativeReply(text = '') {
   return cleaned
 }
 
-
 function sanitizeHistoryEntries(entries = []) {
   if (!Array.isArray(entries)) return []
   return entries
@@ -718,14 +672,14 @@ function sanitizeHistoryEntries(entries = []) {
 function sanitizeDoctorLine(text = '', label = '') {
   return String(text || '')
     .replace(/^[—\-–\s]+/, '')
-    .replace(new RegExp(`^${label}[：: 、\\s-]*`), '')
+    .replace(new RegExp(`^${label}[：:、\\s-]*`), '')
     .replace(/\s+/g, ' ')
     .trim()
 }
 
 function normalizeQuestionText(text = '') {
   return String(text || '')
-    .replace(/[—\-–\s，。！？、：:“”"'`]/g, '')
+    .replace(/[—\-–\s，。！？、：:"'`]/g, '')
     .trim()
 }
 
@@ -774,6 +728,10 @@ function parseOptionPayload(text, recentDoctorLines = []) {
   return selected
 }
 
+// ================================================================
+// useGameLogic 主体
+// ================================================================
+
 export function useGameLogic() {
   const router = useRouter()
 
@@ -795,6 +753,8 @@ export function useGameLogic() {
   const showSettlementModal = ref(false)
   const isGeneratingText = ref(false)
   const typingEntryId = ref('')
+  const isBackgroundGenerating = ref(false) 
+  const pendingTypingEntryId = ref('')
   const isEnvironmentLoading = ref(false)
   const environmentGenerationError = ref('')
   const isQueueGenerating = ref(false)
@@ -809,9 +769,9 @@ export function useGameLogic() {
   const credits = ref(0)
   const earnedCreditsTotal = ref(0)
   const patientCount = ref(0)
-  const gameDay = ref(1)
   const nextPatientSerial = ref(1)
   const patientSeedBase = ref(createPatientSeedBase())
+  const patientsSinceEnvChange = ref(0)
   const environmentPhase = ref(1)
   const currentEnvironmentProfile = ref(null)
   const playerProfile = ref({ ...PLAYER_PROFILE })
@@ -838,22 +798,19 @@ export function useGameLogic() {
 
   let autosaveTimer = null
   let queueTimer = null
+  let debtCheckTimer = null          // 债务半小时定时器
   let consultRequestToken = Symbol()
   let environmentGenerationPromise = null
   let queueGenerationPromise = null
 
   function beginConsultRequest() {
-  consultRequestToken = Symbol()
-  return consultRequestToken
-}
+    consultRequestToken = Symbol()
+    return consultRequestToken
+  }
 
-function invalidateConsultRequest() {
-  consultRequestToken = Symbol()
-}
-
-function isCurrentConsultRequest(token) {
-  return token === consultRequestToken
-}
+  function isCurrentConsultRequest(token) {
+    return token === consultRequestToken
+  }
 
   function updateDiagnosisUses(value) {
     const nextValue = clamp(Number(value) || 0, 0, DIAGNOSIS_LIMIT)
@@ -938,7 +895,7 @@ function isCurrentConsultRequest(token) {
       treatmentUsesLeft: TREATMENT_LIMIT,
       hiddenMappings: cloneMapping(generatedMappings),
       originalMappings: cloneMapping(generatedMappings),
-      initialMappingLevels: clampLevelMapToEquipment(generatedLevelMap, generatedMappings, equipmentOverview.value),
+      initialMappingLevels: generatedLevelMap,
       trackingSheet: null,
       trackingSheetReady: false,
       forceDebt: false,
@@ -1001,6 +958,7 @@ function isCurrentConsultRequest(token) {
   async function generatePatient(serial) {
     const existingPatients = collectExistingPatientReferences()
     const globalEnvironment = currentEnvironmentProfile.value
+    const rule = getPresetRule(serial)
     let lastError = null
 
     if (!globalEnvironment) {
@@ -1010,12 +968,15 @@ function isCurrentConsultRequest(token) {
     for (let attempt = 0; attempt < 3; attempt += 1) {
       try {
         const payload = await generateStructuredReply(
-          buildPatientGenerationPrompt({ serial, gameDay: gameDay.value, globalEnvironment, existingPatients }),
+          buildPatientGenerationPrompt({ serial, globalEnvironment, existingPatients, rule }),
           '患者信息'
         )
         const patient = normalizeGeneratedPatientPayload(payload, { serial, seedBase: patientSeedBase.value })
         patient.environmentProfile = cloneEnvironmentProfile(globalEnvironment)
         patient.environmentPhase = globalEnvironment.phase
+        if (rule?.forceDebt) {
+          patient.forceDebt = true
+        }
         const hasDuplicate = existingPatients.some(item => item.name === patient.name || item.job === patient.job)
         if (hasDuplicate) {
           throw new Error('AI 生成了重复的名字或职业。')
@@ -1030,22 +991,34 @@ function isCurrentConsultRequest(token) {
   }
 
   async function ensurePatientQueue(targetCount = 1) {
-    const safeTarget = clamp(Number(targetCount) || 1, 1, PATIENT_QUEUE_MAX)
-    if (waitingPatients.value.length >= safeTarget) return
-    if (!queueGenerationPromise) {
-      queueGenerationPromise = (async () => {
-        while (waitingPatients.value.length < safeTarget && waitingPatients.value.length < PATIENT_QUEUE_MAX) {
-          const patient = await generatePatient(nextPatientSerial.value)
-          waitingPatients.value = [...waitingPatients.value, patient].slice(0, PATIENT_QUEUE_MAX)
-          nextPatientSerial.value += 1
+  const safeTarget = clamp(Number(targetCount) || 1, 1, PATIENT_QUEUE_MAX)
+  if (waitingPatients.value.length >= safeTarget) return
+  if (!queueGenerationPromise) {
+    queueGenerationPromise = (async () => {
+      while (waitingPatients.value.length < safeTarget && waitingPatients.value.length < PATIENT_QUEUE_MAX) {
+
+        // 每生成3个患者后，先换环境再继续生成
+        if (patientsSinceEnvChange.value >= 3) {
+          patientsSinceEnvChange.value = 0
+          await ensureCurrentEnvironmentProfile({
+            force: true,
+            previousEnvironmentDescription: currentEnvironmentProfile.value?.description || ''
+          })
         }
-      })()
-        .finally(() => {
-          queueGenerationPromise = null
-        })
-    }
-    await queueGenerationPromise
+
+        const patient = await generatePatient(nextPatientSerial.value)
+        waitingPatients.value = [...waitingPatients.value, patient].slice(0, PATIENT_QUEUE_MAX)
+        nextPatientSerial.value += 1
+        patientsSinceEnvChange.value += 1
+      }
+    })()
+      .finally(() => {
+        queueGenerationPromise = null
+      })
   }
+  await queueGenerationPromise
+}
+
 
   async function refreshPatientQueue(force = false) {
     if (phase.value === 'title') return waitingPatients.value.length
@@ -1072,9 +1045,22 @@ function isCurrentConsultRequest(token) {
       if (isEnvironmentLoading.value || !currentEnvironmentProfile.value) return
       if (waitingPatients.value.length >= PATIENT_QUEUE_MAX || queueGenerationPromise) return
       refreshPatientQueue(true).catch(error => {
-        console.warn('Synesthesia 候诊队列生成失败: ', error)
+        console.warn('Synesthesia 候诊队列生成失败:', error)
       })
     }, PATIENT_QUEUE_ROLL_INTERVAL_MS)
+  }
+
+  // ================================================================
+  // 债务定时器：每分钟检查一次是否到了整点/半点
+  // ================================================================
+  function ensureDebtCheckTimer() {
+    if (debtCheckTimer) clearInterval(debtCheckTimer)
+    debtCheckTimer = setInterval(() => {
+      if (phase.value === 'title') return
+      checkPendingDebts().catch(error => {
+        console.warn('Synesthesia 债务定时检查失败:', error)
+      })
+    }, 60 * 1000)
   }
 
   function popWaitingPatient() {
@@ -1082,7 +1068,7 @@ function isCurrentConsultRequest(token) {
     const [nextPatient, ...rest] = waitingPatients.value
     waitingPatients.value = rest
     refreshPatientQueue(true).catch(error => {
-      console.warn('Synesthesia 候诊队列补位失败: ', error)
+      console.warn('Synesthesia 候诊队列补位失败:', error)
     })
     return clonePatient(nextPatient)
   }
@@ -1095,7 +1081,6 @@ function isCurrentConsultRequest(token) {
       name: activePatient.value.name,
       job: activePatient.value.job,
       resolvedAt: Date.now(),
-      gameDay: gameDay.value,
       visitCount: activePatient.value.visitCount,
       unresolvedSummary: formatMappingSummary(activePatient.value.hiddenMappings),
       consultationHistory: consultationHistory.value.map(item => ({ ...item })),
@@ -1122,7 +1107,7 @@ function isCurrentConsultRequest(token) {
       ...base,
       outcome,
       outcomeLabel: '预约复诊',
-      returnDay: gameDay.value + REVISIT_DELAY_DAYS,
+      returnAt: Date.now() + REVISIT_DELAY_MS,
       summary: activePatient.value.trackingSheet?.symptomSummary || '本次治疗只稳定住部分问题，剩余异常将在后续复诊中继续处理。'
     }
   }
@@ -1145,103 +1130,166 @@ function isCurrentConsultRequest(token) {
     scheduleProgressSave()
   }
 
+  // ================================================================
+  // 赊账：随机触发
+  // ================================================================
   function maybeCreateDebtRecord(patient, amount) {
     if (!patient || amount <= 0) return null
     if (Math.random() >= DEBT_BORROW_PROBABILITY) return null
-    const returnAfter = Math.floor(Math.random() * 16) + 5
+
     const repayAmount = Math.floor(amount * 1.2)
     const record = {
       id: `debt-${patient.id}-${Date.now()}`,
       patientId: patient.id,
-      patientSnapshot: { name: patient.name, job: patient.job, attachment: patient.attachment, speechStyle: patient.speechStyle },
+      patientSnapshot: {
+        name: patient.name,
+        job: patient.job,
+        attachment: patient.attachment,
+        speechStyle: patient.speechStyle
+      },
       amount,
       repayAmount,
-      createdDay: gameDay.value,
-      createdSerial: nextPatientSerial.value,
-      returnAfter,
-      paidDay: null,
+      createdAt: Date.now(),
+      nextCheckAt: getNextHalfHourMark(),   // 下次判定时间（下一个整点或半点）
+      paidAt: null,
       status: 'pending'
     }
+
     debtLedger.value = [record, ...debtLedger.value]
+
     pushPhoneMessage(makePhoneMessage({
       sender: patient.name,
       title: '赊账申请',
       text: `我这边今天只能先记账。这次诊疗先欠你 ${amount} 信用点，等手头缓过来会补上。`,
-      gameDay: gameDay.value,
       type: 'debt'
     }))
+
     return record
   }
 
+  // ================================================================
+  // 赊账：强制触发
+  // ================================================================
   function createForcedDebtRecord(patient, amount) {
     if (!patient || amount <= 0) return null
-    const returnAfter = Math.floor(Math.random() * 16) + 5
+
     const repayAmount = Math.floor(amount * 1.2)
     const record = {
       id: `debt-${patient.id}-${Date.now()}`,
       patientId: patient.id,
-      patientSnapshot: { name: patient.name, job: patient.job, attachment: patient.attachment, speechStyle: patient.speechStyle },
+      patientSnapshot: {
+        name: patient.name,
+        job: patient.job,
+        attachment: patient.attachment,
+        speechStyle: patient.speechStyle
+      },
       amount,
       repayAmount,
-      createdDay: gameDay.value,
-      createdSerial: nextPatientSerial.value,
-      returnAfter,
-      paidDay: null,
+      createdAt: Date.now(),
+      nextCheckAt: getNextHalfHourMark(),
+      paidAt: null,
       status: 'pending'
     }
+
     debtLedger.value = [record, ...debtLedger.value]
+
     pushPhoneMessage(makePhoneMessage({
       sender: patient.name,
       title: '赊账申请',
       text: `手头实在紧，今天先欠你 ${amount} 信用点。不会不还的。`,
-      gameDay: gameDay.value,
       type: 'debt'
     }))
+
     return record
   }
 
+  // ================================================================
+  // 债务检查：每分钟由定时器触发，到了整点/半点则判定
+  // ================================================================
   async function checkPendingDebts() {
-    const currentSerial = nextPatientSerial.value
-    const debtsToRepay = debtLedger.value.filter(record =>
-      record.status === 'pending' &&
-      (currentSerial - record.createdSerial) >= record.returnAfter
+    const now = Date.now()
+
+    const debtsToCheck = debtLedger.value.filter(record =>
+      record.status === 'pending' && Number(record.nextCheckAt || 0) <= now
     )
-    for (const record of debtsToRepay) {
-      record.status = 'paid'
-      record.paidDay = gameDay.value
-      credits.value += record.repayAmount
-      earnedCreditsTotal.value += record.repayAmount
-      let messageText = ''
-      try {
-        const prompt = buildMessagePrompt({
-          patient: record.patientSnapshot,
-          debtAmount: record.amount,
-          returnAmount: record.repayAmount,
-          daysSinceDebt: currentSerial - record.createdSerial
-        })
-        const reply = await aiService.generateReply(prompt, SYSTEM_PROMPT)
-        messageText = sanitizeNarrativeReply(reply?.trim())
-      } catch (error) {
-        console.warn('Synesthesia 还款短信生成失败: ', error)
+
+    if (!debtsToCheck.length) return
+
+    let anyRepaid = false
+
+    for (const record of debtsToCheck) {
+      if (Math.random() < DEBT_REPAY_CHECK_PROBABILITY) {
+        // 判定成功：还款
+        record.status = 'paid'
+        record.paidAt = now
+        credits.value += record.repayAmount
+        earnedCreditsTotal.value += record.repayAmount
+
+        const hoursSinceDebt = Math.max(1, Math.floor((now - (record.createdAt || now)) / (60 * 60 * 1000)))
+
+        let messageText = ''
+        try {
+          const prompt = buildMessagePrompt({
+            patient: record.patientSnapshot,
+            debtAmount: record.amount,
+            returnAmount: record.repayAmount,
+            hoursSinceDebt
+          })
+          const reply = await aiService.generateReply(prompt, SYSTEM_PROMPT)
+          messageText = sanitizeNarrativeReply(reply?.trim())
+        } catch (error) {
+          console.warn('Synesthesia 还款短信生成失败:', error)
+        }
+
+anyRepaid = true
+if (messageText) {
+  pushPhoneMessage(makePhoneMessage({
+    sender: record.patientSnapshot.name,
+    title: '转账与留言',
+    text: messageText,
+    type: 'payment',
+    read: false
+  }))
+}
+
+      } else {
+        // 判定失败：推迟到下一个整点或半点
+        record.nextCheckAt = getNextHalfHourMark(now)
       }
-      if (!messageText) {
-        statusNotice.value = '收到还款，但 AI 未生成短信内容。'
-        scheduleProgressSave()
-        continue
-      }
-      pushPhoneMessage(makePhoneMessage({
-        sender: record.patientSnapshot.name,
-        title: '转账与留言',
-        text: messageText,
-        gameDay: gameDay.value,
-        type: 'payment',
-        read: false
-      }))
     }
-    if (debtsToRepay.length > 0) {
+
+    if (anyRepaid) {
       statusNotice.value = '收到新的银行转账与短信留言。'
-      scheduleProgressSave()
     }
+
+    scheduleProgressSave()
+  }
+
+  // ================================================================
+  // 读档后重排：已超时但未判定的债务推到下一个整点/半点
+  // 不立即触发判定，避免刚开游戏就收到一堆还款
+  // ================================================================
+  function rescheduleOverdueDebts() {
+    const now = Date.now()
+    let changed = false
+
+    debtLedger.value = debtLedger.value.map(record => {
+      if (record.status !== 'pending') return record
+
+      // 兼容旧存档（没有 nextCheckAt 字段），或已过期未判定的
+      if (!record.nextCheckAt || record.nextCheckAt <= now) {
+        changed = true
+        return {
+          ...record,
+          createdAt: record.createdAt || now,
+          nextCheckAt: getNextHalfHourMark(now)
+        }
+      }
+
+      return record
+    })
+
+    if (changed) scheduleProgressSave()
   }
 
   function resetCaseState() {
@@ -1281,10 +1329,9 @@ function isCurrentConsultRequest(token) {
       })
       const reply = await aiService.generateReply(prompt, SYSTEM_PROMPT)
       const result = sanitizeNarrativeReply(reply?.trim())
-      console.log('[archiveStory]', result?.slice(0, 50))
       return result
     } catch (error) {
-      console.warn('Synesthesia 患者背景故事生成失败: ', error)
+      console.warn('Synesthesia 患者背景故事生成失败:', error)
       return ''
     }
   }
@@ -1305,7 +1352,7 @@ function isCurrentConsultRequest(token) {
   async function confirmSettlementAndReturn() {
     const notice = patientFeedbackOutcome.value === 'complete'
       ? '本次接待已经完成。'
-      : `患者已预约第 ${activePatient.value?.returnDay} 天后的复诊。`
+      : `患者已预约复诊。`
     pendingSettlementRecord.value = null
     clearActiveCase()
     phase.value = 'hub'
@@ -1322,9 +1369,9 @@ function isCurrentConsultRequest(token) {
       credits: credits.value,
       earnedCreditsTotal: earnedCreditsTotal.value,
       patientCount: patientCount.value,
-      gameDay: gameDay.value,
       nextPatientSerial: nextPatientSerial.value,
       patientSeedBase: patientSeedBase.value,
+      patientsSinceEnvChange: patientsSinceEnvChange.value,
       environmentPhase: environmentPhase.value,
       currentEnvironmentProfile: cloneEnvironmentProfile(currentEnvironmentProfile.value),
       playerProfile: { ...playerProfile.value },
@@ -1362,7 +1409,7 @@ function isCurrentConsultRequest(token) {
     }
     autosaveTimer = setTimeout(() => {
       saveProgress().catch(error => {
-        console.warn('Synesthesia 自动保存失败: ', error)
+        console.warn('Synesthesia 自动保存失败:', error)
       })
       autosaveTimer = null
     }, AUTOSAVE_DELAY)
@@ -1393,9 +1440,12 @@ function isCurrentConsultRequest(token) {
         ? rawState.completedCases.reduce((sum, item) => sum + Number(item?.settlementTotal || 0), 0)
         : 0)
     patientCount.value = Number.isFinite(rawState.patientCount) ? rawState.patientCount : fallback.patientCount
-    gameDay.value = Math.max(1, Number(rawState.gameDay ?? fallback.gameDay) || 1)
     nextPatientSerial.value = Math.max(1, Number(rawState.nextPatientSerial ?? fallback.nextPatientSerial) || 1)
     patientSeedBase.value = Number.isFinite(rawState.patientSeedBase) ? rawState.patientSeedBase : fallback.patientSeedBase
+    patientsSinceEnvChange.value = Number.isFinite(rawState.patientsSinceEnvChange)
+  ? rawState.patientsSinceEnvChange
+  : 0
+
     currentEnvironmentProfile.value = cloneEnvironmentProfile(rawState.currentEnvironmentProfile)
     environmentPhase.value = Number.isFinite(rawState.environmentPhase)
       ? rawState.environmentPhase
@@ -1405,13 +1455,13 @@ function isCurrentConsultRequest(token) {
       ? cloneEquipmentOverview(rawState.equipmentOverview)
       : cloneEquipmentOverview()
     waitingPatients.value = Array.isArray(rawState.waitingPatients)
-      ? rawState.waitingPatients
-        .map(item => reconcilePatientSeverityWithEquipment(item, equipmentOverview.value))
-        .filter(Boolean)
-        .slice(0, PATIENT_QUEUE_MAX)
-      : []
+  ? rawState.waitingPatients
+      .map(item => clonePatient(item))
+      .filter(Boolean)
+      .slice(0, PATIENT_QUEUE_MAX)
+  : []
     lastQueueRollAt.value = Number.isFinite(rawState.lastQueueRollAt) ? rawState.lastQueueRollAt : Date.now()
-    activePatient.value = reconcilePatientSeverityWithEquipment(rawState.activePatient, equipmentOverview.value)
+    activePatient.value = clonePatient(rawState.activePatient)
     if (activePatient.value && !activePatient.value.trackingSheet) {
       activePatient.value.trackingSheetReady = false
     }
@@ -1431,9 +1481,20 @@ function isCurrentConsultRequest(token) {
     phoneMessages.value = Array.isArray(rawState.phoneMessages)
       ? rawState.phoneMessages.map(item => clonePhoneMessage(item)).filter(Boolean)
       : []
+
+    // ── 债务读档（兼容旧存档，补 nextCheckAt 字段）──
     debtLedger.value = Array.isArray(rawState.debtLedger)
-      ? rawState.debtLedger.map(item => cloneDebtRecord(item)).filter(Boolean)
+      ? rawState.debtLedger.map(item => {
+          if (!item) return null
+          const record = cloneDebtRecord(item)
+          if (record && record.status === 'pending' && !record.nextCheckAt) {
+            record.createdAt = record.createdAt || Date.now()
+            record.nextCheckAt = getNextHalfHourMark()
+          }
+          return record
+        }).filter(Boolean)
       : []
+
     diagnosisDraft.value = normalizeMapping(rawState.diagnosisDraft)
     confirmedDiagnosis.value = normalizeMapping(rawState.confirmedDiagnosis)
     updateDiagnosisUses(rawState.diagnosisUsesLeft ?? activePatient.value?.diagnosisUsesLeft ?? DIAGNOSIS_LIMIT)
@@ -1442,12 +1503,12 @@ function isCurrentConsultRequest(token) {
     revisitQueue.value = sortRevisitQueue(
       Array.isArray(rawState.revisitQueue)
         ? rawState.revisitQueue.map(item => {
-          const patient = reconcilePatientSeverityWithEquipment(item, equipmentOverview.value)
-          if (patient && !patient.trackingSheet) {
-            patient.trackingSheetReady = false
-          }
-          return patient
-        })
+    const patient = clonePatient(item)
+    if (patient && !patient.trackingSheet) {
+      patient.trackingSheetReady = false
+    }
+    return patient
+  })
         : []
     )
     completedCases.value = Array.isArray(rawState.completedCases)
@@ -1457,6 +1518,7 @@ function isCurrentConsultRequest(token) {
     if ((phase.value === 'consult' || phase.value === 'treatment' || phase.value === 'patient_feedback' || phase.value === 'settlement') && !activePatient.value) {
       phase.value = 'hub'
       resetCaseState()
+      rescheduleOverdueDebts()
       return
     }
 
@@ -1473,6 +1535,9 @@ function isCurrentConsultRequest(token) {
         }
       }
     }
+
+    // 读档后重排超时债务（不立即触发判定）
+    rescheduleOverdueDebts()
   }
 
   async function syncSaveStatus() {
@@ -1482,7 +1547,7 @@ function isCurrentConsultRequest(token) {
       hasSave.value = !!saved
       hasArchiveSave.value = archiveSaves.value.length > 0
     } catch (error) {
-      console.error('Synesthesia 存档状态检查失败: ', error)
+      console.error('Synesthesia 存档状态检查失败:', error)
       hasSave.value = false
       hasArchiveSave.value = false
       archiveSaves.value = []
@@ -1499,11 +1564,11 @@ function isCurrentConsultRequest(token) {
     ensureCurrentEnvironmentProfile({ force: true })
       .then(() => {
         refreshPatientQueue(true).catch(error => {
-          console.warn('Synesthesia 新开局候诊队列初始化失败: ', error)
+          console.warn('Synesthesia 新开局候诊队列初始化失败:', error)
         })
       })
       .catch(error => {
-        console.warn('Synesthesia 新开局环境初始化失败: ', error)
+        console.warn('Synesthesia 新开局环境初始化失败:', error)
       })
     await saveProgress()
   }
@@ -1541,9 +1606,9 @@ function isCurrentConsultRequest(token) {
       previousEnvironmentDescription: currentEnvironmentProfile.value?.description || ''
     })
     refreshPatientQueue(true).catch(error => {
-      console.warn('Synesthesia 读档后候诊队列刷新失败: ', error)
+      console.warn('Synesthesia 读档后候诊队列刷新失败:', error)
     })
-      statusNotice.value = ''
+    statusNotice.value = ''
   }
 
   async function continueGame() {
@@ -1560,7 +1625,7 @@ function isCurrentConsultRequest(token) {
         await saveProgress()
       }
     } catch (error) {
-      console.error('Synesthesia 读取存档失败: ', error)
+      console.error('Synesthesia 读取存档失败:', error)
       hasSave.value = false
     }
   }
@@ -1573,7 +1638,7 @@ function isCurrentConsultRequest(token) {
       if (!saved) return
       await restoreFromSave(saved)
     } catch (error) {
-      console.error('Synesthesia 读取归档存档失败: ', error)
+      console.error('Synesthesia 读取归档存档失败:', error)
     }
   }
 
@@ -1582,15 +1647,21 @@ function isCurrentConsultRequest(token) {
       try {
         await saveProgress()
       } catch (error) {
-        console.warn('Synesthesia 离开前保存失败: ', error)
+        console.warn('Synesthesia 离开前保存失败:', error)
       }
     }
     router.push('/')
   }
 
   async function returnToHub() {
-    invalidateConsultRequest()
+  // 如果 AI 正在生成，转入后台而不是中断
+  if (isGeneratingText.value) {
+    isBackgroundGenerating.value = true
     isGeneratingText.value = false
+    // consultEntryStage 保持 'entering_consult' 不动
+    // 不调用 invalidateConsultRequest()，让请求继续跑
+  } else {
+    // 没有生成中，正常处理阶段转换
     if (consultEntryStage.value === 'questioning') {
       isConsultNarrativeReady.value = consultationHistory.value.length > 0
       isConsultOptionsReady.value = consultOptions.value.length > 0
@@ -1608,14 +1679,17 @@ function isCurrentConsultRequest(token) {
         isConsultOptionsReady.value = false
       }
     }
-    phase.value = 'hub'
-    statusNotice.value = ''
-    try {
-      await saveProgress()
-    } catch (error) {
-      console.warn('Synesthesia 返回 hub 前保存失败: ', error)
-    }
   }
+
+  phase.value = 'hub'
+  statusNotice.value = ''
+  try {
+    await saveProgress()
+  } catch (error) {
+    console.warn('Synesthesia 返回 hub 前保存失败:', error)
+  }
+}
+
 
   function returnToTitle() {
     phase.value = 'title'
@@ -1668,18 +1742,22 @@ function isCurrentConsultRequest(token) {
   }
 
   async function generateTrackingSheet(patient) {
-  if (!patient) return null
-  const environment = currentEnvironmentProfile.value ?? patient.environmentProfile
-  if (!environment) {
-    throw new Error('当前环境尚未生成完成。')
+    if (!patient) return null
+    const environment = currentEnvironmentProfile.value ?? patient.environmentProfile
+    if (!environment) {
+      throw new Error('当前环境尚未生成完成。')
+    }
+    const referenceMappings = patient.hiddenMappings ?? patient.originalMappings
+    const estimatedIncome = getMappingPairs(referenceMappings).reduce((sum, pair) => {
+      const level = getMappingLevel(patient.initialMappingLevels ?? {}, pair.source, pair.target)
+      return sum + getTreatmentFeeByLevel(level)
+    }, 0)
+    const parsedSheet = await generateStructuredReply(
+      buildTrackingSheetPrompt({ patient, environment, estimatedIncome }),
+      '后台追踪表'
+    )
+    return normalizeTrackingSheet(parsedSheet, patient)
   }
-  const parsedSheet = await generateStructuredReply(
-    buildTrackingSheetPrompt({ patient, environment }), 
-    '后台追踪表'
-  )
-  return normalizeTrackingSheet(parsedSheet, patient)
-}
-
 
   async function generateArrivalNarrative(requestToken = null) {
     if (!activePatient.value) return
@@ -1733,16 +1811,13 @@ function isCurrentConsultRequest(token) {
       if (requestToken !== null && !isCurrentConsultRequest(requestToken)) {
         return ''
       }
-
       if (!trimmed) {
         throw new Error('AI 返回了空白内容。')
       }
-
       const safeText = sanitizeNarrativeReply(trimmed)
       if (!safeText) {
         throw new Error('AI 返回的到诊文本无效。')
       }
-
       return safeText
     } catch (error) {
       if (requestToken !== null && !isCurrentConsultRequest(requestToken)) {
@@ -1754,9 +1829,13 @@ function isCurrentConsultRequest(token) {
   }
 
   function pullDueRevisitPatient() {
-    const dueIndex = revisitQueue.value.findIndex(item => Number(item.returnDay) <= gameDay.value)
+    const dueIndex = revisitQueue.value.findIndex(item => Number(item.returnAt) <= Date.now())
     if (dueIndex === -1) return null
-    const [patient] = revisitQueue.value.splice(dueIndex, 1)
+    const patient = revisitQueue.value[dueIndex]
+revisitQueue.value = [
+  ...revisitQueue.value.slice(0, dueIndex),
+  ...revisitQueue.value.slice(dueIndex + 1)
+]
     let revisitingPatient = clonePatient(patient)
     const revisitEnvironment = cloneEnvironmentProfile(currentEnvironmentProfile.value)
     if (!revisitEnvironment) {
@@ -1767,24 +1846,42 @@ function isCurrentConsultRequest(token) {
     revisitingPatient.visitCount = Number(revisitingPatient.visitCount || 1) + 1
     revisitingPatient.environmentPhase = revisitEnvironment.phase ?? Date.now()
     revisitingPatient.environmentProfile = cloneEnvironmentProfile(revisitEnvironment)
-    revisitingPatient.returnDay = null
+    revisitingPatient.returnAt = null
     if (revisitingPatient.trackingSheet) {
       revisitingPatient.trackingSheet.patientProfile.visitCount = revisitingPatient.visitCount
     }
-    revisitingPatient = applyRevisitMutation(revisitingPatient, revisitEnvironment, gameDay.value)
+    revisitingPatient = applyRevisitMutation(revisitingPatient, revisitEnvironment, Date.now())
     return revisitingPatient
   }
 
   async function startPatientFlow() {
     if (isGeneratingText.value) return
     if (activePatient.value) {
-      phase.value = 'consult'
-      await saveProgress()
-      if (consultEntryStage.value === 'pre_consult') {
-        await continueConsultFlow()
-      }
-      return
-    }
+  phase.value = 'consult'
+  await saveProgress()
+
+  // 情况 A：后台已完成，有待触发的打字机内容
+  if (pendingTypingEntryId.value && !isBackgroundGenerating.value) {
+    const tid = pendingTypingEntryId.value
+    pendingTypingEntryId.value = ''
+    typingEntryId.value = tid   // 触发打字机
+    return
+  }
+
+  // 情况 B：后台仍在运行 → 显示转圈，等它自己完成
+  if (isBackgroundGenerating.value) {
+    isGeneratingText.value = true
+    // 后台任务完成时会自动更新状态和打字机，不需要额外操作
+    return
+  }
+
+  // 情况 C：正常流程
+  if (consultEntryStage.value === 'pre_consult') {
+    await continueConsultFlow()
+  }
+  return
+}
+
     resetCaseState()
     const revisitingPatient = pullDueRevisitPatient()
     const nextPatient = revisitingPatient || popWaitingPatient()
@@ -1811,93 +1908,101 @@ function isCurrentConsultRequest(token) {
   }
 
   async function continueConsultFlow() {
-    if (!activePatient.value || isGeneratingText.value || consultEntryStage.value !== 'pre_consult') return
+  if (!activePatient.value || isGeneratingText.value || consultEntryStage.value !== 'pre_consult') return
 
-    const requestToken = beginConsultRequest()
-    consultEntryStage.value = 'entering_consult'
-    consultStage.value = 'arrival_intro'
-    isConsultNarrativeReady.value = false
-    isConsultOptionsReady.value = false
-    isGeneratingText.value = true
-    typingEntryId.value = ''
-    narrativeError.value = ''
+  const requestToken = beginConsultRequest()
+  consultEntryStage.value = 'entering_consult'
+  consultStage.value = 'arrival_intro'
+  isConsultNarrativeReady.value = false
+  isConsultOptionsReady.value = false
+  isGeneratingText.value = true
+  typingEntryId.value = ''
+  narrativeError.value = ''
 
-    await saveProgress()
+  await saveProgress()
 
-    try {
-      if (activePatient.value && !activePatient.value.trackingSheetReady) {
-        const generatedTrackingSheet = await generateTrackingSheet(activePatient.value)
-        if (!isCurrentConsultRequest(requestToken)) return
-        activePatient.value.trackingSheet = generatedTrackingSheet
-        activePatient.value.trackingSheetReady = true
-      }
-
-      const arrivalText = await fetchArrivalNarrativeText(requestToken)
+  try {
+    if (activePatient.value && !activePatient.value.trackingSheetReady) {
+      const generatedTrackingSheet = await generateTrackingSheet(activePatient.value)
       if (!isCurrentConsultRequest(requestToken)) return
+      activePatient.value = {
+  ...activePatient.value,
+  trackingSheet: generatedTrackingSheet,
+  trackingSheetReady: true
+}
+    }
 
-      if (!arrivalText) {
-        consultEntryStage.value = 'pre_consult'
-        return
-      }
+    const arrivalText = await fetchArrivalNarrativeText(requestToken)
+    if (!isCurrentConsultRequest(requestToken)) return
 
-      const arrivalEntry = makeHistoryEntry({
-        speaker: 'narrator',
-        label: activePatient.value.visitCount > 1 ? '复诊来访' : '到诊记录',
-        text: arrivalText,
-        type: 'arrival'
-      })
+    if (!arrivalText) {
+      consultEntryStage.value = 'pre_consult'
+      return
+    }
 
-      const nextHistory = [arrivalEntry]
+    const arrivalEntry = makeHistoryEntry({
+      speaker: 'narrator',
+      label: activePatient.value.visitCount > 1 ? '复诊来访' : '到诊记录',
+      text: arrivalText,
+      type: 'arrival'
+    })
 
-      const recentDoctorLines = nextHistory
-        .filter(item => item?.speaker === 'doctor')
-        .slice(-3)
-        .map(item => item.text)
+    const nextHistory = [arrivalEntry]
 
-      const prompt = buildConsultOptionsPrompt({
-        patient: activePatient.value,
-        environment: activeEnvironment.value,
-        trackingSheet: activePatient.value.trackingSheet,
-        consultationHistory: nextHistory.slice(-8),
-        consultNotes: consultNotes.value,
-        diagnosisDraft: diagnosisDraft.value,
-        confirmedDiagnosis: confirmedDiagnosis.value
-      })
+    const recentDoctorLines = nextHistory
+      .filter(item => item?.speaker === 'doctor')
+      .slice(-3)
+      .map(item => item.text)
 
-      const reply = await aiService.generateReply(prompt, SYSTEM_PROMPT)
-      if (!isCurrentConsultRequest(requestToken)) return
+    const prompt = buildConsultOptionsPrompt({
+      patient: activePatient.value,
+      environment: activeEnvironment.value,
+      trackingSheet: activePatient.value.trackingSheet,
+      consultationHistory: nextHistory.slice(-8),
+      consultNotes: consultNotes.value,
+      diagnosisDraft: diagnosisDraft.value,
+      confirmedDiagnosis: confirmedDiagnosis.value,
+      diagnosisUsed: DIAGNOSIS_LIMIT - diagnosisUsesLeft.value
+    })
 
-      const parsedOptions = parseOptionPayload(reply, recentDoctorLines)
+    const reply = await aiService.generateReply(prompt, SYSTEM_PROMPT)
+    if (!isCurrentConsultRequest(requestToken)) return
 
-      if (!parsedOptions.length) {
-        throw new Error('AI 返回的问诊选项为空。')
-      }
+    const parsedOptions = parseOptionPayload(reply, recentDoctorLines)
+    if (!parsedOptions.length) {
+      throw new Error('AI 返回的问诊选项为空。')
+    }
 
-      consultationHistory.value = nextHistory
-      consultOptions.value = parsedOptions
-      isConsultNarrativeReady.value = true
-      isConsultOptionsReady.value = true
+    // ── 写入状态 ──
+    consultationHistory.value = nextHistory
+    consultOptions.value = parsedOptions
+    isConsultNarrativeReady.value = true
+    isConsultOptionsReady.value = true
+    consultEntryStage.value = 'questioning'
+    consultStage.value = 'questioning'
+
+    // ── 打字机：在问诊页则立即触发，不在则存起来等回来 ──
+    if (phase.value === 'consult') {
       typingEntryId.value = arrivalEntry.id
-      consultEntryStage.value = 'questioning'
-      consultStage.value = 'questioning'
-    } catch (error) {
-      if (isCurrentConsultRequest(requestToken)) {
-        consultEntryStage.value = 'pre_consult'
-        consultOptions.value = []
-        isConsultOptionsReady.value = false
-        narrativeError.value = `后台追踪表生成失败：${normalizeNarrativeError(error)}`
-      }
-    } finally {
-      if (isCurrentConsultRequest(requestToken)) {
-        isGeneratingText.value = false
-        await saveProgress()
-      }
+    } else {
+      pendingTypingEntryId.value = arrivalEntry.id
+    }
+
+  } catch (error) {
+    if (isCurrentConsultRequest(requestToken)) {
+      consultEntryStage.value = 'pre_consult'
+      consultOptions.value = []
+      isConsultOptionsReady.value = false
+      narrativeError.value = `后台追踪表生成失败：${normalizeNarrativeError(error)}`
+    }
+  } finally {
+    isGeneratingText.value = false       // 无条件重置转圈
+    isBackgroundGenerating.value = false // 后台任务结束
+    if (isCurrentConsultRequest(requestToken)) {
+      await saveProgress()
     }
   }
-
-  function getConsultOptions() {
-    return []
-  }
+}
 
   async function refreshConsultOptions(requestToken = null) {
     if (pendingSettlementRecord.value) {
@@ -1925,7 +2030,8 @@ function isCurrentConsultRequest(token) {
         consultationHistory: consultationHistory.value.slice(-8),
         consultNotes: consultNotes.value,
         diagnosisDraft: diagnosisDraft.value,
-        confirmedDiagnosis: confirmedDiagnosis.value
+        confirmedDiagnosis: confirmedDiagnosis.value,
+        diagnosisUsed: DIAGNOSIS_LIMIT - diagnosisUsesLeft.value
       })
       const reply = await aiService.generateReply(prompt, SYSTEM_PROMPT)
       if (requestToken !== null && !isCurrentConsultRequest(requestToken)) {
@@ -1942,7 +2048,7 @@ function isCurrentConsultRequest(token) {
       if (requestToken !== null && !isCurrentConsultRequest(requestToken)) {
         return []
       }
-      console.warn('Synesthesia 问诊选项生成失败: ', error)
+      console.warn('Synesthesia 问诊选项生成失败:', error)
       consultOptions.value = []
       isConsultOptionsReady.value = false
       narrativeError.value = `问诊选项生成失败：${normalizeNarrativeError(error)}`
@@ -1957,28 +2063,27 @@ function isCurrentConsultRequest(token) {
     narrativeError.value = ''
     isConsultOptionsReady.value = false
 
-    // 改之后
-try {
-  const options = await refreshConsultOptions(requestToken)
-  if (!isCurrentConsultRequest(requestToken)) return []
-  isConsultOptionsReady.value = options.length > 0
-  if (options.length > 0) {
-    isConsultNarrativeReady.value = true  // 恢复叙事就绪，选项才能显示
-  }
-  return options
-}
- catch (error) {
+    try {
+      const options = await refreshConsultOptions(requestToken)
+      if (!isCurrentConsultRequest(requestToken)) return []
+      isConsultOptionsReady.value = options.length > 0
+      if (options.length > 0) {
+        isConsultNarrativeReady.value = true
+      }
+      return options
+    } catch (error) {
       if (!isCurrentConsultRequest(requestToken)) return []
       narrativeError.value = normalizeNarrativeError(error)
+      if (consultationHistory.value.length > 0) {
+        isConsultNarrativeReady.value = true
+      }
       return []
-    // 改之后
-} finally {
-  isGeneratingText.value = false
-  if (isCurrentConsultRequest(requestToken)) {
-    await saveProgress()
-  }
-}
-
+    } finally {
+      isGeneratingText.value = false
+      if (isCurrentConsultRequest(requestToken)) {
+        await saveProgress()
+      }
+    }
   }
 
   async function chooseConsultOption(option) {
@@ -2011,7 +2116,9 @@ try {
         consultationHistory: [...historyBeforeChoice, doctorEntry].slice(-8),
         consultNotes: consultNotes.value,
         diagnosisDraft: diagnosisDraft.value,
-        confirmedDiagnosis: confirmedDiagnosis.value
+        confirmedDiagnosis: confirmedDiagnosis.value,
+        visitCount: activePatient.value.visitCount,
+        currentRound: historyBeforeChoice.filter(e => e.speaker === 'doctor').length + 1
       })
 
       const reply = await aiService.generateReply(prompt, SYSTEM_PROMPT)
@@ -2049,7 +2156,8 @@ try {
         consultationHistory: nextHistory.slice(-8),
         consultNotes: consultNotes.value,
         diagnosisDraft: diagnosisDraft.value,
-        confirmedDiagnosis: confirmedDiagnosis.value
+        confirmedDiagnosis: confirmedDiagnosis.value,
+        diagnosisUsed: DIAGNOSIS_LIMIT - diagnosisUsesLeft.value
       })
 
       const optionReply = await aiService.generateReply(optionPrompt, SYSTEM_PROMPT)
@@ -2068,24 +2176,28 @@ try {
       isConsultOptionsReady.value = true
       consultEntryStage.value = 'questioning'
       consultStage.value = 'questioning'
-      typingEntryId.value = patientEntry.id
-    } catch (error) {
-  if (isCurrentConsultRequest(requestToken)) {
-    narrativeError.value = normalizeNarrativeError(error)
-    consultOptions.value = []
-    isConsultOptionsReady.value = false
-    // 已有历史记录时，恢复叙事就绪状态，让重试按钮能正常出现
-    if (consultationHistory.value.length > 0) {
-      isConsultNarrativeReady.value = true
-    }
-  }
-  } finally {
-    isGeneratingText.value = false
-    if (isCurrentConsultRequest(requestToken)) {
-      await saveProgress()
-    }
-  }
+      if (phase.value === 'consult') {
+  typingEntryId.value = patientEntry.id
+} else {
+  pendingTypingEntryId.value = patientEntry.id
 }
+
+    } catch (error) {
+      if (isCurrentConsultRequest(requestToken)) {
+        narrativeError.value = normalizeNarrativeError(error)
+        consultOptions.value = []
+        isConsultOptionsReady.value = false
+        if (consultationHistory.value.length > 0) {
+          isConsultNarrativeReady.value = true
+        }
+      }
+    } finally {
+      isGeneratingText.value = false
+      if (isCurrentConsultRequest(requestToken)) {
+        await saveProgress()
+      }
+    }
+  }
 
   function toggleMappingTarget(mappingRef, sourceId, targetId) {
     const nextMapping = cloneMapping(mappingRef.value)
@@ -2123,8 +2235,14 @@ try {
     confirmedDiagnosis.value = nextConfirmed
     treatmentDraft.value = mergeMappings(treatmentDraft.value, nextConfirmed)
     if (activePatient.value.trackingSheet) {
-      activePatient.value.trackingSheet.confirmedMappings = cloneMapping(nextConfirmed)
+  activePatient.value = {
+    ...activePatient.value,
+    trackingSheet: {
+      ...activePatient.value.trackingSheet,
+      confirmedMappings: cloneMapping(nextConfirmed)
     }
+  }
+}
     consultationHistory.value = [
       ...consultationHistory.value,
       makeHistoryEntry({
@@ -2276,31 +2394,34 @@ try {
     const collectedTotal = debtRecord ? 0 : settlementTotal
     updateTreatmentUses(treatmentUsesLeft.value - 1)
 
-    activePatient.value = { ...activePatient.value, hiddenMappings: remainingMappings }
+    // 先在副本上完成所有 trackingSheet 修改，不污染原始引用
+    let nextTrackingSheet = null
     if (activePatient.value.trackingSheet) {
-      activePatient.value.trackingSheet.unresolvedMappings = cloneMapping(remainingMappings)
-      activePatient.value.trackingSheet.confirmedMappings = intersectMappings(confirmedDiagnosis.value, remainingMappings)
-      activePatient.value.trackingSheet.resolvedMappings = mergeMappings(
-        activePatient.value.trackingSheet.resolvedMappings,
-        resolvedMappings
-      )
-      activePatient.value.trackingSheet.healedMappings = mergeMappings(
-        activePatient.value.trackingSheet.healedMappings,
-        resolvedMappings
-      )
-      activePatient.value.trackingSheet.abnormalCount = countMappings(remainingMappings)
+      const sheet = cloneTrackingSheet(activePatient.value.trackingSheet)
+      sheet.unresolvedMappings = cloneMapping(remainingMappings)
+      sheet.confirmedMappings = intersectMappings(confirmedDiagnosis.value, remainingMappings)
+      sheet.resolvedMappings = mergeMappings(sheet.resolvedMappings, resolvedMappings)
+      sheet.healedMappings = mergeMappings(sheet.healedMappings, resolvedMappings)
+      sheet.abnormalCount = countMappings(remainingMappings)
       if (!isEmptyMapping(resolvedMappings)) {
         appendSymptomLedger(
-          activePatient.value.trackingSheet,
+          sheet,
           `已治愈：~~${formatPairList(resolvedMappings)}~~`
         )
         appendTrackingLog(
-          activePatient.value.trackingSheet,
+          sheet,
           debtRecord
             ? `本轮治愈：${formatPairList(resolvedMappings)}；应收 ${settlementTotal} 信用点，已记入赊账`
             : `本轮治愈：${formatPairList(resolvedMappings)}；已收 ${settlementTotal} 信用点`
         )
       }
+      nextTrackingSheet = sheet
+    }
+
+    activePatient.value = {
+      ...activePatient.value,
+      hiddenMappings: remainingMappings,
+      trackingSheet: nextTrackingSheet
     }
 
     confirmedDiagnosis.value = intersectMappings(confirmedDiagnosis.value, remainingMappings)
@@ -2326,9 +2447,9 @@ try {
       patientFeedbackOutcome.value = 'revisit'
       consultOptions.value = []
       isConsultOptionsReady.value = false
-      const returnDay = gameDay.value + REVISIT_DELAY_DAYS
-      const revisitPatient = { ...clonePatient(activePatient.value), returnDay }
-      activePatient.value = { ...activePatient.value, returnDay }
+      const returnAt = Date.now() + REVISIT_DELAY_MS
+      const revisitPatient = { ...clonePatient(activePatient.value), returnAt }
+      activePatient.value = { ...activePatient.value, returnAt }
       revisitQueue.value = sortRevisitQueue([...revisitQueue.value, revisitPatient])
     }
 
@@ -2354,7 +2475,7 @@ try {
       pendingSettlementRecord.value = record
       statusNotice.value = patientFeedbackOutcome.value === 'complete'
         ? '治疗已完成，点击进入结算。'
-        : `已预约第 ${activePatient.value?.returnDay} 天后的复诊，点击进入结算。`
+        : `已为患者预约复诊，点击进入结算。`
     } else {
       patientFeedbackText.value = ''
       statusNotice.value = '患者已经给出治疗后的反应，继续问诊后再决定下一轮治疗。'
@@ -2404,7 +2525,7 @@ try {
         )
       }
     } catch (error) {
-      console.warn('Synesthesia 结尾故事生成失败: ', error)
+      console.warn('Synesthesia 结尾故事生成失败:', error)
     } finally {
       isGeneratingText.value = false
     }
@@ -2474,6 +2595,10 @@ try {
     showNotesDrawer.value = !showNotesDrawer.value
   }
 
+  // ================================================================
+  // 计算属性
+  // ================================================================
+
   const currentBackgroundPage = computed(() => {
     return BACKGROUND_PAGES[backgroundPage.value] ?? BACKGROUND_PAGES[0]
   })
@@ -2497,14 +2622,13 @@ try {
   const pendingRevisitCount = computed(() => revisitQueue.value.length)
 
   const dueRevisitCount = computed(() => {
-    return revisitQueue.value.filter(item => Number(item.returnDay) <= gameDay.value).length
+    return revisitQueue.value.filter(item => Number(item.returnAt) <= Date.now()).length
   })
 
   const hubStats = computed(() => {
     return [
       { label: '当前信用点', value: `${credits.value}`, meta: '本轮先保留字段，不接入经营结算' },
       { label: '已完成接待', value: `${patientCount.value}`, meta: '仅在完全治愈后增加' },
-      { label: '当前游戏日', value: `第 ${gameDay.value} 天`, meta: currentEnvironmentDescription.value },
       { label: '待复诊患者', value: `${pendingRevisitCount.value}`, meta: dueRevisitCount.value > 0 ? `已有 ${dueRevisitCount.value} 名患者到期` : '暂无到期复诊' }
     ]
   })
@@ -2538,16 +2662,18 @@ try {
   const canStartPatientFlow = computed(() => (
     Boolean(activePatient.value)
     || waitingPatients.value.length > 0
-    || revisitQueue.value.some(item => Number(item.returnDay) <= gameDay.value)
+    || revisitQueue.value.some(item => Number(item.returnAt) <= Date.now())
   ))
 
   const patientArrivalStatusText = computed(() => {
-    if (canStartPatientFlow.value) return '已有患者到访。'
-    if (isEnvironmentLoading.value) return '正在检测环境数据。'
-    if (environmentGenerationError.value) return '环境生成失败，请重新开始。'
-    if (isQueueGenerating.value) return '正在整理候诊档案。'
-    return '门外暂时没人。'
-  })
+  if (isBackgroundGenerating.value) return '正在为患者准备诊断资料……'
+  if (canStartPatientFlow.value) return '已有患者到访。'
+  if (isEnvironmentLoading.value) return '正在检测环境数据。'
+  if (environmentGenerationError.value) return '环境生成失败，请重新开始。'
+  if (isQueueGenerating.value) return '正在整理候诊档案。'
+  return '门外暂时没人。'
+})
+
 
   const patientArrivalActionLabel = computed(() => {
     if (activePatient.value) return '进入诊断室'
@@ -2692,13 +2818,18 @@ try {
     return `诊断仪剩余 ${diagnosisUsesLeft.value} / ${DIAGNOSIS_LIMIT} 次 · 治疗仪剩余 ${treatmentUsesLeft.value} / ${TREATMENT_LIMIT} 次`
   })
 
+  // ================================================================
+  // 生命周期
+  // ================================================================
+
   onMounted(() => {
     syncSaveStatus()
     syncResponsiveState()
     refreshPatientQueue().catch(error => {
-      console.warn('Synesthesia 初始化候诊队列刷新失败: ', error)
+      console.warn('Synesthesia 初始化候诊队列刷新失败:', error)
     })
     ensureQueueTimer()
+    ensureDebtCheckTimer()   // ← 启动债务半小时定时器
     window.addEventListener('resize', syncResponsiveState)
   })
 
@@ -2706,6 +2837,7 @@ try {
     window.removeEventListener('resize', syncResponsiveState)
     if (autosaveTimer) { clearTimeout(autosaveTimer) }
     if (queueTimer) { clearInterval(queueTimer) }
+    if (debtCheckTimer) { clearInterval(debtCheckTimer) }   // ← 清理债务定时器
   })
 
   return {
@@ -2738,7 +2870,6 @@ try {
     backgroundPage,
     credits,
     patientCount,
-    gameDay,
     playerProfile,
     activePatient,
     consultationHistory,
@@ -2749,6 +2880,8 @@ try {
     confirmedDiagnosis,
     diagnosisAttemptsLeft: diagnosisUsesLeft,
     diagnosisAttemptsTotal: DIAGNOSIS_LIMIT,
+    treatmentAttemptsLeft: treatmentUsesLeft,
+    treatmentAttemptsTotal: TREATMENT_LIMIT,
     treatmentDraft,
     revisitQueue,
     completedCases,
@@ -2793,12 +2926,13 @@ try {
     diagnosisAttemptLabel,
     backgroundPages: BACKGROUND_PAGES,
     backgroundTotal: BACKGROUND_PAGES.length,
-        titleContent: TITLE_CONTENT,
+    titleContent: TITLE_CONTENT,
     hubActions: HUB_ACTIONS,
     senseConfigs: SENSE_CONFIGS,
     senseLabels: SENSE_LABELS,
     senseTargets: SENSE_TARGETS,
     systemSnapshot: SYSTEM_SNAPSHOT,
+    isBackgroundGenerating,
     startNewGame,
     confirmStartNewGame,
     cancelStartNewGame,

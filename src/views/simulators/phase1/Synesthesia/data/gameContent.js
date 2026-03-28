@@ -57,7 +57,7 @@ export const BACKGROUND_PAGES = [
     title: '关于你',
     paragraphs: [
       '你曾经在上城区做研究。研究什么，不重要。为什么离开，也不重要。',
-      '在这里，你要做的，是先听见，再判断，然后尽可能把那些已经错位的感官，一点一点归回原处。',
+      '在这里，你要做的，是倾听他人的描述，再判断出现了哪些问题，然后尽可能把那些已经错位的感官，一点一点归回原处。',
       '门铃响起时，故事就会真正开始。你会先听到患者的脚步，再听到他们把生活里的裂口一点点讲给你。'
     ]
   }
@@ -124,7 +124,7 @@ export const SYSTEM_SNAPSHOT = [
 
 export const DIAGNOSIS_LIMIT = 2
 export const TREATMENT_LIMIT = 2
-export const REVISIT_DELAY_DAYS = 7
+export const REVISIT_DELAY_MS = 7 * 30 * 60 * 1000
 
 export const DEFAULT_GAME_STATE = {
   phase: 'background_intro',
@@ -132,7 +132,6 @@ export const DEFAULT_GAME_STATE = {
   backgroundPage: 0,
   credits: 0,
   patientCount: 0,
-  gameDay: 1,
   nextPatientSerial: 1,
   environmentPhase: 1,
   playerProfile: PLAYER_PROFILE,

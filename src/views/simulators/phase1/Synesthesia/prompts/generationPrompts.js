@@ -34,15 +34,42 @@ export function buildEnvironmentGenerationPrompt({ previousEnvironmentDescriptio
 
 export function buildPatientGenerationPrompt({
   serial,
-  gameDay,
   globalEnvironment,
-  existingPatients = []
+  existingPatients = [],
+  rule = null              // ← 新增参数
 }) {
   const existingSummary = existingPatients.length
     ? existingPatients.map(item => `${item.name} / ${item.job}`).join('\n')
     : '暂无'
 
-  return `为《共觉之境》生成一个全新的仿生人患者病例。当前游戏日：第 ${gameDay} 天。病例序号：${serial}
+  // ↓ 提前计算约束文字，避免模板字符串嵌套报错
+  const constraintText = rule
+    ? [
+        `1. 异常映射总数：最少 ${rule.minAbnormal} 条，最多 ${rule.maxAbnormal} 条。`,
+        `2. 所有映射等级上限为 Lv.${rule.maxLevel}，mappingLevels 中的值不得超过 ${rule.maxLevel}。`,
+        rule.allowOneToMany
+          ? `3. 允许一对多，但每个感官最多映射 ${rule.maxTargetsPerSource} 个目标。`
+          : '3. 禁止一对多，每个感官只能映射恰好一个目标。',
+        rule.mustHaveLv2
+          ? '4. 至少有一条映射的等级必须为 Lv.2。'
+          : '4. 所有映射等级必须为 Lv.1。',
+        '5. originalMappings 里只保留真正异常的感官，正常项填 []。',
+        '6. 映射要和职业、劳动场景有隐约关联。',
+        '7. 不要输出任何解释、分析或注释。',
+        '8. 不要复用上面列出的名字或职业。'
+      ].join('\n')
+    : [
+        '1. 必须至少生成 1 条异常映射，最多 4 条。',
+        '2. originalMappings 里只保留真正异常的感官，正常项填 []。',
+        '3. 映射要和职业、劳动场景有隐约关联，比如长期接触化学品的工人可能出现嗅觉异常，高噪音环境的工人可能出现听觉异常。',
+        '4. 允许一对多，但不要每个病例都做成一对多。',
+        '5. mappingLevels 只填有异常的映射对，等级 1 到 4。',
+        '6. 不要输出任何解释、分析或注释。',
+        '7. 不要复用上面列出的名字或职业。'
+      ].join('\n')
+
+  return `为《共觉之境》生成一个全新的仿生人患者病例。
+病例序号：${serial}
 当前诊所外部环境：${globalEnvironment?.description || '未设置'}
 
 以下名字或职业不要重复：
@@ -81,13 +108,6 @@ ${existingSummary}
     "vision:taste": 1
   }
 }
-
-约束：
-1. 必须至少生成 1 条异常映射，最多 4 条。
-2. originalMappings 里只保留真正异常的感官，正常项填 []。
-3. 映射要和职业、劳动场景有隐约关联，比如长期接触化学品的工人可能出现嗅觉异常，高噪音环境的工人可能出现听觉异常。
-4. 允许一对多，但不要每个病例都做成一对多。
-5. mappingLevels 只填有异常的映射对，等级 1 到 4。
-6. 不要输出任何解释、分析或注释。
-7. 不要复用上面列出的名字或职业。`
+${rule ? '约束（必须严格遵守）：' : '约束：'}
+${constraintText}`
 }

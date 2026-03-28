@@ -59,7 +59,6 @@ function formatMappingLevels(levelMap = {}) {
 function buildPatientSeed({ patient, environment, trackingSheet }) {
   return `【患者信息】
 姓名：${patient.name}
-型号：${patient.model || '型号不明'}
 职业：${patient.job}
 话语风格：${patient.speechStyle || '根据职业自行判断'}
 情绪状态：${patient.emotionalTone || '根据职业自行判断'}
@@ -123,20 +122,8 @@ ${JSON_OBJECT_ONLY_RULE}
     "初诊建档：……"
   ],
   "abnormalCount": 0,
-  "originalMappings": {
-    "vision": [],
-    "hearing": [],
-    "touch": [],
-    "taste": [],
-    "smell": []
-  },
-  "unresolvedMappings": {
-    "vision": [],
-    "hearing": [],
-    "touch": [],
-    "taste": [],
-    "smell": []
-  },
+  "originalMappings": ${JSON.stringify(patient.originalMappings)},
+  "unresolvedMappings": ${JSON.stringify(patient.hiddenMappings)},
   "confirmedMappings": {
     "vision": [], "hearing": [], "touch": [], "taste": [], "smell": []
   },
@@ -487,7 +474,7 @@ export function buildMessagePrompt({
   patient,
   debtAmount,
   returnAmount,
-  daysSinceDebt
+  hoursSinceDebt      // ← 原来是 daysSinceDebt，现在改为小时
 }) {
   return `以患者的口吻写一封还款短信。
 
@@ -500,7 +487,7 @@ export function buildMessagePrompt({
 【经济信息】
 原赊账金额：${debtAmount}信用点
 本次还款：${returnAmount}信用点
-距赊账时间：约${daysSinceDebt}个患者之后
+距赊账时间：约${hoursSinceDebt}小时前
 
 【要求】
 - 150-200字
@@ -519,6 +506,7 @@ export function buildMessagePrompt({
 
 转账：${returnAmount}信用点`
 }
+
 
 
 // ================================================================
