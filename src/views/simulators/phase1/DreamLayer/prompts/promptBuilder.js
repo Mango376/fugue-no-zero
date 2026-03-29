@@ -382,18 +382,3 @@ export function buildScriptInitPrompt(script) {
     }
   }
   
-   
-
-export function buildWorldBookInjection({ round, gameStage, hasItem }) {
-  const matched = WORLD_BOOK.filter(entry => {
-    const { sendOn } = entry
-    if (sendOn.rounds && sendOn.rounds.includes(round)) return true
-    if (sendOn.trigger === 'escape' && gameStage === 'escape') return true
-    if (sendOn.trigger === 'realecho' && gameStage === 'realecho') return true
-    if (sendOn.trigger === 'has_item' && hasItem) return true
-    return false
-  })
-
-  if (matched.length === 0) return ''
-  return '\n\n' + matched.map(e => e.content).join('\n\n')
-}
