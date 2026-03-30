@@ -10,7 +10,7 @@
 
 <script setup>
 import ApiPanel from '@/components/common/ApiPanel.vue'
-import LoadingTransition from '@/components/LoadingTransition.vue'
+import LoadingTransition from '@/components/common/LoadingTransition.vue'
 </script>
 
 <style>

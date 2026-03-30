@@ -1126,7 +1126,8 @@
 import { ref, computed, watch, nextTick, onMounted, onBeforeUnmount } from 'vue'
 import Typewriter from '@/components/common/Typewriter.vue'
 import { useGameLogic } from './composables/useGameLogic'
-
+import { useAudioStore } from '@/stores/audioStore'
+const audioStore = useAudioStore()
 // ============================================================
 // 音频文件导入（10 首背景音乐）
 // ============================================================
@@ -1178,12 +1179,18 @@ const unlockAutoPlay = () => {
       .then(() => {
         isPlaying.value = true
         startViz()
+
+        // ← 新增
+        audioStore.register(audioRef.value)
+        audioStore.fadeIn(audioRef.value, 0.8, 1500)
+
         document.removeEventListener('click',      unlockAutoPlay)
         document.removeEventListener('touchstart', unlockAutoPlay)
       })
       .catch(() => console.warn('等待交互以播放音频...'))
   }
 }
+
 
 // ============================================================
 // 音乐播放器：进度条拖拽跳转
@@ -1968,7 +1975,9 @@ onBeforeUnmount(() => {
   document.removeEventListener('touchstart', unlockAutoPlay)
   stopViz()
   audioContext?.close()
+  audioStore.register(null)  // ← 新增
 })
+
 </script>
 <style scoped>
 /*

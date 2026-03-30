@@ -791,31 +791,24 @@ function toggleSim(id) {
   activeSim.value = activeSim.value === id ? null : id
 }
 
-// 替换原有的 startGame
 async function startGame(sim) {
   sessionStorage.setItem('hubReturn', JSON.stringify({
     phaseId: currentPhase.value?.id
   }))
-
-  // 触发过渡动画
   store.startTransition()
-
-  // 等黑幕盖住再跳转（0.8s 后路由跳转，用户看不到）
   await delay(800)
   router.push(sim.route)
 }
 
-// 替换原有的 loadGame
 async function loadGame(sim) {
   sessionStorage.setItem('hubReturn', JSON.stringify({
     phaseId: currentPhase.value?.id
   }))
-
   store.startTransition()
-
   await delay(800)
   router.push({ path: sim.route, query: { load: 'true' } })
 }
+
 
 
 // ========================

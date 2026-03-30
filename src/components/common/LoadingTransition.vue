@@ -1,11 +1,8 @@
 <template>
   <Transition name="transition-fade">
-    <div v-if="visible" class="loading-overlay" :class="phase">
-
-      <!-- 黑幕层 -->
+    <div v-if="visible" class="loading-overlay">
       <div class="loading-bg"></div>
 
-      <!-- 提示文字（中间阶段显示） -->
       <Transition name="notice-fade">
         <div v-if="phase === 'notice'" class="loading-notice">
           <div class="notice-ornament">
@@ -22,7 +19,6 @@
           </div>
         </div>
       </Transition>
-
     </div>
   </Transition>
 </template>
@@ -30,26 +26,25 @@
 <script setup>
 import { ref, watch } from 'vue'
 import { useGameStore } from '@/stores/gameStore'
+import { useAudioStore } from '@/stores/audioStore'
 
 const store = useGameStore()
+const audioStore = useAudioStore()
 const visible = ref(false)
-const phase = ref('idle') // 'darkening' | 'notice' | 'brightening'
+const phase = ref('idle')
 
 watch(() => store.isTransitioning, async (val) => {
   if (val) {
-    // 第一阶段：黑幕出现
     phase.value = 'darkening'
     visible.value = true
+    audioStore.fadeOutCurrent(800)  // 黑幕出现同时音乐淡出
 
-    // 第二阶段：显示提示文字
     await delay(800)
     phase.value = 'notice'
 
-    // 第三阶段：提示消失，保持黑屏等待路由加载
     await delay(2000)
     phase.value = 'brightening'
 
-    // 第四阶段：黑幕退出
     await delay(1000)
     visible.value = false
     store.endTransition()
@@ -77,7 +72,6 @@ function delay(ms) {
   background: #060503;
 }
 
-/* 黑幕淡入 */
 .transition-fade-enter-active {
   transition: opacity 0.8s ease;
 }
@@ -89,7 +83,6 @@ function delay(ms) {
   opacity: 0;
 }
 
-/* 提示文字淡入淡出 */
 .notice-fade-enter-active {
   transition: opacity 0.8s ease, transform 0.8s ease;
 }
@@ -104,7 +97,6 @@ function delay(ms) {
   opacity: 0;
 }
 
-/* 提示文字样式 */
 .loading-notice {
   position: relative;
   z-index: 1;

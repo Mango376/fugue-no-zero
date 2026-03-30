@@ -1283,6 +1283,12 @@ import titleBg from '@/assets/images/phases1/DreamLayer/title_bg.jpg'
 const fileInputRef = ref(null)
 const narrativeEl  = ref(null)
 
+
+import { useAudioStore } from '@/stores/audioStore'
+const audioStore = useAudioStore()
+
+
+
 // ========== 悬浮播放器逻辑 (极简横条版) ==========
 import bgm1 from '@/assets/audio/phase1/DreamLayer/bgm_dream1.mp3'
 import bgm2 from '@/assets/audio/phase1/DreamLayer/bgm_dream2.mp3'
@@ -1388,6 +1394,19 @@ onMounted(() => {
       y: window.innerHeight - 70 
     }
   }
+
+  nextTick(() => {
+    if (bgmAudio.value) {
+      audioStore.register(bgmAudio.value)
+      audioStore.fadeIn(bgmAudio.value, 0.8, 1500)
+    }
+  })
+})
+
+// ← 新增：离开时清理
+onUnmounted(() => {
+  audioStore.register(null)
+  stopDrag()
 })
 
 
