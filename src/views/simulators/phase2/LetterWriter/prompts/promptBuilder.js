@@ -29,7 +29,6 @@ export function buildGuestGenerationPrompt({ recentGuestTypes = [] }) {
 · 满意条件必须明确，是客人真正在意的，不是"写得好看就行"
 · openingLine 是客人坐下来之后第一次开口说的话，3-5句
   要交代：收件人是谁、住哪里、大概想写什么
-  不要交代：深层原因、真正想说的话
 · openingLine 里要带一点叙事——他怎么坐下来的，
   说话时眼神在哪里，声音是什么状态${avoidList}
 
@@ -40,7 +39,6 @@ personality: （性格，说话方式，一句话）
 recipient: （收信人姓名 + 完整地址，越具体越好）
 surfacePurpose: （表面上来写什么）
 realPurpose: （真正想表达的是什么）
-hiddenInfo: （不想提及的事，如果被问到会回避）
 satisfyCondition: （什么样的信让他满意，具体说明）
 openingLine: （客人坐下来第一次开口，叙事+对话，像小说一样）
 ---GUEST_END---

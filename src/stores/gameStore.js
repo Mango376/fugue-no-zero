@@ -43,6 +43,17 @@ export const useGameStore = defineStore('game', () => {
         })
     }
 
+
+
+    const isTransitioning = ref(false)
+
+function startTransition() {
+  isTransitioning.value = true
+}
+
+function endTransition() {
+  isTransitioning.value = false
+}
     return {
         unlockedSims,
         showGlobalApiBtn, // 【新增】：导出状态
@@ -50,6 +61,9 @@ export const useGameStore = defineStore('game', () => {
         loadUnlocked,
         unlockSim,
         isUnlocked,
-        devUnlockAll
+        devUnlockAll,
+        isTransitioning,
+  startTransition,
+  endTransition
     }
 })

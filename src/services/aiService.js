@@ -77,11 +77,12 @@ class AIService {
   // ============================================================
   // call()：非流式调用
   // ============================================================
-  async call(messages, systemPrompt = '') {
+  async call(messages, systemPrompt = '', options = {}) {
     await this._ensureInit()
+    const { signal } = options
 
     if (this._isMujian) {
-      return this._callViaMujian(messages, systemPrompt)
+      return this._callViaMujian(messages, systemPrompt, { signal })
     }
 
     const config = await this.getConfig()
@@ -104,7 +105,8 @@ class AIService {
           'Authorization': `Bearer ${config.apiKey}`,
           'Content-Type': 'application/json'
         },
-        timeout: 30000
+        timeout: 30000,
+        signal
       }
     )
     return response.data.choices[0].message.content
@@ -113,10 +115,11 @@ class AIService {
   // ============================================================
   // generateReply()：快捷调用
   // ============================================================
-  async generateReply(userMessage, systemPrompt) {
+  async generateReply(userMessage, systemPrompt, options = {}) {
     return await this.call(
       [{ role: 'user', content: userMessage }],
-      systemPrompt
+      systemPrompt,
+      options
     )
   }
 
@@ -136,7 +139,8 @@ class AIService {
   // ============================================================
   // 幕间：非流式（独立调用，不依赖共享 controller）
   // ============================================================
-  async _callViaMujian(messages, systemPrompt = '') {
+  async _callViaMujian(messages, systemPrompt = '', options = {}) {
+    const { signal } = options
     const userMsg = [...messages].reverse().find(m => m.role === 'user')
     const query = systemPrompt
       ? `${systemPrompt}\n\n${userMsg?.content || ''}`
@@ -144,6 +148,13 @@ class AIService {
 
     // 每次创建独立的 controller，避免并发覆盖
     const ctrl = new AbortController()
+    if (signal) {
+      if (signal.aborted) {
+        ctrl.abort()
+      } else {
+        signal.addEventListener('abort', () => ctrl.abort(), { once: true })
+      }
+    }
 
     return new Promise((resolve, reject) => {
       let fullContent = ''

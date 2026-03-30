@@ -3,11 +3,14 @@
     <router-view />
     <!-- 全局悬浮API按钮，必须在这里 -->
     <ApiPanel />
+    <!-- 全局过渡动画，必须在这里 -->
+    <LoadingTransition />
   </div>
 </template>
 
 <script setup>
 import ApiPanel from '@/components/common/ApiPanel.vue'
+import LoadingTransition from '@/components/LoadingTransition.vue'
 </script>
 
 <style>

@@ -43,7 +43,7 @@ export const shopItems = [
   { id: 'tranquilizer', name: '镇定剂',       type: 'consumable', price: 80,   desc: '立即恢复40点神经载荷。可在载荷归零后的濒死状态下使用，每局限一次。',                   minLevel: 4 },
   { id: 'mask',         name: '镜像面具',     type: 'consumable', price: 90,   desc: '戴上后可替患者承受一次致命冲击。自身载荷归零，必须立即进入逃脱判定。',                 minLevel: 4 },
   { id: 'pendulum',     name: '破碎钟摆',     type: 'consumable', price: 125,  desc: '让局部时间流速减缓，危机延后三轮爆发，为玩家争取应对时间。',                         minLevel: 4 },
-  { id: 'pass13',       name: '第13层通行证', type: 'consumable', price: 150,  desc: '可直接跳过当前剧本中最困难的一轮危机。每局限一次。',                                 minLevel: 7 },
+  { id: 'pass13',       name: '深眠通行证', type: 'consumable', price: 150,  desc: '可直接跳过当前剧本中最困难的一轮危机。每局限一次。',                                 minLevel: 7 },
   { id: 'lullaby',      name: '重生摇篮曲',   type: 'consumable', price: 200,  desc: '载荷归零时自动触发，恢复30点载荷并继续当前剧本，每局限一次。',                       minLevel: 7 },
   { id: 'sutureThread', name: '意识缝合线',   type: 'consumable', price: 400,  desc: '高级修复工具，共振深度直接+30%。使用后神经载荷清零，必须立即进入逃脱判定。',         minLevel: 7 },
   { id: 'candle',       name: '沉默烛台',     type: 'permanent',  price: 1200, desc: '【持续型】每轮自动抵抗2点神经载荷损伤。',                                             minLevel: 1 },
@@ -65,6 +65,17 @@ export const diffLevels = [
 // ========== 常量 ==========
 const PLAYER_SAVE_KEY = 'dream_layer_player_v1'
 const SCRIPT_ID = 'dream-layer'
+const DEFAULT_PLAYER_NAME = '\u8c03\u5f8b\u8005'
+const DEFAULT_PURE_DROPS = 2000
+const DEFAULT_BASE_MAX_LOAD = 100
+
+function createEmptyOwnedConsumables() {
+  return {
+    bandage: 0, incense: 0, sponge: 0, prism: 0,
+    watch: 0, tranquilizer: 0, mask: 0, pendulum: 0,
+    pass13: 0, lullaby: 0, sutureThread: 0
+  }
+}
 
 // ========== composable ==========
 export function useGameLogic(fileInputRef, narrativeEl) {
@@ -113,7 +124,7 @@ export function useGameLogic(fileInputRef, narrativeEl) {
   // ---------- 玩家数据 ----------
   const playerName = ref('调律者')
   const playerAvatar = ref('')
-  const pureDrops = ref(2000)
+  const pureDrops = ref(DEFAULT_PURE_DROPS)
   const playerLevel = ref(1)
   const totalExp = ref(0)
   const totalRoundsPlayed = ref(0)
@@ -135,9 +146,9 @@ export function useGameLogic(fileInputRef, narrativeEl) {
   const hasActiveGame = ref(false)
 
   // ---------- 游戏数值 ----------
-  const neuralLoad = ref(100)
-  const maxLoad = ref(100)
-  const baseMaxLoad = ref(100)
+  const neuralLoad = ref(DEFAULT_BASE_MAX_LOAD)
+  const maxLoad = ref(DEFAULT_BASE_MAX_LOAD)
+  const baseMaxLoad = ref(DEFAULT_BASE_MAX_LOAD)
   const resonance = ref(0)
   const currentRound = ref(0)
   const isDying = ref(false)
@@ -208,18 +219,20 @@ export function useGameLogic(fileInputRef, narrativeEl) {
 
   // ---------- 内部变量 ----------
   let abortController = null
+  let settlementControllers = []
   let scriptGenController = null
   let activeSaveData = null
 
   // ========== 重试系统函数 ==========
 
   async function returnToTitle() {
-    if (isBackgroundRunning.value) {
-      if (abortController) abortController.abort()
-      isBackgroundRunning.value = false
-      pendingNarrative.value = ''
+    const hadInFlightGeneration = isLoading.value || isBackgroundRunning.value
+    showPauseModal.value = false
+    if (hadInFlightGeneration) {
+      abortActiveNarrativeGeneration()
+    } else {
+      await saveProgress()
     }
-    await saveProgress()
     phase.value = 'title'
   }
 
@@ -339,28 +352,242 @@ export function useGameLogic(fileInputRef, narrativeEl) {
     })
   }
 
+  function computeHasActiveSession(source = {}) {
+    const selected = source.selectedScript ?? selectedScript.value
+    const phaseValue = source.phase ?? phase.value
+    const stageValue = source.gameStage ?? gameStage.value
+    const history = source.conversationHistory ?? conversationHistory.value
+    const round = source.currentRound ?? currentRound.value
+    const current = source.currentNarrative ?? currentNarrative.value
+    const pending = source.pendingNarrative ?? pendingNarrative.value
+    const background = source.isBackgroundRunning ?? isBackgroundRunning.value
+
+    return Boolean(
+      selected &&
+      phaseValue !== 'settlement' &&
+      (
+        phaseValue === 'dream' ||
+        phaseValue === 'escape' ||
+        stageValue === 'realecho' ||
+        history.length > 0 ||
+        round > 0 ||
+        current ||
+        pending ||
+        background
+      )
+    )
+  }
+
+  function buildSessionSavePayload() {
+    const SESSION_ROUNDS = 10
+    const SESSION_DISPLAY = 50
+
+    return JSON.parse(JSON.stringify({
+      phase: phase.value,
+      gameStage: gameStage.value,
+      selectedScript: selectedScript.value,
+      scriptContext: scriptContext.value,
+      scriptTracking: scriptTracking.value,
+      neuralLoad: neuralLoad.value,
+      maxLoad: maxLoad.value,
+      resonance: resonance.value,
+      currentRound: currentRound.value,
+      isDying: isDying.value,
+      dyingRoundsLeft: dyingRoundsLeft.value,
+      conversationHistory: conversationHistory.value.slice(-SESSION_ROUNDS),
+      displayHistory: compressDisplayHistory(displayHistory.value, SESSION_DISPLAY),
+      currentNarrative: currentNarrative.value,
+      innerText: innerText.value,
+      choices: choices.value,
+      echoChoices: echoChoices.value,
+      echoPhase: echoPhase.value,
+      echoResonanceDelta: echoResonanceDelta.value,
+      escapeSuccess: escapeSuccess.value,
+      escapeAttempts: escapeAttempts.value,
+      escapeResultText: escapeResultText.value,
+      escapeCanRetry: escapeCanRetry.value,
+      escapeDone: escapeDone.value,
+      equippedItems: equippedItems.value,
+      activeItem: activeItem.value,
+      selectedLoadout: selectedLoadout.value,
+      watchUsed: watchUsed.value,
+      lastRoundSnapshot: lastRoundSnapshot.value,
+      pendulumRoundsLeft: pendulumRoundsLeft.value,
+      watchActivatedThisRound: watchActivatedThisRound.value,
+      consecutiveResonanceDrop: consecutiveResonanceDrop.value,
+      hasReachedDropThreshold: hasReachedDropThreshold.value,
+      consecutiveAccompanyCount: consecutiveAccompanyCount.value,
+      hasReachedAccompanyThreshold: hasReachedAccompanyThreshold.value,
+      watcherProcUsed: watcherProcUsed.value,
+      insightUsesLeft: insightUsesLeft.value,
+      insightHint: insightHint.value,
+      pendingNarrative: pendingNarrative.value,
+      isBackgroundRunning: isBackgroundRunning.value,
+      finalResult: finalResult.value,
+      finalResultName: finalResultName.value,
+      resultLabel: resultLabel.value,
+      dropsGained: dropsGained.value,
+      expGained: expGained.value,
+      breathText: breathText.value,
+      patientFuture: patientFuture.value,
+      showBreath: showBreath.value,
+      showBreathDismissBtn: showBreathDismissBtn.value,
+      showSettlementModal: showSettlementModal.value,
+      usedItemIds: [...usedItemIds.value],
+      bottomTab: bottomTab.value,
+      historyCollapsed: historyCollapsed.value,
+      hasActiveGame: computeHasActiveSession()
+    }))
+  }
+
+  function resetLongTermProgressState() {
+    playerName.value = DEFAULT_PLAYER_NAME
+    playerAvatar.value = ''
+    pureDrops.value = DEFAULT_PURE_DROPS
+    playerLevel.value = 1
+    totalExp.value = 0
+    totalRoundsPlayed.value = 0
+    totalDropsEarned.value = 0
+    completedScripts.value = []
+    achievements.value = {}
+    unlockedTitles.value = []
+    activeTitles.value = []
+    lowLoadCompletions.value = 0
+    silentStreakCount.value = 0
+    newAchievements.value = []
+    justLeveledUp.value = false
+    ownedConsumables.value = createEmptyOwnedConsumables()
+    ownedPermanents.value = []
+    pendingLevelUpChoice.value = null
+    levelUpRewards.value = []
+    levelUpChoiceNeeded.value = false
+    levelUpChoices.value = []
+    levelUpChoiceQueue.value = []
+    showLevelUpModal.value = false
+    baseMaxLoad.value = DEFAULT_BASE_MAX_LOAD
+    maxLoad.value = DEFAULT_BASE_MAX_LOAD
+  }
+
+  function resetRunState() {
+    activeSaveData = null
+    selectedScript.value = null
+    pendingScript.value = null
+    scriptContext.value = ''
+    scriptTracking.value = ''
+    currentRound.value = 0
+    displayHistory.value = []
+    conversationHistory.value = []
+    currentNarrative.value = ''
+    streamingText.value = ''
+    innerText.value = ''
+    maxLoad.value = baseMaxLoad.value > 0 ? baseMaxLoad.value : DEFAULT_BASE_MAX_LOAD
+    neuralLoad.value = maxLoad.value
+    resonance.value = 0
+    isDying.value = false
+    dyingRoundsLeft.value = 0
+    isLoading.value = false
+    isBackgroundRunning.value = false
+    pendingNarrative.value = ''
+    choices.value = []
+    echoChoices.value = []
+    echoPhase.value = 'act1'
+    echoResonanceDelta.value = 0
+    escapeAttempts.value = 0
+    escapeResultText.value = ''
+    escapeCanRetry.value = false
+    escapeDone.value = false
+    escapeSuccess.value = false
+    showPauseModal.value = false
+    showItemSelectModal.value = false
+    showBreath.value = false
+    showBreathDismissBtn.value = false
+    showSettlementModal.value = false
+    finalResult.value = ''
+    finalResultName.value = ''
+    resultLabel.value = ''
+    dropsGained.value = 0
+    expGained.value = 0
+    breathText.value = ''
+    patientFuture.value = ''
+    activeItem.value = null
+    equippedItems.value = []
+    selectedLoadout.value = []
+    watchUsed.value = false
+    lastRoundSnapshot.value = null
+    pendulumRoundsLeft.value = 0
+    watchActivatedThisRound.value = false
+    insightUsesLeft.value = 0
+    insightHint.value = ''
+    usedItemIds.value = new Set()
+    consecutiveResonanceDrop.value = 0
+    hasReachedDropThreshold.value = false
+    consecutiveAccompanyCount.value = 0
+    hasReachedAccompanyThreshold.value = false
+    watcherProcUsed.value = false
+    historyCollapsed.value = true
+    bottomTab.value = 'choices'
+    silentOneReward.value = null
+    showSilentOneModal.value = false
+    lostItemsOnDeath.value = []
+    showLostItemsModal.value = false
+    abortActiveNarrativeGeneration()
+    clearRetry()
+    hasActiveGame.value = false
+  }
+
+  async function clearSessionSave() {
+    await saveService.deleteSave(SCRIPT_ID)
+    hasSave.value = false
+    hasActiveGame.value = false
+    activeSaveData = null
+  }
+
+  function abortSettlementRequests() {
+    settlementControllers.forEach(controller => {
+      if (controller && !controller.signal.aborted) controller.abort()
+    })
+    settlementControllers = []
+  }
+
+  function abortActiveNarrativeGeneration() {
+    if (abortController && !abortController.signal.aborted) {
+      abortController.abort()
+    }
+    abortController = null
+    abortSettlementRequests()
+    isLoading.value = false
+    isBackgroundRunning.value = false
+    pendingNarrative.value = ''
+    streamingText.value = ''
+  }
+
   // ========== AI 调用 ==========
 
-  async function callAISilent(userPrompt) {
-    abortController = new AbortController()
+  async function sendAIText(userPrompt, options = {}) {
+    const { signal, onChunk } = options
     let result = ''
     await aiService.sendStream({
       messages: [{ role: 'user', content: userPrompt }],
       systemPrompt: SYSTEM_PROMPT,
-      onChunk: (text) => { result = text },
-      signal: abortController.signal
+      onChunk: (text) => {
+        result = text
+        if (typeof onChunk === 'function') onChunk(text)
+      },
+      signal
     })
     return result
   }
 
+  async function callAISilent(userPrompt) {
+    abortController = new AbortController()
+    return sendAIText(userPrompt, { signal: abortController.signal })
+  }
+
   async function callAISimple(userPrompt) {
     abortController = new AbortController()
-    let result = ''
-    await aiService.sendStream({
-      messages: [{ role: 'user', content: userPrompt }],
-      systemPrompt: SYSTEM_PROMPT,
-      onChunk: (text) => { result = text; streamingText.value = text },
-      signal: abortController.signal
+    const result = await sendAIText(userPrompt, {
+      signal: abortController.signal,
+      onChunk: (text) => { streamingText.value = text }
     })
     streamingText.value = ''
     return result
@@ -457,78 +684,97 @@ export function useGameLogic(fileInputRef, narrativeEl) {
 
   async function saveProgress() {
     try {
-      const SESSION_ROUNDS  = 10
-      const SESSION_DISPLAY = 50
-
-      const plain = JSON.parse(JSON.stringify({
-        phase:            phase.value,
-        gameStage:        gameStage.value,
-        selectedScript:   selectedScript.value,
-        neuralLoad:       neuralLoad.value,
-        maxLoad:          maxLoad.value,
-        resonance:        resonance.value,
-        currentRound:     currentRound.value,
-        isDying:          isDying.value,
-        scriptContext:    scriptContext.value,
-        conversationHistory: conversationHistory.value.slice(-SESSION_ROUNDS),
-        displayHistory:   compressDisplayHistory(displayHistory.value, SESSION_DISPLAY),
-        escapeSuccess:    escapeSuccess.value,
-        innerText:        innerText.value,
-        choices:          choices.value,
-        echoChoices:      echoChoices.value,
-        echoPhase:        echoPhase.value,
-        currentNarrative: currentNarrative.value,
-        equippedItems:    equippedItems.value,
-        usedItemIds:      [...usedItemIds.value],
-        hasActiveGame:    !!(selectedScript.value && conversationHistory.value.length > 0),
-      }))
+      const plain = buildSessionSavePayload()
+      if (!plain.hasActiveGame) {
+        await clearSessionSave()
+        return
+      }
 
       await saveService.save(SCRIPT_ID, plain)
       hasSave.value = true
+      hasActiveGame.value = true
+      activeSaveData = plain
     } catch (err) {
       console.warn('自动存档失败：', err)
     }
   }
 
   async function restoreFromSave(saved) {
-    phase.value            = saved.phase            ?? 'hub'
-    gameStage.value        = saved.gameStage        ?? 'dream'
-    selectedScript.value   = saved.selectedScript   ?? null
-    neuralLoad.value       = saved.neuralLoad       ?? 100
-    maxLoad.value          = saved.maxLoad          ?? 100
-    resonance.value        = saved.resonance        ?? 0
-    currentRound.value     = saved.currentRound     ?? 0
-    isDying.value          = saved.isDying          ?? false
-    scriptContext.value    = saved.scriptContext    ?? ''
+    const restoredMaxLoad = saved.maxLoad ?? baseMaxLoad.value ?? DEFAULT_BASE_MAX_LOAD
+
+    phase.value = saved.phase ?? 'hub'
+    gameStage.value = saved.gameStage ?? 'dream'
+    selectedScript.value = saved.selectedScript ?? null
+    pendingScript.value = saved.pendingScript ?? null
+    scriptContext.value = saved.scriptContext ?? ''
+    scriptTracking.value = saved.scriptTracking ?? ''
+    neuralLoad.value = saved.neuralLoad ?? restoredMaxLoad
+    maxLoad.value = restoredMaxLoad
+    resonance.value = saved.resonance ?? 0
+    currentRound.value = saved.currentRound ?? 0
+    isDying.value = saved.isDying ?? false
+    dyingRoundsLeft.value = saved.dyingRoundsLeft ?? 0
     conversationHistory.value = saved.conversationHistory ?? []
-    displayHistory.value   = saved.displayHistory   ?? []
-    escapeSuccess.value    = saved.escapeSuccess    ?? false
-    innerText.value        = saved.innerText        ?? ''
-    choices.value          = saved.choices          ?? []
-    echoChoices.value      = saved.echoChoices      ?? []
-    echoPhase.value        = saved.echoPhase        ?? 'act1'
+    displayHistory.value = saved.displayHistory ?? []
+    escapeSuccess.value = saved.escapeSuccess ?? false
+    escapeAttempts.value = saved.escapeAttempts ?? 0
+    escapeResultText.value = saved.escapeResultText ?? ''
+    escapeCanRetry.value = saved.escapeCanRetry ?? false
+    escapeDone.value = saved.escapeDone ?? false
+    innerText.value = saved.innerText ?? ''
+    choices.value = saved.choices ?? []
+    echoChoices.value = saved.echoChoices ?? []
+    echoPhase.value = saved.echoPhase ?? 'act1'
+    echoResonanceDelta.value = saved.echoResonanceDelta ?? 0
     currentNarrative.value = saved.currentNarrative ?? ''
-    equippedItems.value    = saved.equippedItems    ?? []
-    usedItemIds.value      = new Set(saved.usedItemIds ?? [])
-    hasActiveGame.value    = !!(saved?.hasActiveGame && saved?.selectedScript)
+    equippedItems.value = saved.equippedItems ?? []
+    activeItem.value = saved.activeItem ?? null
+    selectedLoadout.value = saved.selectedLoadout ?? []
+    watchUsed.value = saved.watchUsed ?? false
+    lastRoundSnapshot.value = saved.lastRoundSnapshot ?? null
+    pendulumRoundsLeft.value = saved.pendulumRoundsLeft ?? 0
+    watchActivatedThisRound.value = saved.watchActivatedThisRound ?? false
+    insightUsesLeft.value = saved.insightUsesLeft ?? 0
+    insightHint.value = saved.insightHint ?? ''
+    pendingNarrative.value = saved.pendingNarrative ?? ''
+    isBackgroundRunning.value = false
+    finalResult.value = saved.finalResult ?? ''
+    finalResultName.value = saved.finalResultName ?? ''
+    resultLabel.value = saved.resultLabel ?? ''
+    dropsGained.value = saved.dropsGained ?? 0
+    expGained.value = saved.expGained ?? 0
+    breathText.value = saved.breathText ?? ''
+    patientFuture.value = saved.patientFuture ?? ''
+    showBreath.value = saved.showBreath ?? false
+    showBreathDismissBtn.value = saved.showBreathDismissBtn ?? false
+    showSettlementModal.value = saved.showSettlementModal ?? false
+    consecutiveResonanceDrop.value = saved.consecutiveResonanceDrop ?? 0
+    hasReachedDropThreshold.value = saved.hasReachedDropThreshold ?? false
+    consecutiveAccompanyCount.value = saved.consecutiveAccompanyCount ?? 0
+    hasReachedAccompanyThreshold.value = saved.hasReachedAccompanyThreshold ?? false
+    watcherProcUsed.value = saved.watcherProcUsed ?? false
+    usedItemIds.value = new Set(saved.usedItemIds ?? [])
+    bottomTab.value = saved.bottomTab ?? 'choices'
+    historyCollapsed.value = saved.historyCollapsed ?? true
+    hasActiveGame.value = Boolean(saved?.hasActiveGame ?? computeHasActiveSession(saved))
+    hasSave.value = hasActiveGame.value
+    activeSaveData = saved
 
 
     if (phase.value === 'settlement') {
-      phase.value          = 'hub'
-      selectedScript.value = null
-      scriptContext.value  = ''
-      showBreath.value     = false
+      resetRunState()
+      phase.value = 'hub'
+      gameStage.value = 'dream'
       showBreathDismissBtn.value = false
-      showSettlementModal.value = false
-      hasActiveGame.value  = false
+      await clearSessionSave()
     }
 
     if (gameStage.value === 'realecho') {
       escapeSuccess.value = true
     }
 
-    isLoading.value           = false
-    isBackgroundRunning.value = false
+    isLoading.value = false
+    streamingText.value = ''
     clearRetry()
     await nextTick()
     await scrollToBottom(narrativeEl)
@@ -536,8 +782,9 @@ export function useGameLogic(fileInputRef, narrativeEl) {
 
   async function checkSave() {
     const saved = await saveService.load(SCRIPT_ID)
-    hasSave.value       = !!saved
-    hasActiveGame.value = !!(saved?.hasActiveGame && saved?.selectedScript)
+    activeSaveData = saved ?? null
+    hasSave.value = !!saved
+    hasActiveGame.value = Boolean(saved?.hasActiveGame ?? computeHasActiveSession(saved ?? {}))
   }
 
   // ========== 头像 ==========
@@ -850,7 +1097,7 @@ negative = 状态更差或有退步
     for (const d of difficulties) {
       if (scriptGenController.signal.aborted) break
       try {
-        const previewPrompt = `请为《第13层梦境》生成一个剧本预览信息。难度：${d}星。
+        const previewPrompt = `请为《调率者：梦域》生成一个剧本预览信息。难度：${d}星。
 严格按以下格式输出：
 ---PREVIEW---
 姓名：（中文姓名2-3字）
@@ -943,46 +1190,12 @@ negative = 状态更差或有退步
   }
 
   async function executeStartNewGame() {
-    pureDrops.value       = 2000
-    playerLevel.value     = 1
-    totalExp.value        = 0
-    completedScripts.value = []
-    achievements.value    = {}
-    unlockedTitles.value  = []
-    activeTitles.value    = []
-    lowLoadCompletions.value  = 0
-    silentStreakCount.value    = 0
-    newAchievements.value     = []
-    justLeveledUp.value       = false
-    totalRoundsPlayed.value   = 0
-    totalDropsEarned.value    = 0
-    ownedConsumables.value    = {
-      bandage: 0, incense: 0, sponge: 0, prism: 0,
-      watch: 0, tranquilizer: 0, mask: 0, pendulum: 0,
-      pass13: 0, lullaby: 0, sutureThread: 0
-    }
-    ownedPermanents.value     = []
-    activeSaveData            = null
-    selectedScript.value      = null
-    currentRound.value        = 0
-    displayHistory.value      = []
-    conversationHistory.value = []
-    currentNarrative.value    = ''
-    streamingText.value       = ''
-    innerText.value           = ''
-    neuralLoad.value          = 100
-    maxLoad.value             = 100
-    baseMaxLoad.value         = 100
-    resonance.value           = 0
+    resetLongTermProgressState()
+    resetRunState()
     scriptPreviews.value      = []
     scriptGenError.value      = ''
-    pendingLevelUpChoice.value = null
-    isBackgroundRunning.value  = false
-    pendingNarrative.value     = ''
-    showBreath.value           = false   
-    showSettlementModal.value  = false 
-    clearRetry()
     localStorage.removeItem(PLAYER_SAVE_KEY)
+    await clearSessionSave()
     await goStory(1)
   }
 
@@ -1063,16 +1276,13 @@ negative = 状态更差或有退步
   async function pauseAndReturn() {
     showPauseModal.value = false
 
-    if (isLoading.value) {
-      isBackgroundRunning.value = true
-      isLoading.value = false
+    if (isLoading.value || isBackgroundRunning.value) {
+      abortActiveNarrativeGeneration()
     } else {
-      if (abortController) abortController.abort()
+      await saveProgress()
     }
-
-    await saveProgress()
-    hasSave.value = true
-    phase.value   = 'hub'
+    hasSave.value = hasActiveGame.value || hasSave.value
+    phase.value = 'hub'
   }
 
   function confirmPause() { showPauseModal.value = true }
@@ -1080,26 +1290,11 @@ negative = 状态更差或有退步
   // ========== 结算后返回 Hub ==========
 
   async function returnToHubFromSettlement() {
-    phase.value            = 'hub'
-    showBreath.value       = false
-    showBreathDismissBtn.value = false
-    showSettlementModal.value  = false
-    selectedScript.value   = null
-    scriptContext.value    = ''
-    scriptTracking.value   = ''
-    conversationHistory.value = []
-    displayHistory.value   = []
-    choices.value          = []
-    currentNarrative.value = ''
-    innerText.value        = ''
-    streamingText.value    = ''
-    isDying.value          = false
-    resonance.value        = 0
-    currentRound.value     = 0
-    clearRetry()
-
-    await saveProgress()
-    hasActiveGame.value = false
+    abortSettlementRequests()
+    resetRunState()
+    phase.value = 'hub'
+    gameStage.value = 'dream'
+    await clearSessionSave()
   }
 
   // ========== 游戏核心 ==========
@@ -1663,7 +1858,7 @@ C. （选项）[OPT_TYPE: accompany|action|inquiry]`
           break
         case 'pass13':
           loadDelta = 0
-          displayHistory.value.push({ type: 'system', content: '🎫 第13层通行证：本轮危机已跳过' })
+          displayHistory.value.push({ type: 'system', content: '🎫 深眠通行证：本轮危机已跳过' })
           break
         case 'watch':
   watchUsed.value = true              // ✅ 从 onChoiceSelect 移到这里
@@ -1990,9 +2185,9 @@ C. （选项）[OPT_TYPE: accompany|action|inquiry]`
       setTimeout(() => { showLostItemsModal.value = true }, 1000)
     }
 
-    await saveService.deleteSave(SCRIPT_ID)
-    hasSave.value = false
-    savePlayerData()
+    resetLongTermProgressState()
+    localStorage.removeItem(PLAYER_SAVE_KEY)
+    await clearSessionSave()
 
     phase.value            = 'settlement'
     gameStage.value        = 'dream'
@@ -2064,6 +2259,7 @@ C. （选项）[OPT_TYPE: accompany|action|inquiry]`
 
   checkAllAchievements({ finalResult: result, escapeSuccess: escapeSuccess.value })
   savePlayerData()
+  await clearSessionSave()
 
   phase.value     = 'settlement'
   gameStage.value = 'dream'
@@ -2080,19 +2276,27 @@ C. （选项）[OPT_TYPE: accompany|action|inquiry]`
     clearRetry()
 
     const keyChoices = conversationHistory.value.slice(-3).map(h => h.playerAction).join('；')
+    const breathController = new AbortController()
+    const futureController = new AbortController()
+    settlementControllers = [breathController, futureController]
 
     try {
       const [breathRaw, futureRaw] = await Promise.all([
-        callAISimple(buildBreathPrompt({
+        sendAIText(buildBreathPrompt({
           result:       finalResultName.value,
           keyChoices,
           scriptContext: scriptContext.value
-        })).catch(e => { throw new Error(`呼吸页生成失败：${e.message}`) }),
-        callAISilent(buildPatientFuturePrompt({
+        }), {
+          signal: breathController.signal,
+          onChunk: (text) => { streamingText.value = text }
+        }).catch(e => { throw new Error(`呼吸页生成失败：${e.message}`) }),
+        sendAIText(buildPatientFuturePrompt({
           result:       finalResultName.value,
           scriptContext: scriptContext.value,
           resonance:    resonance.value
-        })).catch(e => { throw new Error(`患者后续生成失败：${e.message}`) })
+        }), {
+          signal: futureController.signal
+        }).catch(e => { throw new Error(`患者后续生成失败：${e.message}`) })
       ])
 
       breathText.value = breathRaw
@@ -2108,13 +2312,22 @@ C. （选项）[OPT_TYPE: accompany|action|inquiry]`
       if (last) last.patientFutureText = patientFuture.value
 
       savePlayerData()
+      settlementControllers = []
       isLoading.value            = false
+      streamingText.value        = ''
       showBreathDismissBtn.value = true
 
     } catch (err) {
-      if (abortController?.signal.aborted) { isLoading.value = false; return }
+      if (breathController.signal.aborted || futureController.signal.aborted) {
+        settlementControllers = []
+        streamingText.value = ''
+        isLoading.value = false
+        return
+      }
       console.error(err)
+      settlementControllers = []
       isLoading.value = false
+      streamingText.value = ''
       if (!breathText.value) {
         breathText.value = '一切都过去了。你从那个深处归来，带着你看见的一切。'
       }
@@ -2128,32 +2341,12 @@ C. （选项）[OPT_TYPE: accompany|action|inquiry]`
       scriptGenController.abort()
       scriptGenController = null
     }
+    resetRunState()
     phase.value            = 'script_select'
     gameStage.value        = 'dream'
-    scriptContext.value    = ''
-    scriptTracking.value   = ''
     scriptPreviews.value   = []
     scriptGenError.value   = ''
-    neuralLoad.value       = 100
-    resonance.value        = 0
-    currentRound.value     = 0
-    isDying.value          = false
-    conversationHistory.value = []
-    displayHistory.value   = []
-    choices.value          = []
-    innerText.value        = ''
-    streamingText.value    = ''
-    escapeAttempts.value   = 0
-    escapeSuccess.value    = false
-    escapeDone.value       = false
-    escapeCanRetry.value   = false
-    echoChoices.value      = []
-    selectedScript.value   = null
-    showBreath.value       = false
-    showBreathDismissBtn.value = false
-    showSettlementModal.value  = false
-    hasActiveGame.value    = false
-    clearRetry()
+    await clearSessionSave()
     generateScripts()
   }
 
@@ -2163,8 +2356,9 @@ C. （选项）[OPT_TYPE: accompany|action|inquiry]`
     showSettlementModal.value  = true
   }
 
-  function confirmDeath() {
-  executeStartNewGame()
+function confirmDeath() {
+  resetRunState()
+  phase.value = 'title'
 }
 
   // ========== 成就 ==========
@@ -2334,7 +2528,7 @@ C. （选项）[OPT_TYPE: accompany|action|inquiry]`
   })
 
   onUnmounted(() => {
-    if (abortController)    abortController.abort()
+    abortActiveNarrativeGeneration()
     if (scriptGenController) scriptGenController.abort()
     store.setGlobalApiBtn(false)
   })

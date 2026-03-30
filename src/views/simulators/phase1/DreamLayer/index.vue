@@ -1,43 +1,108 @@
 <template>
 <div class="dream-layer">
+<Transition name="fade">
+  <div v-if="phase === 'title'" class="screen screen-title" style="background: transparent;" @click="spawnRipple">
+    
+    <div 
+      style="position: absolute; inset: -2%; z-index: 0; background-size: cover; background-position: center; background-repeat: no-repeat; opacity: 0.35;" 
+      :style="{ backgroundImage: `url(${titleBg})` }"
+    ></div>
 
-  <!-- ========== 标题页 ========== -->
-  <Transition name="fade">
-    <div v-if="phase === 'title'" class="screen screen-title">
-      <div class="title-bg"></div>
-      <div class="title-scanlines"></div>
-      <div class="dream-orbs">
-        <div class="orb orb-1"></div>
-        <div class="orb orb-2"></div>
-        <div class="orb orb-3"></div>
-        <div class="orb orb-4"></div>
-        <div class="orb orb-5"></div>
-      </div>
-      <div class="dream-particles">
-        <span v-for="n in 25" :key="n" class="particle" :style="getParticleStyle(n)"></span>
-      </div>
-      <div class="title-content" :class="{ visible: titleReady }">
-        <div class="title-tag">CONSCIOUSNESS RESTORATION SYSTEM</div>
-        <div class="title-main">第十三层梦境</div>
-        <div class="title-sub">潜意识修补模拟器</div>
-        <div class="title-subject">
-          <span class="subject-bracket">[ </span>Subject · 共情与理解<span class="subject-bracket"> ]</span>
-        </div>
-        <div class="title-divider"></div>
-        <div class="title-actions">
-          <button class="title-btn primary" @click="startNewGame">
-            <span class="btn-icon">▶</span>开始新游戏
-          </button>
-          <button class="title-btn secondary" :class="{ disabled: !hasSave }" @click="continueGame">
-            <span class="btn-icon">◈</span>继续游戏
-          </button>
-        </div>
-        <div class="title-footer">
-          <button class="back-link" @click="$router.back()">‹ 返回演奏厅</button>
-        </div>
+    <div style="position: absolute; inset: 0; z-index: 0; pointer-events: none; 
+                background: radial-gradient(ellipse at center, rgba(247, 244, 235, 0) 15%, rgba(247, 244, 235, 0.95) 85%);">
+    </div>
+
+    <div style="position: absolute; inset: 0; z-index: 5; pointer-events: none; overflow: hidden;">
+      <div v-for="r in ripples" :key="r.id" class="ripple-container" :style="{ left: r.x + 'px', top: r.y + 'px' }">
+        <div class="ring ring-1"></div>
+        <div class="ring ring-2"></div>
+        <div class="ring ring-3"></div>
       </div>
     </div>
-  </Transition>
+
+    <div class="title-scanlines"></div>
+    <div class="dream-orbs">
+      <div class="orb orb-1"></div>
+      <div class="orb orb-2"></div>
+      <div class="orb orb-3"></div>
+      <div class="orb orb-4"></div>
+      <div class="orb orb-5"></div>
+    </div>
+    <div class="dream-particles">
+      <span v-for="n in 25" :key="n" class="particle" :style="getParticleStyle(n)"></span>
+    </div>
+    <div class="hacker-streams">
+      <div v-for="n in 18" :key="'stream-'+n" class="data-stream" :style="getStreamStyle(n)">
+        {{ streamTexts[n-1] }}
+      </div>
+    </div>
+
+    <div class="title-content" :class="{ visible: titleReady }">
+  
+  <div class="title-bottom-mask"></div>
+
+  <!-- 顶部系统水印 (绝对居中) -->
+  <div class="title-watermark">
+    SYSTEM.ONLINE // VER 13.0
+  </div>
+
+  <!-- 上半部分：主视觉标题 + 档案对象 -->
+  <div class="title-hero-section">
+    
+    <!-- 大标题 -->
+    <div class="main-title-wrapper">
+      <h1 class="main-title">调率者：梦域</h1>
+      <div class="title-glitch-shadow" aria-hidden="true">调率者：梦域</div>
+    </div>
+    <div class="hero-subtitle">潜意识修补模拟器</div>
+
+       <!-- 目标档案标 (绿框修改) -->
+    <div class="title-subject">
+      <span class="subject-bracket">[ </span>Subject · 理解<span class="subject-bracket"> ]</span>
+    </div>
+
+
+  </div>
+
+  <!-- 下半部分：操作交互区 -->
+  <div class="title-action-section">
+    <!-- 交互菜单 -->
+    <div class="cinematic-menu">
+      
+      <div class="c-menu-item" @click.stop="startNewGame">
+        <div class="c-num">01</div>
+        <div class="c-text-group">
+          <div class="c-main-text">意识接入</div>
+          <div class="c-sub-text">INITIATE CONNECTION</div>
+        </div>
+        <div class="c-line"></div>
+      </div>
+
+      <div class="c-menu-item" :class="{ disabled: !hasSave }" @click.stop="continueGame">
+        <div class="c-num">02</div>
+        <div class="c-text-group">
+          <div class="c-main-text">恢复流转</div>
+          <div class="c-sub-text">RESUME SEQUENCE</div>
+        </div>
+        <div class="c-line"></div>
+      </div>
+
+      <div class="c-menu-item c-back" @click.stop="$router.back()">
+        <div class="c-num">ESC</div>
+        <div class="c-text-group">
+          <div class="c-main-text">断开连接</div>
+        </div>
+        <div class="c-line"></div>
+      </div>
+
+    </div>
+  </div>
+
+</div>
+
+
+  </div>
+</Transition>
 
   <!-- ========== 故事章节 1-4 ========== -->
   <Transition name="story-fade">
@@ -112,7 +177,6 @@
           <p class="story-text">他们看见的东西震惊了所有人——意识的坍缩。陷入永眠的患者的意识是完整的，是活跃的，是有结构的。</p>
           <p class="story-text">它在内部建造了一个封闭的世界，一个完全由这个人的记忆、情绪和创伤碎片构成的梦境空间。</p>
           <p class="story-quote">"坍缩的原因，来自患者当前最大的压力。"</p>
-          <p class="story-text">他们将可观测到的最深层次定为——<strong>第十三层</strong>。</p>
           <p class="story-text">可行的治疗方法是进入他人的意识，修补意识空间，帮助患者从中走出来，这样的人被称为<strong>调律者</strong>。</p>
         </div>
         <div class="story-actions">
@@ -913,7 +977,7 @@
           <!-- 离调结局 -->
           <template v-if="finalResult === 'lost'">
             <div style="font-size: 0.82rem; color: #8a5040; line-height: 2.2; text-align: center; letter-spacing: 0.08em;">
-              意识永远留在了第十三层深处。<br>
+              意识永远留在了梦境深处。<br>
               新的调律者将继承这份使命。
             </div>
             <div class="settle-divider"></div>
@@ -1214,6 +1278,7 @@ import {
   diffLevels
 } from './composables/useGameLogic'
 import { parseScriptContext } from './prompts/promptBuilder'
+import titleBg from '@/assets/images/phases1/DreamLayer/title_bg.jpg'
 
 const fileInputRef = ref(null)
 const narrativeEl  = ref(null)
@@ -1326,7 +1391,57 @@ onMounted(() => {
 })
 
 
+// ========== 标题页水波纹特效逻辑 ==========
+const ripples = ref([])
+let rippleId = 0
 
+function spawnRipple(e) {
+  const x = e.clientX || (e.touches && e.touches[0].clientX)
+  const y = e.clientY || (e.touches && e.touches[0].clientY)
+  
+  if (x === undefined || y === undefined) return
+
+  const id = rippleId++
+  ripples.value.push({ id, x, y })
+
+  // 【修改这里】：把时间从 1200 改成 2500，等三层波纹完全播完再清理
+  setTimeout(() => {
+    ripples.value = ripples.value.filter(r => r.id !== id)
+  }, 2500)
+}
+
+
+// ========== 潜意识数据流星逻辑 ==========
+const streamChars = '0123456789ABCDEFGHIJKLMNOPQRSTUVWXYZｱｲｳｴｵｶｷｸｹｺｻｼｽｾｿﾀﾁﾂﾃﾄﾅﾆﾇﾈﾉﾊﾋﾌﾍﾎﾏﾐﾑﾒﾓﾔﾕﾖﾗﾘﾙﾚﾛﾜﾝ';
+const streamTexts = Array.from({ length: 18 }, () => {
+  let str = '';
+  // 每条流星包含 15 到 30 个随机字符
+  const len = 15 + Math.floor(Math.random() * 15);
+  for(let i = 0; i < len; i++) {
+    str += streamChars[Math.floor(Math.random() * streamChars.length)];
+  }
+  return str;
+});
+
+function getStreamStyle(n) {
+  // 随机横向位置
+  const left = (n * 5.5) + (Math.random() * 4) + '%';
+  // 错开下落时间
+  const delay = (Math.random() * 8) + 's';
+  // 随机下落速度 (下落得比较缓慢，符合梦境感)
+  const duration = (6 + Math.random() * 5) + 's';
+  // 随机透明度和大小，制造远近景的空间感
+  const opacity = 0.2 + (Math.random() * 0.4);
+  const fontSize = 0.6 + (Math.random() * 0.5) + 'rem';
+  
+  return {
+    left,
+    animationDelay: delay,
+    animationDuration: duration,
+    opacity,
+    fontSize
+  };
+}
 
 
 
@@ -1493,18 +1608,13 @@ function getParticleStyle(n) {
 
 <style scoped>
 /* ============================================================
-   第十三层梦境 · 完整样式表
-============================================================ */
-
-/* ============================================================
-   01. CSS 变量系统 (重塑立体光影)
+   01. 基础变量与全局设置 (重塑立体光影)
 ============================================================ */
 .dream-layer {
   --bg-paper:       #F7F4EB;
-  /* 基础面板：带微量渐变的半透明白 */
   --bg-panel:       linear-gradient(145deg, rgba(255, 255, 255, 0.9) 0%, rgba(249, 246, 240, 0.6) 100%);
   --bg-panel-hover: linear-gradient(145deg, rgba(255, 255, 255, 1) 0%, rgba(255, 252, 245, 0.8) 100%);
-  --border-brass:   rgba(212, 196, 168, 0.6); /* 变柔和的边框 */
+  --border-brass:   rgba(212, 196, 168, 0.6);
   --border-gold:    #B89947;
   --text-main:      #3C352D;
   --text-muted:     #8C7F70;
@@ -1512,10 +1622,9 @@ function getParticleStyle(n) {
   --alert-red:      #B54A4A;
   --safe-green:     #6B8E4A;
   
-  /* 核心立体感光影：外层柔和阴影 + 内层顶部高光(模拟物理厚度) */
   --shadow-card:    0 8px 24px rgba(60, 53, 45, 0.04), 0 2px 8px rgba(60, 53, 45, 0.02), inset 0 1px 1px rgba(255, 255, 255, 0.9);
   --shadow-hover:   0 12px 32px rgba(184, 153, 71, 0.12), 0 4px 12px rgba(184, 153, 71, 0.08), inset 0 1px 1px rgba(255, 255, 255, 1);
-  --shadow-inset:   inset 0 2px 6px rgba(60, 53, 45, 0.05), inset 0 -1px 1px rgba(255, 255, 255, 0.6); /* 凹陷感阴影 */
+  --shadow-inset:   inset 0 2px 6px rgba(60, 53, 45, 0.05), inset 0 -1px 1px rgba(255, 255, 255, 0.6);
 
   font-family: 'KaiTi', 'STKaiti', 'Noto Serif SC', serif;
   width: 100vw;
@@ -1526,6 +1635,7 @@ function getParticleStyle(n) {
   position: relative;
 }
 
+/* 全局噪点滤镜 */
 .dream-layer::before {
   content: '';
   position: fixed;
@@ -1544,7 +1654,7 @@ function getParticleStyle(n) {
 }
 
 /* ============================================================
-   02. 页面切换动画 (更加深邃、丝滑)
+   02. 页面切换动画 (深邃丝滑)
 ============================================================ */
 .fade-enter-active, .fade-leave-active {
   transition: opacity 0.6s cubic-bezier(0.25, 0.8, 0.25, 1),
@@ -1564,143 +1674,76 @@ function getParticleStyle(n) {
 .story-fade-enter-from { opacity: 0; transform: translateX(30px); }
 .story-fade-leave-to   { opacity: 0; transform: translateX(-20px); }
 
-
 /* ============================================================
-   03. 通用组件
+   03. 通用组件 (各页面复用)
 ============================================================ */
 .back-btn {
-  padding: 0.45rem 1rem;
-  background: transparent;
-  border: 1px solid var(--border-brass);
-  border-radius: 2px;
-  color: var(--text-muted);
-  font-family: inherit;
-  font-size: 0.78rem;
-  letter-spacing: 0.1em;
-  cursor: pointer;
-  transition: all 0.3s;
-  white-space: nowrap;
+  padding: 0.45rem 1rem; background: transparent;
+  border: 1px solid var(--border-brass); border-radius: 2px;
+  color: var(--text-muted); font-family: inherit; font-size: 0.78rem; letter-spacing: 0.1em;
+  cursor: pointer; transition: all 0.3s; white-space: nowrap;
 }
 .back-btn:hover { border-color: var(--border-gold); color: var(--border-gold); background: rgba(184,153,71,0.05); }
 
 .currency-display {
   display: flex; align-items: center; gap: 0.4rem;
-  background: rgba(255,255,255,0.5);
-  border: 1px solid var(--border-brass);
-  padding: 0.3rem 0.8rem;
-  border-radius: 12px;
+  background: rgba(255,255,255,0.5); border: 1px solid var(--border-brass);
+  padding: 0.3rem 0.8rem; border-radius: 12px;
 }
 .currency-icon  { font-size: 0.7rem; }
 .currency-value { font-size: 0.85rem; color: var(--tech-teal); font-family: 'Courier New', serif; font-weight: bold; }
 
-/* 修改 btn-primary 增加立体和按下效果 */
 .btn-primary {
-  position: relative;
-  padding: 0.7rem 1.8rem;
+  position: relative; padding: 0.7rem 1.8rem;
   background: linear-gradient(180deg, #FFFFFF, #F0EBE0);
-  border: 1px solid var(--border-gold);
-  border-radius: 6px; /* 稍微加大圆角 */
-  color: var(--border-gold);
-  font-family: inherit;
-  font-size: 0.82rem;
-  font-weight: bold;
-  letter-spacing: 0.15em;
-  cursor: pointer;
-  /* 弹簧过渡动画 */
+  border: 1px solid var(--border-gold); border-radius: 6px;
+  color: var(--border-gold); font-family: inherit; font-size: 0.82rem;
+  font-weight: bold; letter-spacing: 0.15em; cursor: pointer;
   transition: transform 0.2s cubic-bezier(0.34,1.56,0.64,1), box-shadow 0.2s ease, background 0.2s;
-  white-space: nowrap;
-  box-shadow: 0 4px 12px rgba(184,153,71,0.15), inset 0 2px 0 rgba(255,255,255,1);
+  white-space: nowrap; box-shadow: 0 4px 12px rgba(184,153,71,0.15), inset 0 2px 0 rgba(255,255,255,1);
 }
 .btn-primary:hover  { 
-  background: linear-gradient(180deg,#FFF,#FDFBF5); 
-  border-color:#9A7D35; color:#9A7D35; 
-  transform:translateY(-2px); 
-  box-shadow: 0 6px 16px rgba(184,153,71,0.25), inset 0 2px 0 rgba(255,255,255,1); 
+  background: linear-gradient(180deg,#FFF,#FDFBF5); border-color:#9A7D35; color:#9A7D35; 
+  transform:translateY(-2px); box-shadow: 0 6px 16px rgba(184,153,71,0.25), inset 0 2px 0 rgba(255,255,255,1); 
 }
-/* 物理按压反馈 */
 .btn-primary:active { 
-  transform:translateY(1px) scale(0.98); 
-  box-shadow: 0 2px 4px rgba(184,153,71,0.1), inset 0 2px 4px rgba(184,153,71,0.1); 
+  transform:translateY(1px) scale(0.98); box-shadow: 0 2px 4px rgba(184,153,71,0.1), inset 0 2px 4px rgba(184,153,71,0.1); 
 }
 .btn-primary:disabled { opacity: 0.4; cursor: not-allowed; transform: none; box-shadow: none; }
 
-/* 二级按钮同理 */
 .btn-secondary {
-  padding: 0.7rem 1.8rem;
-  background: rgba(255,255,255,0.4);
-  backdrop-filter: blur(4px);
-  border: 1px solid var(--border-brass);
-  border-radius: 6px;
-  color: var(--text-muted);
-  font-family: inherit;
-  font-size: 0.82rem;
-  letter-spacing: 0.1em;
-  cursor: pointer;
-  transition: all 0.2s cubic-bezier(0.34,1.56,0.64,1);
-  white-space: nowrap;
+  padding: 0.7rem 1.8rem; background: rgba(255,255,255,0.4);
+  backdrop-filter: blur(4px); border: 1px solid var(--border-brass); border-radius: 6px;
+  color: var(--text-muted); font-family: inherit; font-size: 0.82rem; letter-spacing: 0.1em;
+  cursor: pointer; transition: all 0.2s cubic-bezier(0.34,1.56,0.64,1); white-space: nowrap;
 }
 .btn-secondary:hover  { 
   border-color:var(--border-gold); color:var(--text-main); background:#FFF; 
   transform:translateY(-2px); box-shadow: 0 4px 12px rgba(60,53,45,0.08); 
 }
 .btn-secondary:active { 
-  transform:translateY(1px) scale(0.98); 
-  box-shadow: inset 0 2px 4px rgba(60,53,45,0.05); 
+  transform:translateY(1px) scale(0.98); box-shadow: inset 0 2px 4px rgba(60,53,45,0.05); 
 }
-
 
 .screen-nav { width: 100%; max-width: 500px; padding: 1.2rem 1.5rem 0; flex-shrink: 0; }
 
 .retry-btn-large {
-  padding: 0.55rem 2rem;
-  background: transparent;
-  border: 1px solid var(--border-gold);
-  border-radius: 3px;
-  color: var(--border-gold);
-  font-family: inherit;
-  font-size: 0.88rem;
-  font-weight: bold;
-  letter-spacing: 0.2em;
-  cursor: pointer;
-  transition: all 0.25s;
+  padding: 0.55rem 2rem; background: transparent; border: 1px solid var(--border-gold);
+  border-radius: 3px; color: var(--border-gold); font-family: inherit;
+  font-size: 0.88rem; font-weight: bold; letter-spacing: 0.2em; cursor: pointer; transition: all 0.25s;
 }
 .retry-btn-large:hover   { background: rgba(184,153,71,0.08); transform: translateY(-1px); }
 .retry-btn-large:active  { transform: translateY(0); }
 .retry-btn-large:disabled { opacity: 0.4; cursor: not-allowed; }
 
-.retry-area {
-  display: flex;
-  flex-direction: column;
-  align-items: center;
-  gap: 0.7rem;
-  padding: 0.8rem 0;
-}
-.retry-hint {
-  font-size: 0.65rem;
-  color: var(--text-muted);
-  letter-spacing: 0.2em;
-  font-family: 'Courier New', monospace;
-}
+.retry-area { display: flex; flex-direction: column; align-items: center; gap: 0.7rem; padding: 0.8rem 0; }
+.retry-hint { font-size: 0.65rem; color: var(--text-muted); letter-spacing: 0.2em; font-family: 'Courier New', monospace; }
 
-.scripts-error-area {
-  display: flex;
-  flex-direction: column;
-  align-items: center;
-  justify-content: center;
-  gap: 1.2rem;
-  padding: 3rem 2rem;
-  flex: 1;
-}
-.scripts-error-text {
-  font-size: 0.8rem;
-  color: var(--alert-red);
-  letter-spacing: 0.1em;
-  text-align: center;
-  line-height: 1.8;
-}
+.scripts-error-area { display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 1.2rem; padding: 3rem 2rem; flex: 1; }
+.scripts-error-text { font-size: 0.8rem; color: var(--alert-red); letter-spacing: 0.1em; text-align: center; line-height: 1.8; }
 
 /* ============================================================
-   04. 标题页
+   04. 梦境标题页：背景与特效层
 ============================================================ */
 .screen-title {
   align-items: center;
@@ -1709,43 +1752,16 @@ function getParticleStyle(n) {
   overflow: hidden;
 }
 
-.title-bg {
-  position: absolute; inset: 0; z-index: 0;
-  background-image:
-    linear-gradient(rgba(184,153,71,0.1) 1px, transparent 1px),
-    linear-gradient(90deg, rgba(184,153,71,0.1) 1px, transparent 1px);
-  background-size: 30px 30px;
-  background-position: center center;
-}
-.title-bg::after {
-  content: '';
-  position: absolute; top: 40%; left: 50%;
-  transform: translate(-50%,-50%);
-  width: 90vw; height: 90vw;
-  max-width: 600px; max-height: 600px;
-  border-radius: 50%;
-  border: 1px dashed rgba(74,142,139,0.5);
-  animation: dialSpin 40s linear infinite;
-}
-.title-bg::before {
-  content: '';
-  position: absolute; top: 40%; left: 50%;
-  transform: translate(-50%,-50%);
-  width: 65vw; height: 65vw;
-  max-width: 420px; max-height: 420px;
-  border-radius: 50%;
-  border: 2px dotted rgba(184,153,71,0.5);
-  animation: dialSpinReverse 30s linear infinite;
-}
-@keyframes dialSpin        { 0%{transform:translate(-50%,-50%) rotate(0deg)}   100%{transform:translate(-50%,-50%) rotate(360deg)} }
-@keyframes dialSpinReverse { 0%{transform:translate(-50%,-50%) rotate(360deg)} 100%{transform:translate(-50%,-50%) rotate(0deg)} }
-
 .title-scanlines {
   position: absolute; inset: -50% 0; z-index: 1; pointer-events: none;
-  background: linear-gradient(180deg, transparent 0%, rgba(74,142,139,0.03) 45%, rgba(74,142,139,0.08) 50%, rgba(74,142,139,0.03) 55%, transparent 100%);
+  background: linear-gradient(180deg, transparent 0%, rgba(74,142,139,0.03) 45%, 
+              rgba(74,142,139,0.08) 50%, rgba(74,142,139,0.03) 55%, transparent 100%);
   animation: verticalScan 8s cubic-bezier(0.4,0,0.6,1) infinite alternate;
 }
-@keyframes verticalScan { 0%{transform:translateY(-30%)} 100%{transform:translateY(30%)} }
+@keyframes verticalScan { 
+  0%   { transform: translateY(-30%); } 
+  100% { transform: translateY(30%); } 
+}
 
 .dream-orbs { position: absolute; inset: 0; z-index: 1; pointer-events: none; overflow: hidden; }
 .orb { position: absolute; border-radius: 50%; filter: blur(60px); mix-blend-mode: multiply; opacity: 0.3; }
@@ -1763,44 +1779,258 @@ function getParticleStyle(n) {
 
 .dream-particles { position:absolute;inset:0;z-index:1;pointer-events:none;overflow:hidden; }
 .particle { position:absolute;bottom:-4px;border-radius:50%;background:var(--tech-teal);opacity:0.4;animation:particleFloat linear infinite; }
-@keyframes particleFloat { 0%{transform:translateY(0)scale(1);opacity:0} 10%{opacity:0.6} 80%{opacity:0.3} 100%{transform:translateY(-100vh)scale(0.5);opacity:0} }
+@keyframes particleFloat { 
+  0%   { transform:translateY(0)scale(1);opacity:0; } 
+  10%  { opacity:0.6; } 
+  80%  { opacity:0.3; } 
+  100% { transform:translateY(-100vh)scale(0.5);opacity:0; } 
+}
 
+.ripple-container {
+  position: absolute; transform: translate(-50%, -50%); pointer-events: none;
+}
+.ring {
+  position: absolute; top: 50%; left: 50%; transform: translate(-50%, -50%); 
+  border-radius: 50%; background: transparent; box-sizing: border-box;
+  border: 1px solid rgba(255, 255, 255, 0.8);
+  box-shadow: 0 2px 6px rgba(60, 53, 45, 0.15), inset 0 2px 4px rgba(255, 255, 255, 0.5), 
+              0 0 10px rgba(255, 255, 255, 0.3);
+  opacity: 0;
+  animation: clearRipple 2s cubic-bezier(0.15, 0.7, 0.3, 1) forwards;
+}
+.ring-1 { animation-delay: 0s; }
+.ring-2 { animation-delay: 0.18s; }
+.ring-3 { animation-delay: 0.36s; }
+@keyframes clearRipple {
+  0%   { width: 0; height: 0; border-width: 4px; opacity: 1; }
+  100% { width: 400px; height: 400px; border-width: 0px; opacity: 0; }
+}
+
+.hacker-streams {
+  position: absolute; inset: 0; overflow: hidden; z-index: 2; pointer-events: none;
+}
+.data-stream {
+  position: absolute; top: -50%; width: 1.5em; color: var(--tech-teal);
+  font-family: 'Courier New', monospace; font-weight: bold;
+  writing-mode: vertical-rl; text-orientation: upright;
+  text-shadow: 0 0 8px rgba(74, 142, 139, 0.6), 0 0 2px rgba(184, 153, 71, 0.3);
+  -webkit-mask-image: linear-gradient(to top, black 5%, rgba(0,0,0,0.4) 30%, transparent 95%);
+  mask-image: linear-gradient(to top, black 5%, rgba(0,0,0,0.4) 30%, transparent 95%);
+  animation: dataFall linear infinite;
+}
+@keyframes dataFall {
+  0%   { transform: translateY(-20%); }
+  100% { transform: translateY(150vh); }
+}
+
+/* ============================================================
+   05. 梦境标题页：UI 层 (电影级排版 - 细节修正版)
+============================================================ */
 .title-content {
-  position: relative; z-index: 10;
-  display: flex; flex-direction: column; align-items: center; gap: 0.8rem;
-  opacity: 0; transform: translateY(16px);
-  transition: opacity 1.2s ease, transform 1.2s ease;
-  width: 100%; max-width: 320px; padding: 0 1.5rem;
+  position: absolute; 
+  inset: 0; 
+  display: flex; 
+  flex-direction: column;
+  justify-content: space-between; 
+  padding: 20vh 10vw 26vh 10vw; /* 调整上下留白 */
+  z-index: 10;
+  opacity: 0; 
+  transition: opacity 1.5s ease;
+  pointer-events: none;
 }
-.title-content.visible { opacity: 1; transform: translateY(0); }
-
-.title-tag  { font-size:0.52rem;color:var(--border-gold);letter-spacing:0.3em;font-family:'Courier New',serif; }
-.title-main { font-size:2rem;font-weight:bold;letter-spacing:0.3em;color:var(--text-main);text-shadow:0 2px 10px rgba(184,153,71,0.2);animation:titleGlow 5s ease-in-out infinite alternate; }
-@keyframes titleGlow {
-  0%   { text-shadow:0 2px 8px rgba(184,153,71,0.15);  letter-spacing:0.28em; }
-  100% { text-shadow:0 2px 16px rgba(184,153,71,0.35),0 0 30px rgba(184,153,71,0.1); letter-spacing:0.32em; }
+.title-content.visible { 
+  opacity: 1; pointer-events: auto; 
 }
-.title-sub     { font-size:0.78rem;color:var(--text-muted);letter-spacing:0.25em;margin-top:-0.3rem; }
-.title-subject { font-size:0.68rem;color:var(--tech-teal);letter-spacing:0.15em;font-family:'Courier New',serif;opacity:0.8; }
-.subject-bracket { color:var(--border-brass); }
-.title-divider { width:60px;height:1px;background:linear-gradient(90deg,transparent,var(--border-gold),transparent);margin:0.2rem 0;opacity:0.6; }
-.title-actions { display:flex;flex-direction:column;gap:0.6rem;width:100%; }
 
-.title-btn {
-  display:flex;align-items:center;justify-content:center;gap:0.6rem;
-  padding:0.75rem 1.2rem;border-radius:3px;font-family:inherit;font-size:0.85rem;
-  letter-spacing:0.15em;cursor:pointer;transition:all 0.3s cubic-bezier(0.34,1.56,0.64,1);width:100%;
+/* 底部防干扰渐变层 */
+.title-bottom-mask {
+  position: absolute;
+  left: 0; right: 0; bottom: 0; height: 50vh;
+  background: linear-gradient(to top, rgba(245, 242, 235, 0.95) 0%, rgba(245, 242, 235, 0.4) 60%, transparent 100%);
+  z-index: -1;
+  pointer-events: none;
 }
-.title-btn.primary  { background:linear-gradient(180deg,rgba(255,255,255,0.9),rgba(240,235,224,0.9));border:1px solid var(--border-gold);color:var(--border-gold);box-shadow:var(--glow-brass);backdrop-filter:blur(4px); }
-.title-btn.primary:hover { background:#FFF;border-color:#9A7D35;color:#9A7D35;transform:translateY(-2px); }
-.title-btn.secondary { background:transparent;border:1px dashed var(--border-brass);color:var(--text-muted);backdrop-filter:blur(4px); }
-.title-btn.secondary:hover:not(.disabled) { border-style:solid;border-color:var(--border-gold);color:var(--border-gold);background:rgba(255,255,255,0.6);transform:translateY(-1px); }
-.title-btn.secondary.disabled { opacity:0.3;cursor:not-allowed; }
-.btn-icon { font-size:0.7rem;opacity:0.8; }
 
-.title-footer { margin-top:0.2rem;text-align:center;position:relative;z-index:10; }
-.back-link { background:transparent;border:none;color:var(--text-muted);font-family:inherit;font-size:0.65rem;letter-spacing:0.15em;cursor:pointer;transition:color 0.3s;padding:0.3rem; }
-.back-link:hover { color:var(--border-gold); }
+/* --- 顶部水印 (红色框对应) --- */
+.title-watermark {
+  position: absolute;
+  top: 6vh;
+  left: 50%;
+  transform: translateX(-50%);
+  font-family: 'Courier New', monospace;
+  font-size: 0.6rem;
+  color: #5C5045; /* 更深的灰褐色 */
+  letter-spacing: 0.5em;
+  opacity: 0.3; /* 水印半透明质地 */
+  white-space: nowrap;
+}
+
+/* --- 上半部分：大标题视觉区 --- */
+.title-hero-section {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+}
+
+/* 标题组 (绿色框对应) */
+.main-title-wrapper {
+  position: relative;
+  margin-bottom: 0.4rem;
+}
+.main-title {
+  font-family: 'Noto Serif SC', 'STKaiti', serif;
+  font-size: 2.6rem; /* 从 3.8rem 大幅缩小 */
+  font-weight: 300;
+  letter-spacing: 0.1em;
+  color: #2A251E; 
+  margin: 0;
+  line-height: 1.2;
+  white-space: nowrap; /* 强制不换行 */
+  text-shadow: 2px 4px 15px rgba(255,255,255,0.8);
+}
+.title-glitch-shadow {
+  position: absolute;
+  top: 0; left: 2px;
+  font-family: 'Noto Serif SC', 'STKaiti', serif;
+  font-size: 2.6rem; /* 必须和上方字号保持一致 */
+  font-weight: 300;
+  letter-spacing: 0.1em;
+  color: rgba(74, 142, 139, 0.15); 
+  z-index: -1;
+  pointer-events: none;
+  filter: blur(1px);
+  white-space: nowrap;
+}
+
+.hero-subtitle {
+  font-size: 1.2rem;
+  color: #6C6055;
+  letter-spacing: 0.5em;
+  padding-left: 0.2em;
+}
+
+/* --- 目标档案 (绿框对应新样式) --- */
+.title-subject { 
+  margin-top: 1.8rem; 
+  font-size: 0.8rem; 
+  color: #3C352D; 
+  letter-spacing: 0.2em; 
+  font-family: 'Courier New', monospace; 
+  font-weight: bold; 
+}
+.subject-bracket { 
+  color: var(--tech-teal); /* 青色括号 */
+  margin: 0 4px; 
+}
+
+/* --- 下半部分：操作交互区 --- */
+.title-action-section {
+  display: flex;
+  flex-direction: column;
+  gap: 2.5rem;
+}
+
+/* 菜单列表排版 */
+.cinematic-menu {
+  display: flex;
+  flex-direction: column;
+  gap: 1.2rem;
+  width: 100%;
+  max-width: 320px;
+}
+
+/* 无边框的条目设计 */
+.c-menu-item {
+  display: flex;
+  align-items: center;
+  gap: 1.2rem;
+  cursor: pointer;
+  position: relative;
+  padding: 0.5rem 0;
+}
+
+.c-num {
+  font-family: 'Courier New', monospace;
+  font-size: 1.1rem;
+  color: #b79e47;
+  font-style: italic;
+  transition: all 0.4s ease;
+}
+
+.c-text-group {
+  display: flex;
+  flex-direction: column;
+  gap: 0.2rem;
+  z-index: 2;
+  transition: transform 0.4s cubic-bezier(0.2, 0.8, 0.2, 1);
+}
+.c-main-text {
+  font-family: inherit;
+  font-size: 1rem;
+  font-weight: bold;
+  letter-spacing: 0.2em;
+  color: #3C352D;
+  transition: color 0.4s ease;
+}
+.c-sub-text {
+  font-family: 'Courier New', monospace;
+  font-size: 0.5rem;
+  color: #8C7F70;
+  letter-spacing: 0.15em;
+  opacity: 0.6;
+  transition: opacity 0.4s ease;
+}
+
+/* 贯穿的延展线 */
+.c-line {
+  position: absolute;
+  bottom: 0; left: 3rem; right: 0;
+  height: 1px;
+  background: var(--border-brass);
+  opacity: 0.3;
+  transform-origin: left;
+  transform: scaleX(0);
+  transition: transform 0.6s cubic-bezier(0.2, 0.8, 0.2, 1), opacity 0.4s ease;
+}
+
+/* --- 悬浮与激活交互 --- */
+.c-menu-item:hover .c-num {
+  color: var(--border-gold);
+  transform: scale(1.1);
+}
+.c-menu-item:hover .c-text-group {
+  transform: translateX(8px);
+}
+.c-menu-item:hover .c-main-text {
+  color: var(--border-gold);
+}
+.c-menu-item:hover .c-sub-text {
+  opacity: 1; color: var(--border-gold);
+}
+.c-menu-item:hover .c-line {
+  transform: scaleX(1);
+  opacity: 0.8;
+  background: linear-gradient(90deg, var(--border-gold), transparent);
+}
+
+/* 禁用状态 */
+.c-menu-item.disabled { pointer-events: none; }
+.c-menu-item.disabled .c-main-text, 
+.c-menu-item.disabled .c-num, 
+.c-menu-item.disabled .c-sub-text { opacity: 0.25; }
+
+/* 退出按钮特化 */
+.c-menu-item.c-back .c-num { 
+  font-size: 0.75rem; 
+  color: #b79e47; /* 同步浅金色 */
+  opacity: 0.8; /* 稍微降低一点透明度以示区分 */
+}
+.c-menu-item.c-back .c-main-text { font-size: 0.8rem; font-weight: normal; color: #6C6055; }
+.c-menu-item.c-back:hover .c-main-text, .c-menu-item.c-back:hover .c-num { color: var(--tech-teal); }
+.c-menu-item.c-back:hover .c-line { background: linear-gradient(90deg, var(--tech-teal), transparent); }
+
+
+
 
 /* ============================================================
    05. 故事章节页

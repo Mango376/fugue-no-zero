@@ -231,7 +231,7 @@
 
           <div class="intro-body">
             <p class="intro-quote">
-              "欢迎触碰这曲名为文明的乐谱。"
+              "欢迎触碰这曲名为理解的乐谱。"
             </p>
             <div class="intro-divider"></div>
             <p class="intro-text">
@@ -293,22 +293,31 @@
         <p class="phases-sub">四个声部相位 · 十四个剧本</p>
       </div>
 
-      <!-- 四张封面 -->
-      <div class="score-table">
+     <!-- 替换原有的 score-table 区域 -->
+<div class="score-table">
   <div
-  v-for="(phase, index) in phasesWithState"
-  :key="phase.id"
-  class="score-paper"
-  :class="`paper-${index}`"
-  :style="{ backgroundImage: `url(${phaseBgs[index]})` }"
-  @click="openPhaseModal(phase)"
->
-  <div class="paper-overlay"></div>
-  <div class="paper-phase-num">Phase · {{ phase.roman }}</div>
-  <div class="paper-title">{{ phase.label.split('·').pop().trim() }}</div>
+    v-for="(phase, index) in phasesWithState"
+    :key="phase.id"
+    class="score-paper"
+    :class="[
+      `paper-${index}`,
+      { 'paper-locked': phase.id === 'phase3' || phase.id === 'phase4' }
+    ]"
+    :style="{ backgroundImage: `url(${phaseBgs[index]})` }"
+    @click="openPhaseModal(phase)"
+  >
+    <div class="paper-overlay"></div>
+
+    <!-- 锁定标记（仅三四章显示） -->
+    <div v-if="phase.id === 'phase3' || phase.id === 'phase4'" class="paper-lock-badge">
+      <span class="lock-icon">🔒</span>
+    </div>
+
+    <div class="paper-phase-num">Phase · {{ phase.roman }}</div>
+    <div class="paper-title">{{ phase.label.split('·').pop().trim() }}</div>
+  </div>
 </div>
 
-</div>
 
 
     </div>
@@ -360,6 +369,37 @@
   </div>
 </Transition>
 
+<!-- 暂未解锁弹窗（第三、四章） -->
+<Transition name="modal-fade">
+  <div v-if="showLockedPhaseModal" class="modal-overlay" @click.self="closeLockedPhaseModal">
+    <div class="modal-box locked-modal-box">
+
+      <div class="modal-deco-top">
+        <span class="orn-line"></span>
+        <span class="orn-diamond">◆</span>
+        <span class="orn-line"></span>
+      </div>
+
+      <div class="locked-modal-icon">⊘</div>
+      <div class="modal-title">声部封印中</div>
+      <div class="modal-content">
+        尚未达成解锁此声部的条件。<br/>
+        <span class="highlight">请先完成前序声部的体验。</span>
+      </div>
+
+      <button class="modal-btn" @click="closeLockedPhaseModal">
+        我知道了
+      </button>
+
+      <div class="modal-deco-bottom">
+        <span class="orn-line"></span>
+        <span class="orn-diamond">◆</span>
+        <span class="orn-line"></span>
+      </div>
+
+    </div>
+  </div>
+</Transition>
 
 
     <!-- ========================
@@ -526,6 +566,14 @@ const detailReady = ref(false)
 const showBlackMask = ref(false)
 const showCopyright = ref(false)
 
+
+
+
+const showLockedPhaseModal = ref(false)
+
+
+
+
 const currentPhase = ref(null)
 const activeSim = ref(null)
 const showPhaseModal   = ref(false)
@@ -542,8 +590,17 @@ const currentModalBg = computed(() => {
 })
 
 function openPhaseModal(phase) {
+  // 第三章和第四章：整体锁定，弹出提示
+  if (phase.id === 'phase3' || phase.id === 'phase4') {
+    showLockedPhaseModal.value = true
+    return
+  }
   activeModalPhase.value = phase
   showPhaseModal.value = true
+}
+
+function closeLockedPhaseModal() {
+  showLockedPhaseModal.value = false
 }
 function closePhaseModal() {
   showPhaseModal.value = false
@@ -734,20 +791,32 @@ function toggleSim(id) {
   activeSim.value = activeSim.value === id ? null : id
 }
 
-function startGame(sim) {
-  // 跳转前记住当前在哪个phase
+// 替换原有的 startGame
+async function startGame(sim) {
   sessionStorage.setItem('hubReturn', JSON.stringify({
     phaseId: currentPhase.value?.id
   }))
+
+  // 触发过渡动画
+  store.startTransition()
+
+  // 等黑幕盖住再跳转（0.8s 后路由跳转，用户看不到）
+  await delay(800)
   router.push(sim.route)
 }
 
-function loadGame(sim) {
+// 替换原有的 loadGame
+async function loadGame(sim) {
   sessionStorage.setItem('hubReturn', JSON.stringify({
     phaseId: currentPhase.value?.id
   }))
+
+  store.startTransition()
+
+  await delay(800)
   router.push({ path: sim.route, query: { load: 'true' } })
 }
+
 
 // ========================
 // 工具函数
@@ -765,29 +834,31 @@ const phases = ref([
     roman: 'I',
     label: '映·幽境初明',
     name: '看见',
-    quote: '在所有的声音响起之前，你首先要听见的，是虚无',
+    quote: '在演奏开始之前，你先看到的是演奏者',
     sims: [
-      { id: 'dream-layer',  name: '第13层梦境', tag: '潜意识修补模拟器',  desc: '你是一名意识修复师。进入他人破碎的梦境，修补心理创伤，唤醒陷入"永眠"的人。梦境会根据你的语气和选择实时改变——恐惧让走廊变长，温柔让碎片重组。', alwaysUnlocked: true, hasSave: false, route: '/phase1/dream-layer' },
-      { id: 'echo-city',    name: '回声之城',   tag: '论坛管理员模拟器',  desc: '你是一名论坛管理员。通过删帖、禁言、处理申诉来控制对立情绪。语言会随着冲突升级而逐渐"非人化"——你将亲眼目睹语言暴力是如何一步步形成的。', alwaysUnlocked: true, hasSave: false, route: '/phase1/echo-city' },
-      { id: 'synesthesia',  name: '共觉之境',   tag: '感官修复模拟器',    desc: '你是一名仿生人修复师。底层仿生人的感知系统出现错乱——视觉接收到了听觉的信号，触觉混入了味觉。你需要诊断并修复他们扭曲的感知世界。', alwaysUnlocked: true, hasSave: false, route: '/phase1/synesthesia' },
-      { id: 'unsent',       name: '没说出口',   tag: '草稿箱模拟器',      desc: '你意外收到了一个陌生人临终前的手机。里面全是从未发送的草稿：写给妈妈的道谢，写给前任的道歉，写给自己的鼓励。你来决定每一条草稿的命运。', unlocked: false, hasSave: false, route: '/phase1/unsent' },
+      { id: 'dream-layer',  name: '调率者：梦域', tag: '潜意识修补模拟器',  desc: '在科技发达的时代，人们在高强度的压力下努力前进，思维变得越发活跃却也逐渐脆弱，当人们终于扛不住压力时，意识的坍缩的风暴席卷而来。', alwaysUnlocked: true, hasSave: false, route: '/phase1/dream-layer' },
+      { id: 'echo-city',    name: '未解锁',   tag: '论坛管理员模拟器',  desc: '你是一名论坛管理员。通过删帖、禁言、处理申诉来控制对立情绪。语言会随着冲突升级而逐渐"非人化"——你将亲眼目睹语言暴力是如何一步步形成的。', unlocked: false, hasSave: false, route: '/phase1/echo-city' },
+      { id: 'synesthesia',  name: '共觉之境',   tag: '感官修复模拟器',    desc: '2157年，一场仿生人的“流感”席卷而来，在这个机器可以随时被淘汰的时代，每个“人”都在努力的活着。', alwaysUnlocked: true, hasSave: false, route: '/phase1/synesthesia' },
+      { id: 'unsent',       name: '未解锁',   tag: '草稿箱模拟器',      desc: '你意外收到了一个陌生人临终前的手机。里面全是从未发送的草稿：写给妈妈的道谢，写给前任的道歉，写给自己的鼓励。你来决定每一条草稿的命运。', unlocked: false, hasSave: false, route: '/phase1/unsent' },
     ]
   },
   {
     id: 'phase2',
     roman: 'II',
-    label: '闻·节奏干涉',
+    label: '闻·弦动乐起',
     name: '倾听',
-    quote: '当他人的意志开始入侵，旋律便产生了一次致命的频偏',
+    quote: '当乐声渐起，每个声部都有自己的故事',
     sims: [
       { id: 'letter-writer', name: '代笔者',  tag: '代写书信模拟器',   desc: '1980年代，某个南方小城。你在街边摆了一张桌子，为不识字或不会写信的人代笔。每一位坐下来的客人，都带着一段说不清楚的心事。你怎么听，决定了信里有什么。', alwaysUnlocked: true, hasSave: false, route: '/phase2/letter-writer' },
-      { id: 'listener',      name: '倾听者',  tag: '危机热线模拟器',   desc: '你是一条危机热线的接线员。每个来电者都带着自己完整的人生重量压过来。不是要"解决问题"，而是要"真正听见这个人"。我们以为自己很会倾听，但大多数时候，我们只是在等待自己说话的机会。', unlocked: false, hasSave: false, route: '/phase2/listener' },
+      { id: 'listener',      name: '未解锁',  tag: '危机热线模拟器',   desc: '你是一条危机热线的接线员。每个来电者都带着自己完整的人生重量压过来。不是要"解决问题"，而是要"真正听见这个人"。我们以为自己很会倾听，但大多数时候，我们只是在等待自己说话的机会。', unlocked: false, hasSave: false, route: '/phase2/listener' },
+       { id: 'listener',      name: '未解锁',  tag: '危机热线模拟器',   desc: '你是一条危机热线的接线员。每个来电者都带着自己完整的人生重量压过来。不是要"解决问题"，而是要"真正听见这个人"。我们以为自己很会倾听，但大多数时候，我们只是在等待自己说话的机会。', unlocked: false, hasSave: false, route: '/phase2/listener' },
+        { id: 'listener',      name: '未解锁',  tag: '危机热线模拟器',   desc: '你是一条危机热线的接线员。每个来电者都带着自己完整的人生重量压过来。不是要"解决问题"，而是要"真正听见这个人"。我们以为自己很会倾听，但大多数时候，我们只是在等待自己说话的机会。', unlocked: false, hasSave: false, route: '/phase2/listener' },
     ]
   },
   {
     id: 'phase3',
     roman: 'III',
-    label: '知·深层共振',
+    label: '知·理乐共振',
     name: '理解',
     quote: '如果你能听见千年前的余震，你就会明白当下的每一声叹息',
     sims: [
@@ -799,7 +870,7 @@ const phases = ref([
   {
     id: 'phase4',
     roman: 'IV',
-    label: '敬·合成终曲',
+    label: '敬·曲终韵止',
     name: '尊重',
     quote: '最后，当碳基的呼吸遇上硅基的脉冲，我们终将听见那场未完成的进化',
     sims: [
@@ -2461,6 +2532,65 @@ Landing 屏
 .splash-fade-leave-to {
   opacity: 0;
 }
+
+
+
+
+
+/* ========================
+   暂未解锁弹窗
+   ======================== */
+.locked-modal-box {
+  max-width: 380px;
+  text-align: center;
+}
+
+.locked-modal-icon {
+  font-size: 2.5rem;
+  margin-bottom: 0.8rem;
+  opacity: 0.4;
+  color: #5a4020;
+  line-height: 1;
+}
+
+/* 三四章封面：整体灰暗处理 */
+.score-paper.paper-locked {
+  filter: drop-shadow(0 8px 16px rgba(80, 50, 10, 0.1))
+          grayscale(0.4)
+          brightness(0.85);
+  cursor: pointer; /* 保留可点击感，点了才出提示 */
+}
+
+.score-paper.paper-locked:hover {
+  filter: drop-shadow(0 12px 20px rgba(80, 50, 10, 0.2))
+          grayscale(0.3)
+          brightness(0.9) !important;
+}
+
+/* 锁定徽章 */
+.paper-lock-badge {
+  position: absolute;
+  top: 0.8rem;
+  right: 0.8rem;
+  z-index: 2;
+  background: rgba(20, 12, 4, 0.55);
+  backdrop-filter: blur(4px);
+  border-radius: 50%;
+  width: 28px;
+  height: 28px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.lock-icon {
+  font-size: 0.75rem;
+  filter: grayscale(1);
+  opacity: 0.8;
+}
+
+
+
 
 
 /* ========================

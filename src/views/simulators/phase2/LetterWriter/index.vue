@@ -16,6 +16,13 @@
           <button class="title-btn primary" @click="onStart">
             <span class="btn-icon">▶</span>开始
           </button>
+          <button
+            class="title-btn primary ghost"
+            :disabled="!hasSave"
+            @click="onContinueGame"
+          >
+            <span class="btn-icon">↺</span>继续游戏
+          </button>
           <button class="title-btn secondary" @click="$router.back()">
             ‹ 返回演奏厅
           </button>
@@ -65,6 +72,9 @@
     <Transition name="fade">
     <div v-if="scene === 'street'" class="screen screen-street" :class="`season-${gameState.currentSeason}`">
       <div class="street-bg-grid"></div>
+      <div class="street-topbar">
+        <button class="back-btn" @click="returnToTitleScreen">← 返回游戏</button>
+      </div>
 
       <!-- 季节细节 -->
       <div class="street-details">
@@ -111,6 +121,20 @@
           </div>
         </div>
         <div v-else class="waiting-hint">{{ waitingText }}</div>
+      </Transition>
+
+      <Transition name="fade">
+        <div v-if="canResumeWriting" class="resume-writing-card">
+          <div class="resume-writing-copy">
+            <div class="resume-writing-title">还有一封没写完的信</div>
+            <div class="resume-writing-sub">
+              {{ isBackgroundWorking ? '后台还在继续整理内容…' : '上次的对话和草稿都还在。' }}
+            </div>
+          </div>
+          <button class="btn-primary resume-writing-btn" @click="resumeWriting">
+            继续写信
+          </button>
+        </div>
       </Transition>
 
       <!-- 细节描述 -->
@@ -227,6 +251,23 @@
   </div>
   </Transition>
 
+  <Transition name="fade">
+  <div v-if="isReviewLoading" class="review-loading-overlay">
+    <div class="review-loading-card">
+      <div class="review-loading-paper" aria-hidden="true">
+        <span class="review-loading-line short"></span>
+        <span class="review-loading-line"></span>
+        <span class="review-loading-line medium"></span>
+      </div>
+      <div class="review-loading-title">客人正在看信</div>
+      <div class="review-loading-copy">他把信接过去，低头一行一行看着。</div>
+      <div class="review-loading-dots" aria-hidden="true">
+        <span></span><span></span><span></span>
+      </div>
+    </div>
+  </div>
+  </Transition>
+
   <!-- 客人审阅弹层 -->
   <Transition name="panel-up">
   <div v-if="reviewMode" class="review-overlay">
@@ -298,6 +339,22 @@
     </div>
     </Transition>
 
+    <Transition name="fade">
+    <div v-if="showConfirmModal" class="lw-confirm-overlay">
+      <div class="lw-confirm-card">
+        <div class="lw-confirm-title">{{ confirmModalTitle }}</div>
+        <div class="lw-confirm-copy">
+          {{ confirmModalCopyLine1 }}<br>
+          {{ confirmModalCopyLine2 }}
+        </div>
+        <div class="lw-confirm-actions">
+          <button class="btn-secondary" @click="cancelConfirmModal">取消</button>
+          <button class="btn-primary" @click="confirmModalProceed">{{ confirmModalConfirmText }}</button>
+        </div>
+      </div>
+    </div>
+    </Transition>
+
     <!-- ══════════ 收摊过场 ══════════ -->
     <Transition name="fade">
     <div v-if="scene === 'closing'" class="screen screen-ending">
@@ -366,38 +423,208 @@
 </template>
 
 <script setup>
-import { ref, computed, nextTick, onMounted } from 'vue'
+import { ref, computed, nextTick, onMounted, onBeforeUnmount } from 'vue'
 import { useGameLogic } from './composables/useGameLogic'
 
 const {
   state:gameState,
   initGame,
+  resetGameState,
+  saveProgress,
+  loadProgress,
+  hasProgress,
+  clearProgress,
+  abortAllRequests,
   generateNextGuest,
   sendToGuest,
   polishLetter,
   reviewLetter,
   submitLetter,
-  changeReputation,
 } = useGameLogic()
 
 // ── 场景 ──
 const scene          = ref('title')
 const titleReady     = ref(false)
 const introReady     = ref(false)
+const hasSave        = ref(false)
+const showConfirmModal = ref(false)
+const confirmModalType = ref('')
+
+const confirmModalTitle = computed(() => (
+  confirmModalType.value === 'retire' ? '现在收摊回家？' : '覆盖当前进度？'
+))
+
+const confirmModalCopyLine1 = computed(() => (
+  confirmModalType.value === 'retire'
+    ? '今天这张桌子就先收起来。'
+    : '开始新游戏会覆盖当前《代笔者》进度。'
+))
+
+const confirmModalCopyLine2 = computed(() => (
+  confirmModalType.value === 'retire'
+    ? '确定不再继续接待这位客人吗？'
+    : '现在继续吗？'
+))
+
+const confirmModalConfirmText = computed(() => (
+  confirmModalType.value === 'retire' ? '收起笔，回家' : '开始新游戏'
+))
+
+let titleTimer = null
+let introTimer = null
+let guestTimer = null
+let detailTimer = null
+let guestDepartTimer = null
+
+function clearSceneTimers() {
+  clearTimeout(titleTimer)
+  clearTimeout(introTimer)
+  clearTimeout(guestTimer)
+  clearTimeout(detailTimer)
+  clearTimeout(guestDepartTimer)
+  titleTimer = null
+  introTimer = null
+  guestTimer = null
+  detailTimer = null
+  guestDepartTimer = null
+}
+
+function armTitleReveal() {
+  titleReady.value = false
+  clearTimeout(titleTimer)
+  titleTimer = setTimeout(() => { titleReady.value = true }, 100)
+}
+
+function armIntroReveal() {
+  introReady.value = false
+  clearTimeout(introTimer)
+  introTimer = setTimeout(() => { introReady.value = true }, 100)
+}
+
+function buildSessionSnapshot(sceneOverride = scene.value) {
+  return {
+    scene: sceneOverride,
+    guestWaiting: guestWaiting.value,
+    messages: messages.value.map(item => ({ ...item })),
+    dialogueInput: dialogueInput.value,
+    letterContent: letterContent.value,
+    showLetterPanel: showLetterPanel.value,
+    reviewMode: reviewMode.value,
+    reviewText: reviewText.value,
+    reviewResult: reviewResult.value,
+    editHint: editHint.value,
+    revisionCount: revisionCount.value,
+    paramValues: { ...paramValues.value },
+    lastLetterContent: lastLetterContent.value,
+  }
+}
+
+function restoreSessionSnapshot(snapshot = {}) {
+  const savedScene = snapshot.scene
+  scene.value = ['guest', 'archive', 'title', 'intro'].includes(savedScene)
+    ? 'street'
+    : (savedScene || 'street')
+
+  guestWaiting.value = Boolean(snapshot.guestWaiting && !gameState.currentGuest)
+  messages.value = Array.isArray(snapshot.messages) ? snapshot.messages.map(item => ({ ...item })) : []
+  dialogueInput.value = typeof snapshot.dialogueInput === 'string' ? snapshot.dialogueInput : ''
+  letterContent.value = typeof snapshot.letterContent === 'string' ? snapshot.letterContent : ''
+  showLetterPanel.value = false
+  reviewMode.value = false
+  reviewText.value = typeof snapshot.reviewText === 'string' ? snapshot.reviewText : ''
+  reviewResult.value = typeof snapshot.reviewResult === 'string' ? snapshot.reviewResult : ''
+  editHint.value = typeof snapshot.editHint === 'string' ? snapshot.editHint : ''
+  revisionCount.value = Number.isFinite(snapshot.revisionCount) ? snapshot.revisionCount : 0
+  paramValues.value = {
+    tone: '朴实',
+    length: '适中',
+    focus: '偏感情',
+    signature: '要',
+    ...(snapshot.paramValues || {})
+  }
+  lastLetterContent.value = typeof snapshot.lastLetterContent === 'string' ? snapshot.lastLetterContent : ''
+}
+
+async function persistSession(sceneOverride = scene.value) {
+  await saveProgress(buildSessionSnapshot(sceneOverride))
+  hasSave.value = true
+}
 
 onMounted(async () => {
   await initGame()
-  setTimeout(() => { titleReady.value = true }, 100)
+  hasSave.value = await hasProgress()
+  armTitleReveal()
 })
 
-function onStart() {
-  scene.value = 'intro'
-  setTimeout(() => { introReady.value = true }, 100)
+async function onStart() {
+  if (hasSave.value) {
+    confirmModalType.value = 'new-game'
+    showConfirmModal.value = true
+    return
+  }
+  await startFreshGame()
 }
 
 async function enterStreet() {
   scene.value = 'street'
+  await persistSession('street')
   scheduleNextGuest()
+}
+
+async function onContinueGame() {
+  const savedSession = await loadProgress()
+  if (!savedSession) {
+    hasSave.value = false
+    return
+  }
+
+  restoreSessionSnapshot(savedSession)
+  if (scene.value === 'street' && !gameState.currentGuest && !guestWaiting.value) {
+    scheduleNextGuest()
+  }
+}
+
+async function startFreshGame() {
+  abortAllRequests()
+  await clearProgress()
+  resetGameState()
+  hasSave.value = false
+  showConfirmModal.value = false
+  confirmModalType.value = ''
+  guestWaiting.value = false
+  messages.value = []
+  dialogueInput.value = ''
+  showLetterPanel.value = false
+  letterContent.value = ''
+  reviewMode.value = false
+  reviewText.value = ''
+  reviewResult.value = ''
+  editHint.value = ''
+  revisionCount.value = 0
+  scene.value = 'intro'
+  armIntroReveal()
+}
+
+function cancelConfirmModal() {
+  showConfirmModal.value = false
+  confirmModalType.value = ''
+}
+
+async function confirmModalProceed() {
+  if (confirmModalType.value === 'retire') {
+    showConfirmModal.value = false
+    confirmModalType.value = ''
+    scene.value = 'closing'
+    await persistSession('closing')
+    clearTimeout(guestDepartTimer)
+    guestDepartTimer = setTimeout(async () => {
+      scene.value = 'stats'
+      await persistSession('stats')
+    }, 5500)
+    return
+  }
+
+  await startFreshGame()
 }
 
 // ── 街道 ──
@@ -416,7 +643,8 @@ const streetDetails = [
 
 function showDetail(desc) {
   detailDesc.value = desc
-  setTimeout(() => { detailDesc.value = '' }, 2500)
+  clearTimeout(detailTimer)
+  detailTimer = setTimeout(() => { detailDesc.value = '' }, 2500)
 }
 
 const signTilt = computed(() => {
@@ -447,46 +675,88 @@ const reputationNotes = computed(() => {
 })
 
 const waitingText = computed(() => {
+  if (gameState.currentGuest)                 return '桌边那封未完的信，还在等你。'
   if (gameState.reputation <= 0)              return '今天没有人来。'
   if (gameState.currentSeason === 'summer')   return '天热，街上没什么人。'
   return '等着。'
 })
 
+const isBackgroundWorking = computed(() =>
+  isDialogueLoading.value || isPolishing.value || isReviewLoading.value
+)
+
+const canResumeWriting = computed(() => {
+  if (!gameState.currentGuest) return false
+  return messages.value.length > 0
+    || Boolean(dialogueInput.value.trim())
+    || Boolean(letterContent.value.trim())
+    || reviewMode.value
+    || Boolean(reviewText.value.trim())
+})
+
 async function scheduleNextGuest() {
+  clearTimeout(guestTimer)
+  if (scene.value !== 'street') return
+  if (gameState.currentGuest || guestWaiting.value || isBackgroundWorking.value) return
+
   const delay = gameState.reputation > 60 ? 3000
     : gameState.reputation > 30 ? 6000 : 10000
-  setTimeout(async () => {
-    if (scene.value !== 'street') return
+  guestTimer = setTimeout(async () => {
+    if (scene.value !== 'street' || gameState.currentGuest || guestWaiting.value) return
     const guest = await generateNextGuest()
-    if (guest) guestWaiting.value = true
+    if (guest) {
+      guestWaiting.value = true
+      await persistSession('street')
+    }
   }, delay)
 }
 
-function enterGuest() {
+async function enterGuest() {
   guestWaiting.value = false
-  messages.value = []
-  if (gameState.currentGuest?.openingLine) {
+  if (!messages.value.length && gameState.currentGuest?.openingLine) {
     messages.value.push({ role: 'guest', text: gameState.currentGuest.openingLine })
   }
   scene.value = 'guest'
+  await persistSession('guest')
 }
 
-function onLeaveGuest() {
+async function resumeWriting() {
+  await enterGuest()
+}
+
+async function onLeaveGuest() {
   scene.value = 'street'
-  scheduleNextGuest()
+  showLetterPanel.value = false
+  await persistSession('street')
+  if (!gameState.currentGuest) {
+    scheduleNextGuest()
+  }
 }
 
-function onRetire() {
-  if (confirm('收起笔，回家？\n还有人在等你写信。')) {
-    scene.value = 'closing'
-    setTimeout(() => { scene.value = 'stats' }, 5500)
+async function returnToTitleScreen() {
+  abortAllRequests()
+  isDialogueLoading.value = false
+  isPolishing.value = false
+  isReviewLoading.value = false
+  showLetterPanel.value = false
+  guestWaiting.value = false
+  if (scene.value !== 'title') {
+    await persistSession('street')
   }
+  scene.value = 'title'
+  armTitleReveal()
+}
+
+async function onRetire() {
+  confirmModalType.value = 'retire'
+  showConfirmModal.value = true
 }
 
 // ── 对话 ──
 const messages          = ref([])
 const dialogueInput     = ref('')
 const isDialogueLoading = ref(false)
+const isReviewLoading   = ref(false)
 const dialogueArea      = ref(null)
 
 async function sendDialogue() {
@@ -495,6 +765,7 @@ async function sendDialogue() {
   dialogueInput.value = ''
   messages.value.push({ role: 'player', text })
   isDialogueLoading.value = true
+  await persistSession('guest')
 
   const reply = await sendToGuest({
     playerMessage: text,
@@ -503,11 +774,19 @@ async function sendDialogue() {
 
   isDialogueLoading.value = false
 
+  if (reply.aborted) {
+    await persistSession(scene.value === 'title' ? 'street' : scene.value)
+    return
+  }
+
   if (reply.guestLeft) {
     messages.value.push({ role: 'guest', text: reply.text })
-    setTimeout(() => {
+    await persistSession('street')
+    clearTimeout(guestDepartTimer)
+    guestDepartTimer = setTimeout(async () => {
       messages.value = []
       scene.value = 'street'
+      await persistSession('street')
       scheduleNextGuest()
     }, 2000)
     return
@@ -518,6 +797,7 @@ async function sendDialogue() {
   if (dialogueArea.value) {
     dialogueArea.value.scrollTop = dialogueArea.value.scrollHeight
   }
+  await persistSession('guest')
 }
 
 // ── 写信 ──
@@ -540,30 +820,40 @@ const params = [
 
 async function onPolish() {
   isPolishing.value = true
+  await persistSession('guest')
   const result = await polishLetter({
     playerDraft: letterContent.value,
     params: paramValues.value,
     conversationHistory: messages.value,
   })
-  if (result) letterContent.value = result
+  if (!result.aborted && result.content) letterContent.value = result.content
   isPolishing.value = false
+  await persistSession(scene.value === 'title' ? 'street' : scene.value)
 }
 
 async function onSubmitLetter() {
   showLetterPanel.value = false
+  isReviewLoading.value = true
+  await persistSession('guest')
   const raw = await reviewLetter({
     letterContent: letterContent.value,
     revisionCount: revisionCount.value,
     conversationHistory: messages.value,
   })
+  isReviewLoading.value = false
+  if (raw.aborted) {
+    await persistSession(scene.value === 'title' ? 'street' : scene.value)
+    return
+  }
   reviewText.value   = raw.reaction
   reviewResult.value = raw.result
   editHint.value     = raw.editHint ?? ''
   reviewMode.value   = true
   if (raw.result !== 'satisfied') revisionCount.value++
+  await persistSession('guest')
 }
 
-function onLetterDone() {
+async function onLetterDone() {
   submitLetter({
     content:         letterContent.value,
     recipient:       gameState.currentGuest?.recipient,
@@ -575,6 +865,7 @@ function onLetterDone() {
   revisionCount.value = 0
   messages.value      = []
   scene.value = 'street'
+  await persistSession('street')
   scheduleNextGuest()
 }
 
@@ -634,6 +925,10 @@ const epilogueLines = [
   '',
   '感谢你在这里待了这么久。',
 ]
+onBeforeUnmount(() => {
+  clearSceneTimers()
+  abortAllRequests()
+})
 </script>
 
 <style scoped>
@@ -892,6 +1187,15 @@ const epilogueLines = [
   transform: translateY(-2px);
   box-shadow: 0 6px 18px rgba(184,153,71,0.25);
 }
+.title-btn.primary.ghost {
+  background: rgba(255,255,255,0.52);
+}
+.title-btn.primary.ghost:disabled {
+  opacity: 0.35;
+  cursor: not-allowed;
+  transform: none;
+  box-shadow: none;
+}
 .title-btn.secondary {
   background: transparent;
   border: 1px dashed var(--border-brass);
@@ -1028,6 +1332,13 @@ const epilogueLines = [
   pointer-events: none;
 }
 
+.street-topbar {
+  position: absolute;
+  top: 16px;
+  left: 18px;
+  z-index: 3;
+}
+
 .street-details { position: absolute; inset: 0; pointer-events: none; }
 .detail-item {
   position: absolute;
@@ -1125,9 +1436,47 @@ const epilogueLines = [
 
 .guest-approaching {
   position: absolute;
-  bottom: 8%;
+  bottom: 18%;
   left: 50%;
   transform: translateX(-50%);
+}
+
+.resume-writing-card {
+  position: absolute;
+  left: 50%;
+  bottom: 11.5%;
+  transform: translateX(-50%);
+  width: min(320px, calc(100vw - 48px));
+  background: rgba(255, 251, 240, 0.9);
+  border: 1px solid rgba(184,153,71,0.35);
+  box-shadow: var(--shadow-card);
+  border-radius: 6px;
+  padding: 0.9rem 1rem;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 0.8rem;
+}
+
+.resume-writing-copy {
+  min-width: 0;
+}
+
+.resume-writing-title {
+  font-size: 0.84rem;
+  color: var(--text-main);
+  letter-spacing: 0.08em;
+}
+
+.resume-writing-sub {
+  margin-top: 0.25rem;
+  font-size: 0.68rem;
+  color: var(--text-muted);
+  line-height: 1.6;
+}
+
+.resume-writing-btn {
+  flex-shrink: 0;
 }
 .approach-card {
   background: var(--bg-panel);
@@ -1373,7 +1722,7 @@ const epilogueLines = [
 .input-row {
   display: flex;
   gap: 8px;
-  align-items: flex-end;
+  align-items: stretch;
 }
 .chat-input {
   flex: 1;
@@ -1395,7 +1744,7 @@ const epilogueLines = [
   background: var(--border-gold);
   color: #FFF;
   border: none;
-  padding: 9px 16px;
+  padding: 0 16px;
   font-family: inherit;
   font-size: 0.82rem;
   cursor: pointer;
@@ -1404,6 +1753,11 @@ const epilogueLines = [
   transition: opacity 0.2s;
   font-weight: bold;
   white-space: nowrap;
+  min-height: 100%;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  align-self: stretch;
 }
 .send-btn:disabled { opacity: 0.4; cursor: not-allowed; }
 .send-btn:hover:not(:disabled) { opacity: 0.85; }
@@ -1524,6 +1878,87 @@ const epilogueLines = [
 /* ══════════════════════════════════════════
    客人审阅
 ══════════════════════════════════════════ */
+.review-loading-overlay {
+  position: absolute;
+  inset: 0;
+  background: rgba(247,244,235,0.78);
+  backdrop-filter: blur(6px);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  z-index: 58;
+  padding: 24px;
+}
+
+.review-loading-card {
+  width: min(320px, 100%);
+  background: rgba(255,255,255,0.92);
+  border: 1px solid rgba(184,153,71,0.36);
+  border-radius: 10px;
+  box-shadow: 0 16px 40px rgba(60,53,45,0.1);
+  padding: 1.25rem 1.2rem 1.1rem;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 0.75rem;
+  text-align: center;
+}
+
+.review-loading-paper {
+  width: 92px;
+  height: 112px;
+  border-radius: 6px;
+  background: linear-gradient(180deg, #fffef8, #f6f0df);
+  border: 1px solid rgba(184,153,71,0.28);
+  box-shadow: 0 10px 24px rgba(184,153,71,0.12);
+  padding: 16px 14px;
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  transform-origin: center bottom;
+  animation: reviewPaperSway 1.8s ease-in-out infinite;
+}
+
+.review-loading-line {
+  display: block;
+  width: 100%;
+  height: 2px;
+  border-radius: 999px;
+  background: rgba(184,153,71,0.38);
+}
+
+.review-loading-line.short { width: 54%; }
+.review-loading-line.medium { width: 76%; }
+
+.review-loading-title {
+  font-size: 0.96rem;
+  color: var(--text-main);
+  letter-spacing: 0.1em;
+  font-weight: bold;
+}
+
+.review-loading-copy {
+  font-size: 0.78rem;
+  color: var(--text-muted);
+  line-height: 1.9;
+}
+
+.review-loading-dots {
+  display: inline-flex;
+  gap: 8px;
+}
+
+.review-loading-dots span {
+  width: 7px;
+  height: 7px;
+  border-radius: 999px;
+  background: rgba(184,153,71,0.58);
+  animation: reviewDotsPulse 1s ease-in-out infinite;
+}
+
+.review-loading-dots span:nth-child(2) { animation-delay: 0.18s; }
+.review-loading-dots span:nth-child(3) { animation-delay: 0.36s; }
+
 .review-overlay {
   position: absolute;
   inset: 0;
@@ -1564,6 +1999,16 @@ const epilogueLines = [
 /* ══════════════════════════════════════════
    信件档案
 ══════════════════════════════════════════ */
+@keyframes reviewPaperSway {
+  0%, 100% { transform: rotate(-2deg) translateY(0); }
+  50% { transform: rotate(2deg) translateY(-2px); }
+}
+
+@keyframes reviewDotsPulse {
+  0%, 100% { opacity: 0.28; transform: translateY(0); }
+  50% { opacity: 1; transform: translateY(-3px); }
+}
+
 .screen-archive {
   background: var(--bg-paper);
   overflow: hidden;
@@ -1645,6 +2090,49 @@ const epilogueLines = [
   justify-content: center;
   z-index: 100;
 }
+.lw-confirm-overlay {
+  position: fixed;
+  inset: 0;
+  z-index: 120;
+  background: rgba(60, 53, 45, 0.28);
+  backdrop-filter: blur(4px);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 24px;
+}
+
+.lw-confirm-card {
+  width: min(360px, 100%);
+  background: rgba(255, 252, 245, 0.96);
+  border: 1px solid rgba(184, 153, 71, 0.4);
+  border-radius: 10px;
+  box-shadow: 0 18px 40px rgba(60, 53, 45, 0.18);
+  padding: 1.2rem 1.15rem 1rem;
+  display: flex;
+  flex-direction: column;
+  gap: 0.9rem;
+}
+
+.lw-confirm-title {
+  font-size: 1rem;
+  color: var(--text-main);
+  letter-spacing: 0.08em;
+  font-weight: bold;
+}
+
+.lw-confirm-copy {
+  font-size: 0.82rem;
+  color: var(--text-muted);
+  line-height: 1.9;
+}
+
+.lw-confirm-actions {
+  display: flex;
+  justify-content: flex-end;
+  gap: 0.7rem;
+}
+
 .letter-detail-box {
   background: #FFF;
   border: 1px solid var(--border-gold);

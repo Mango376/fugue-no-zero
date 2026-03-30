@@ -96,6 +96,9 @@
     ================================================ -->
     <Transition name="fade">
       <section v-if="phase === 'background_intro'" class="screen screen-intro">
+        <div class="intro-grid-bg" aria-hidden="true"></div>
+        <div class="intro-scanline" aria-hidden="true"></div>
+        <div class="intro-chapter-flash" :class="{ active: isIntroChapterGlitching }" aria-hidden="true"></div>
 
         <!-- 顶部导航栏（返回 / 章节点） -->
         <header class="intro-topbar">
@@ -113,28 +116,74 @@
         </header>
 
         <!-- 正文滚动区 -->
-        <div class="intro-scroll-area">
-          <div class="intro-reading-column" :key="backgroundPage">
-            <div class="intro-chapter-tag">{{ currentBackgroundPage.kicker }}</div>
-            <h2 class="intro-lead">{{ currentBackgroundPage.title }}</h2>
-            <div class="intro-body">
-              <template
-                v-for="(paragraph, index) in currentBackgroundPage.paragraphs"
-                :key="index"
-              >
-                <blockquote
-                  v-if="paragraph.startsWith('「') || paragraph.startsWith('&quot;')"
-                  class="intro-blockquote"
-                >{{ paragraph }}</blockquote>
-                <p v-else class="intro-paragraph">{{ paragraph }}</p>
-              </template>
+        <div class="intro-scroll-area" ref="introScrollRef">
+          <Transition name="intro-chapter-swap" mode="out-in">
+            <div
+              class="intro-reading-column"
+              :class="{ 'fonts-ready': isIntroFontsReady }"
+              :key="introTransitionKey"
+            >
+              <div class="intro-kicker-row">
+                <div class="intro-chapter-tag">{{ currentBackgroundPage.kicker }}</div>
+                <div class="intro-status-chip">
+                  {{ isIntroFontsReady ? (isIntroPageFullyTyped ? 'CHAPTER READY' : 'DECRYPTING MEMORY') : 'LOADING TYPEFACE' }}
+                </div>
+              </div>
+              <h2 class="intro-lead">{{ currentBackgroundPage.title }}</h2>
+              <div class="intro-body">
+                <div v-if="!isIntroFontsReady" class="intro-font-loading">
+                  正在同步赛博字库...
+                </div>
+                <template v-else>
+                  <template
+                    v-for="(paragraph, index) in visibleIntroParagraphs"
+                    :key="`intro-static-${backgroundPage}-${index}`"
+                  >
+                    <blockquote
+                      v-if="isIntroQuote(paragraph)"
+                      class="intro-blockquote is-resolved"
+                    >{{ paragraph }}</blockquote>
+                    <p v-else class="intro-paragraph is-resolved">{{ paragraph }}</p>
+                  </template>
+
+                  <template v-if="currentIntroTypingParagraph">
+                    <blockquote
+                      v-if="isIntroQuote(currentIntroTypingParagraph)"
+                      :key="`intro-live-quote-${backgroundPage}-${introTypingParagraphIndex}`"
+                      class="intro-blockquote is-typing"
+                    >
+                      <Typewriter
+                        :text="currentIntroTypingParagraph"
+                        :speed="introTypewriterSpeed"
+                        @done="handleIntroParagraphTyped"
+                      />
+                    </blockquote>
+                    <p
+                      v-else
+                      :key="`intro-live-paragraph-${backgroundPage}-${introTypingParagraphIndex}`"
+                      class="intro-paragraph is-typing"
+                    >
+                      <Typewriter
+                        :text="currentIntroTypingParagraph"
+                        :speed="introTypewriterSpeed"
+                        @done="handleIntroParagraphTyped"
+                      />
+                    </p>
+                  </template>
+                </template>
+              </div>
+              <Transition name="intro-cta-reveal">
+                <div v-if="isIntroFontsReady && isIntroPageFullyTyped" class="intro-footer-nav">
+                  <div class="intro-footer-hint">
+                    {{ backgroundPage + 1 === backgroundTotal ? '协议同步完成' : '章节写入完成' }}
+                  </div>
+                  <button class="intro-next-btn" @click="goToNextBackgroundPage">
+                    {{ backgroundPage + 1 === backgroundTotal ? '进入诊所 ›' : '下一章 ›' }}
+                  </button>
+                </div>
+              </Transition>
             </div>
-            <div class="intro-footer-nav">
-              <button class="intro-next-btn" @click="goToNextBackgroundPage">
-                {{ backgroundPage + 1 === backgroundTotal ? '进入诊所 ›' : '下一章 ›' }}
-              </button>
-            </div>
-          </div>
+          </Transition>
         </div>
 
       </section>
@@ -353,10 +402,7 @@
           <button class="back-btn" @click="closePatientRecords">
             ‹ {{ localSelectedArchive ? '返回列表' : '返回' }}
           </button>
-          <div class="phase-topbar-center">
-            
-            <div v-if="localSelectedArchive" class="phase-sub">{{ localSelectedArchive.job }}</div>
-          </div>
+          <div class="phase-topbar-center"></div>
         </header>
 
         <!-- 档案列表 -->
@@ -1366,15 +1412,102 @@ function playDecodeEffect() {
 // 本地 UI 状态（非游戏逻辑，纯视图控制）
 // ============================================================
 const contentEl           = ref(null)   // 问诊历史滚动容器
+const introScrollRef      = ref(null)   // 背景介绍滚动容器
 const showFullHistory     = ref(false)  // 是否展开全部历史
 const showPhonePanel      = ref(false)  // 手机短信面板
 const localSelectedArchive = ref(null) // 当前查看的档案详情
 const localTypingEntryId  = ref('')    // 当前正在打字机播放的条目 id
 const typewriterSpeed     = 45         // 打字机速度（ms/字）
+const introTypewriterSpeed = 96
+const introTypedParagraphs = ref([])
+const currentIntroTypingParagraph = ref('')
+const introTypingParagraphIndex = ref(0)
+const isIntroPageFullyTyped = ref(false)
+const isIntroChapterGlitching = ref(false)
+const isIntroFontsReady = ref(false)
+const introTransitionKey = ref('intro-0-0')
+let introParagraphPauseTimer = null
+let introGlitchTimer = null
+let introFontReadyPromise = null
+let introSequenceToken = 0
 
 const hubModalType         = ref(null) // Hub 弹窗类型
 const showUpgradeConfirmModal = ref(false)
 const pendingUpgrade       = ref(null) // 待确认的升级参数
+
+const visibleIntroParagraphs = computed(() => introTypedParagraphs.value)
+
+function clearIntroTimers() {
+  clearTimeout(introParagraphPauseTimer)
+  clearTimeout(introGlitchTimer)
+  introParagraphPauseTimer = null
+  introGlitchTimer = null
+}
+
+function ensureIntroFontsReady() {
+  if (typeof document === 'undefined' || !document.fonts?.load) {
+    return Promise.resolve()
+  }
+
+  if (!introFontReadyPromise) {
+    introFontReadyPromise = Promise.allSettled([
+      document.fonts.load('16px "SynesthesiaCyberText"', '共觉之境病历记录测试字体'),
+      document.fonts.load('16px "SynesthesiaCyberTextEn"', 'SYNESTHESIA DECRYPTING MEMORY'),
+      document.fonts.load('16px "SynesthesiaCyberTitle"', '共觉之境'),
+      document.fonts.load('16px "SynesthesiaCyberTitleEn"', 'SYNESTHESIA')
+    ]).then(() => document.fonts.ready.then(() => undefined))
+  }
+
+  return introFontReadyPromise
+}
+
+function isIntroQuote(paragraph) {
+  return paragraph?.startsWith('「') || paragraph?.startsWith('&quot;')
+}
+
+function triggerIntroChapterGlitch() {
+  isIntroChapterGlitching.value = true
+  clearTimeout(introGlitchTimer)
+  introGlitchTimer = setTimeout(() => {
+    isIntroChapterGlitching.value = false
+  }, 520)
+}
+
+function queueNextIntroParagraph() {
+  const paragraphs = currentBackgroundPage.value?.paragraphs ?? []
+  if (introTypingParagraphIndex.value >= paragraphs.length) {
+    currentIntroTypingParagraph.value = ''
+    isIntroPageFullyTyped.value = true
+    return
+  }
+
+  currentIntroTypingParagraph.value = paragraphs[introTypingParagraphIndex.value] ?? ''
+}
+
+function startIntroTypingSequence() {
+  clearIntroTimers()
+  introTypedParagraphs.value = []
+  currentIntroTypingParagraph.value = ''
+  introTypingParagraphIndex.value = 0
+  isIntroPageFullyTyped.value = false
+  if (!isIntroFontsReady.value) return
+  queueNextIntroParagraph()
+}
+
+function handleIntroParagraphTyped() {
+  if (!currentIntroTypingParagraph.value) return
+
+  introTypedParagraphs.value = [
+    ...introTypedParagraphs.value,
+    currentIntroTypingParagraph.value
+  ]
+  currentIntroTypingParagraph.value = ''
+  introTypingParagraphIndex.value += 1
+
+  introParagraphPauseTimer = setTimeout(() => {
+    queueNextIntroParagraph()
+  }, 720)
+}
 
 // ============================================================
 // 游戏核心逻辑解构（来自 useGameLogic）
@@ -1577,6 +1710,41 @@ watch(() => safeConsultationHistory.value.length, () => {
     if (contentEl.value) contentEl.value.scrollTop = contentEl.value.scrollHeight
   })
 })
+
+watch(
+  () => [phase.value, backgroundPage.value],
+  async ([currentPhase, currentPage]) => {
+    const sequenceToken = ++introSequenceToken
+    if (currentPhase !== 'background_intro') {
+      clearIntroTimers()
+      isIntroFontsReady.value = false
+      introTypedParagraphs.value = []
+      currentIntroTypingParagraph.value = ''
+      isIntroPageFullyTyped.value = false
+      return
+    }
+
+    introTransitionKey.value = `intro-${currentPage}-${Date.now()}`
+    isIntroFontsReady.value = false
+    introTypedParagraphs.value = []
+    currentIntroTypingParagraph.value = ''
+    isIntroPageFullyTyped.value = false
+    triggerIntroChapterGlitch()
+    await ensureIntroFontsReady()
+    if (
+      sequenceToken !== introSequenceToken ||
+      phase.value !== 'background_intro' ||
+      backgroundPage.value !== currentPage
+    ) {
+      return
+    }
+    isIntroFontsReady.value = true
+    await nextTick()
+    if (introScrollRef.value) introScrollRef.value.scrollTop = 0
+    startIntroTypingSequence()
+  },
+  { immediate: true }
+)
 
 // ============================================================
 // 复诊时间计算
@@ -1795,6 +1963,7 @@ onMounted(() => {
 })
 
 onBeforeUnmount(() => {
+  clearIntroTimers()
   document.removeEventListener('click',      unlockAutoPlay)
   document.removeEventListener('touchstart', unlockAutoPlay)
   stopViz()
@@ -1839,6 +2008,9 @@ onBeforeUnmount(() => {
   --neon-green: #39ff14;
   --dark-bg: #030408;
   --panel-bg: rgba(8, 12, 20, 0.85);
+  --font-body: 'SynesthesiaCyberText', '正文中文', 'Noto Sans SC', sans-serif;
+  --font-ui: 'SynesthesiaCyberTextEn', 'SynesthesiaCyberText', '内容英文', 'Courier New', monospace;
+  --font-display: 'SynesthesiaCyberTitleEn', 'SynesthesiaCyberTitle', '标题英文', 'Times New Roman', serif;
 
   --bg-wall: var(--dark-bg);
   --bg-paper: rgba(10, 15, 25, 0.95);
@@ -1866,7 +2038,7 @@ onBeforeUnmount(() => {
   --shadow-md: 0 4px 16px rgba(0, 243, 255, 0.15);
   --shadow-lg: 0 8px 30px rgba(255, 0, 124, 0.2);
 
-  font-family: 'Courier New', Consolas, 'Noto Sans SC', sans-serif;
+  font-family: var(--font-body);
   width: 100vw;
   height: 100vh;
   overflow: hidden;
@@ -1882,6 +2054,99 @@ onBeforeUnmount(() => {
     radial-gradient(circle at 50% 50%, rgba(255, 0, 124, 0.05) 0%, transparent 60%);
   background-size: 50px 50px, 50px 50px, 100% 100%, 100% 100%, 100% 100%;
   animation: globalGridPan 20s linear infinite;
+}
+
+.synesthesia-shell :where(
+  button,
+  input,
+  textarea,
+  select,
+  [class*="label"],
+  [class*="meta"],
+  [class*="stat"],
+  [class*="tag"],
+  [class*="code"],
+  [class*="day"],
+  [class*="income"],
+  [class*="music"],
+  [class*="summary"],
+  [class*="frame"],
+  [class*="eq-"],
+  [class*="pr-"],
+  [class*="hd-"]
+) {
+  font-family: var(--font-ui) !important;
+}
+
+.synesthesia-shell :where(
+  [class*="title"],
+  [class*="name"],
+  [class*="headline"]
+) {
+  font-family: var(--font-display) !important;
+}
+
+.synesthesia-shell :where(
+  .hub-env-desc,
+  .hub-reception-btn,
+  .hub-reception-hint,
+  .phase-sub,
+  .pr-card-meta,
+  .pr-card-meta span,
+  .pr-detail-name,
+  .pr-detail-meta,
+  .pr-detail-meta span,
+  .pr-detail-income,
+  .pr-text-card,
+  .pr-text-card p,
+  .patient-job,
+  .patient-env-row,
+  .history-toggle-btn,
+  .history-toggle-btn span,
+  .entry-narration p,
+  .entry-patient p,
+  .entry-doctor,
+  .entry-doctor span,
+  .frame-empty-text,
+  .status-label,
+  .status-num,
+  .notes-tab-text,
+  .notes-doc-title,
+  .notes-sub,
+  .notes-label,
+  .notes-textarea,
+  .mapping-title,
+  .mapping-option,
+  .mapping-option span,
+  .summary-copy,
+  .summary-detail-item,
+  .summary-meta-label,
+  .summary-meta-num,
+  .pr-entry-text p,
+  .pr-card-preview,
+  .pr-consult-entry,
+  .pr-changelog-item
+) {
+  font-family: var(--font-body) !important;
+}
+
+.synesthesia-shell :where(
+  .hub-env-label,
+  .patient-visit,
+  .frame-title,
+  .hd-text,
+  .pr-section-title,
+  .notes-label,
+  .summary-title,
+  .summary-detail-item strong,
+  .summary-meta-label,
+  .summary-meta-num,
+  .mapping-title,
+  .hub-reception-hint,
+  .status-label,
+  .status-num
+) {
+  font-family: var(--font-ui) !important;
 }
 
 @keyframes globalGridPan {
@@ -2613,6 +2878,51 @@ onBeforeUnmount(() => {
 
 .screen-intro { background: transparent !important; overflow: hidden; position: absolute; z-index: 1; }
 
+.intro-grid-bg,
+.intro-scanline,
+.intro-chapter-flash {
+  position: absolute;
+  inset: 0;
+  pointer-events: none;
+}
+
+.intro-grid-bg {
+  background:
+    linear-gradient(rgba(0, 243, 255, 0.05) 1px, transparent 1px),
+    linear-gradient(90deg, rgba(0, 243, 255, 0.04) 1px, transparent 1px),
+    radial-gradient(circle at 15% 20%, rgba(0, 243, 255, 0.16), transparent 38%),
+    radial-gradient(circle at 80% 18%, rgba(255, 0, 124, 0.14), transparent 34%),
+    linear-gradient(180deg, rgba(5, 8, 12, 0.9) 0%, rgba(3, 4, 8, 0.98) 100%);
+  background-size: 34px 34px, 34px 34px, 100% 100%, 100% 100%, 100% 100%;
+  animation: introGridDrift 18s linear infinite;
+  opacity: 0.95;
+}
+
+.intro-scanline {
+  background:
+    repeating-linear-gradient(
+      180deg,
+      rgba(255, 255, 255, 0.035) 0px,
+      rgba(255, 255, 255, 0.035) 1px,
+      transparent 1px,
+      transparent 4px
+    );
+  mix-blend-mode: screen;
+  opacity: 0.35;
+}
+
+.intro-chapter-flash {
+  opacity: 0;
+  background:
+    linear-gradient(90deg, transparent, rgba(0, 243, 255, 0.18), transparent),
+    linear-gradient(180deg, rgba(255, 0, 124, 0.12), transparent 55%);
+  transform: translateX(-100%);
+}
+
+.intro-chapter-flash.active {
+  animation: introChapterFlash 520ms var(--ease-out-expo, cubic-bezier(0.16, 1, 0.3, 1)) forwards;
+}
+
 .intro-topbar {
   display: flex;
   align-items: center;
@@ -2651,14 +2961,40 @@ onBeforeUnmount(() => {
   padding: 2rem 1.8rem 3.5rem;
   display: flex;
   flex-direction: column;
+  position: relative;
+  opacity: 0;
+  transition: opacity 180ms ease;
+}
+
+.intro-reading-column.fonts-ready {
+  opacity: 1;
+}
+
+.intro-kicker-row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 1rem;
+  margin-bottom: 1rem;
+}
+
+.intro-status-chip {
+  padding: 0.24rem 0.55rem;
+  border: 1px solid rgba(0, 243, 255, 0.35);
+  background: rgba(0, 243, 255, 0.08);
+  color: var(--neon-cyan);
+  font-family: var(--font-ui);
+  font-size: 0.56rem;
+  letter-spacing: 0.16em;
+  text-transform: uppercase;
+  box-shadow: inset 0 0 10px rgba(0, 243, 255, 0.08), 0 0 12px rgba(0, 243, 255, 0.08);
 }
 
 .intro-chapter-tag {
-  font-family: 'Courier New', monospace;
+  font-family: var(--font-ui);
   font-size: 0.7rem;
   letter-spacing: 0.3em;
   color: var(--neon-yellow);
-  margin-bottom: 1rem;
   text-shadow: 0 0 5px rgba(252, 238, 10, 0.5);
 }
 
@@ -2670,9 +3006,20 @@ onBeforeUnmount(() => {
   color: #fff;
   letter-spacing: 0.05em;
   text-shadow: 0 0 10px var(--neon-cyan);
+  font-family: var(--font-display);
 }
 
 .intro-body { display: flex; flex-direction: column; }
+
+.intro-font-loading {
+  padding: 1.4rem 0 0.35rem;
+  color: rgba(0, 243, 255, 0.82);
+  font-family: var(--font-ui);
+  font-size: 0.72rem;
+  letter-spacing: 0.18em;
+  text-transform: uppercase;
+  text-shadow: 0 0 8px rgba(0, 243, 255, 0.25);
+}
 
 .intro-paragraph {
   margin: 0 0 1.1rem 0;
@@ -2681,8 +3028,31 @@ onBeforeUnmount(() => {
   color: var(--text-main);
   letter-spacing: 0.04em;
   text-indent: 2em;
+  font-family: var(--font-body);
 }
 .intro-paragraph:last-of-type { margin-bottom: 0; }
+
+.intro-paragraph.is-typing,
+.intro-blockquote.is-typing {
+  position: relative;
+}
+
+.intro-paragraph.is-typing::after,
+.intro-blockquote.is-typing::after {
+  content: '';
+  position: absolute;
+  left: 0;
+  right: 0;
+  bottom: -0.2rem;
+  height: 1px;
+  background: linear-gradient(90deg, rgba(0, 243, 255, 0), rgba(0, 243, 255, 0.7), rgba(0, 243, 255, 0));
+  animation: introCursorSweep 1.1s linear infinite;
+}
+
+.intro-paragraph.is-resolved,
+.intro-blockquote.is-resolved {
+  animation: introParagraphResolve 320ms var(--ease-out-quint, cubic-bezier(0.22, 1, 0.36, 1));
+}
 
 .intro-blockquote {
   margin: 1.4rem 0;
@@ -2696,14 +3066,29 @@ onBeforeUnmount(() => {
   font-style: italic;
   letter-spacing: 0.04em;
   text-indent: 0;
+  font-family: var(--font-body);
 }
 
 .intro-footer-nav {
   display: flex;
-  justify-content: flex-end;
+  flex-direction: column;
+  align-items: flex-end;
+  align-self: flex-end;
+  gap: 0.75rem;
   margin-top: 2.5rem;
   padding-top: 1.5rem;
   border-top: 1px dashed var(--border-paper);
+  width: 100%;
+}
+
+.intro-footer-hint {
+  color: var(--neon-yellow);
+  font-family: var(--font-ui);
+  font-size: 0.58rem;
+  letter-spacing: 0.18em;
+  text-transform: uppercase;
+  text-shadow: 0 0 6px rgba(252, 238, 10, 0.45);
+  text-align: right;
 }
 
 .intro-next-btn {
@@ -2712,11 +3097,11 @@ onBeforeUnmount(() => {
   background: rgba(0, 243, 255, 0.05);
   border: 1px solid var(--border-cyan);
   color: var(--neon-cyan);
-  font-family: inherit;
+  font-family: var(--font-ui);
   font-size: 0.85rem;
   letter-spacing: 0.18em;
   cursor: pointer;
-  transition: all 0.25s;
+  transition: transform 220ms var(--ease-out-quint, cubic-bezier(0.22, 1, 0.36, 1)), background 220ms ease, box-shadow 220ms ease, color 220ms ease;
   text-transform: uppercase;
 }
 .intro-next-btn:hover {
@@ -2724,6 +3109,72 @@ onBeforeUnmount(() => {
   color: #000;
   box-shadow: 0 0 15px var(--neon-cyan);
   transform: translateX(4px);
+}
+
+.intro-chapter-swap-enter-active,
+.intro-chapter-swap-leave-active {
+  transition: opacity 380ms var(--ease-out-quint, cubic-bezier(0.22, 1, 0.36, 1)), transform 380ms var(--ease-out-expo, cubic-bezier(0.16, 1, 0.3, 1)), filter 380ms ease;
+}
+
+.intro-chapter-swap-enter-from {
+  opacity: 0;
+  transform: translateY(18px) scale(0.985);
+  filter: blur(8px);
+}
+
+.intro-chapter-swap-leave-to {
+  opacity: 0;
+  transform: translateY(-10px) scale(1.01);
+  filter: blur(10px);
+}
+
+.intro-cta-reveal-enter-active,
+.intro-cta-reveal-leave-active {
+  transition: opacity 260ms ease, transform 260ms var(--ease-out-quint, cubic-bezier(0.22, 1, 0.36, 1));
+}
+
+.intro-cta-reveal-enter-from,
+.intro-cta-reveal-leave-to {
+  opacity: 0;
+  transform: translateY(10px);
+}
+
+@keyframes introGridDrift {
+  0% { background-position: 0 0, 0 0, 0% 0%, 0% 0%, 0 0; }
+  100% { background-position: 0 34px, 34px 0, 3% 2%, -2% 1%, 0 0; }
+}
+
+@keyframes introChapterFlash {
+  0% {
+    opacity: 0;
+    transform: translateX(-100%);
+  }
+  30% {
+    opacity: 0.95;
+  }
+  100% {
+    opacity: 0;
+    transform: translateX(100%);
+  }
+}
+
+@keyframes introParagraphResolve {
+  0% {
+    opacity: 0;
+    transform: translateY(8px);
+    filter: blur(6px);
+  }
+  100% {
+    opacity: 1;
+    transform: translateY(0);
+    filter: blur(0);
+  }
+}
+
+@keyframes introCursorSweep {
+  0% { opacity: 0.1; transform: translateX(-12%); }
+  50% { opacity: 1; }
+  100% { opacity: 0.1; transform: translateX(12%); }
 }
 
 /* ============================================================
@@ -4812,8 +5263,12 @@ onBeforeUnmount(() => {
   .title-center          { margin-top: -3.5rem; width: calc(100vw - 2.5rem); }
   .title-main            { font-size: clamp(2.2rem, 11vw, 3.2rem); }
   .intro-reading-column  { padding: 1.5rem 1.3rem 3rem; }
+  .intro-kicker-row      { align-items: flex-start; gap: 0.6rem; }
+  .intro-status-chip     { margin-top: 0.1rem; }
   .intro-lead            { font-size: 1.25rem; }
   .intro-paragraph       { font-size: 0.9rem; line-height: 2; }
+  .intro-font-loading    { font-size: 0.64rem; }
+  .intro-footer-nav      { align-items: flex-end; flex-direction: column; }
   .hub-body              { padding: 0.65rem 0.75rem 1rem; gap: 0.5rem; }
   .pr-scroll-area        { padding: 0.85rem 0.85rem 3rem; }
   .pr-card-name          { font-size: 1rem; }
@@ -4848,5 +5303,24 @@ onBeforeUnmount(() => {
   .treatment-scroll-area { padding: 0.8rem 0.85rem 2rem; }
   .modal-card            { padding: 1.2rem; }
   .modal-stats-row       { flex-direction: column; }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .intro-grid-bg,
+  .intro-chapter-flash.active,
+  .intro-paragraph.is-resolved,
+  .intro-blockquote.is-resolved,
+  .intro-paragraph.is-typing::after,
+  .intro-blockquote.is-typing::after {
+    animation: none !important;
+  }
+
+  .intro-chapter-swap-enter-active,
+  .intro-chapter-swap-leave-active,
+  .intro-cta-reveal-enter-active,
+  .intro-cta-reveal-leave-active,
+  .intro-next-btn {
+    transition-duration: 0.01ms !important;
+  }
 }
 </style>

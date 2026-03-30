@@ -1,5 +1,5 @@
 <template>
-    <span>{{ displayText }}</span>
+    <span class="typewriter-text">{{ displayText }}</span>
 </template>
 
 <script setup>
@@ -31,3 +31,9 @@ watch(() => props.text, (newText) => {
 
 onUnmounted(() => clearInterval(timer))
 </script>
+
+<style scoped>
+.typewriter-text {
+    font: inherit;
+}
+</style>

@@ -808,6 +808,10 @@ export function useGameLogic() {
     return consultRequestToken
   }
 
+  function invalidateConsultRequest() {
+    consultRequestToken = Symbol()
+  }
+
   function isCurrentConsultRequest(token) {
     return token === consultRequestToken
   }
@@ -1364,7 +1368,7 @@ if (messageText) {
     return {
       phase: phase.value,
       consultStage: consultStage.value,
-      consultEntryStage: 'pre_consult',
+      consultEntryStage: consultEntryStage.value,
       backgroundPage: backgroundPage.value,
       credits: credits.value,
       earnedCreditsTotal: earnedCreditsTotal.value,
@@ -1653,19 +1657,13 @@ if (messageText) {
     router.push('/')
   }
 
-  async function returnToHub() {
-  // 如果 AI 正在生成，转入后台而不是中断
-  if (isGeneratingText.value) {
-    isBackgroundGenerating.value = true
-    isGeneratingText.value = false
-    // consultEntryStage 保持 'entering_consult' 不动
-    // 不调用 invalidateConsultRequest()，让请求继续跑
-  } else {
-    // 没有生成中，正常处理阶段转换
+  function normalizeConsultStateForSuspension() {
     if (consultEntryStage.value === 'questioning') {
       isConsultNarrativeReady.value = consultationHistory.value.length > 0
       isConsultOptionsReady.value = consultOptions.value.length > 0
+      return
     }
+
     if (consultEntryStage.value === 'entering_consult') {
       if (consultationHistory.value.length) {
         consultEntryStage.value = 'questioning'
@@ -1681,6 +1679,18 @@ if (messageText) {
     }
   }
 
+  async function returnToHub() {
+  // 如果 AI 正在生成，转入后台而不是中断
+  if (isGeneratingText.value) {
+    isBackgroundGenerating.value = true
+    isGeneratingText.value = false
+    // consultEntryStage 保持 'entering_consult' 不动
+    // 不调用 invalidateConsultRequest()，让请求继续跑
+  } else {
+    // 没有生成中，正常处理阶段转换
+    normalizeConsultStateForSuspension()
+  }
+
   phase.value = 'hub'
   statusNotice.value = ''
   try {
@@ -1691,7 +1701,20 @@ if (messageText) {
 }
 
 
-  function returnToTitle() {
+  async function returnToTitle() {
+    invalidateConsultRequest()
+    isGeneratingText.value = false
+    isBackgroundGenerating.value = false
+    typingEntryId.value = ''
+    pendingTypingEntryId.value = ''
+    normalizeConsultStateForSuspension()
+    if (phase.value !== 'title') {
+      try {
+        await saveProgress()
+      } catch (error) {
+        console.warn('Synesthesia 返回 title 前保存失败:', error)
+      }
+    }
     phase.value = 'title'
     statusNotice.value = ''
     narrativeError.value = ''
@@ -1996,9 +2019,9 @@ revisitQueue.value = [
       narrativeError.value = `后台追踪表生成失败：${normalizeNarrativeError(error)}`
     }
   } finally {
-    isGeneratingText.value = false       // 无条件重置转圈
-    isBackgroundGenerating.value = false // 后台任务结束
     if (isCurrentConsultRequest(requestToken)) {
+      isGeneratingText.value = false
+      isBackgroundGenerating.value = false
       await saveProgress()
     }
   }
@@ -2079,8 +2102,8 @@ revisitQueue.value = [
       }
       return []
     } finally {
-      isGeneratingText.value = false
       if (isCurrentConsultRequest(requestToken)) {
+        isGeneratingText.value = false
         await saveProgress()
       }
     }
@@ -2192,8 +2215,8 @@ revisitQueue.value = [
         }
       }
     } finally {
-      isGeneratingText.value = false
       if (isCurrentConsultRequest(requestToken)) {
+        isGeneratingText.value = false
         await saveProgress()
       }
     }
