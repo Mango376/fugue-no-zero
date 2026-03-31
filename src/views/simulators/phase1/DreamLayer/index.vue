@@ -87,7 +87,7 @@
         <div class="c-line"></div>
       </div>
 
-      <div class="c-menu-item c-back" @click.stop="$router.back()">
+      <div class="c-menu-item c-back" @click.stop="goHome">
         <div class="c-num">ESC</div>
         <div class="c-text-group">
           <div class="c-main-text">断开连接</div>
@@ -1268,7 +1268,8 @@
 
 
 <script setup>
-import { computed, ref , onMounted, nextTick, watch} from 'vue'
+import { computed, ref, onMounted, onUnmounted, nextTick, watch } from 'vue'
+import { useRouter } from 'vue-router'  
 import ChoicePanel from '@/components/common/ChoicePanel.vue'
 import {
   useGameLogic,
@@ -1284,8 +1285,26 @@ const fileInputRef = ref(null)
 const narrativeEl  = ref(null)
 
 
+// 顶部加 import
+import { useGameStore } from '@/stores/gameStore'
 import { useAudioStore } from '@/stores/audioStore'
-const audioStore = useAudioStore()
+const gameStore = useGameStore()
+const audioStore = useAudioStore()              // ← 加这行
+const router = useRouter()          
+// 返回函数改成（DreamLayer 里找到类似 goHome / goBack 的函数）
+// DreamLayer 的 goHome
+async function goHome() {
+  gameStore.startTransition(false)  // ← 传 false，不显示提示
+  await new Promise(r => setTimeout(r, 800))
+  router.back()
+}
+
+
+
+function delay(ms) {
+  return new Promise(resolve => setTimeout(resolve, ms))
+}
+
 
 
 
@@ -1388,26 +1407,30 @@ function stopDrag() {
 
 onMounted(() => {
   if (typeof window !== 'undefined') {
-    // 放在右下角：屏幕宽度减去播放器宽度(260)和边距(20)
-    playerPos.value = { 
-      x: window.innerWidth - 380, 
-      y: window.innerHeight - 70 
+    playerPos.value = {
+      x: window.innerWidth - 380,
+      y: window.innerHeight - 70
     }
   }
 
   nextTick(() => {
     if (bgmAudio.value) {
       audioStore.register(bgmAudio.value)
+      // 自动播放，淡入 1.5s
       audioStore.fadeIn(bgmAudio.value, 0.8, 1500)
+      isPlaying.value = true  // ← 同步播放状态，让唱片旋转
     }
   })
 })
 
-// ← 新增：离开时清理
 onUnmounted(() => {
-  audioStore.register(null)
+  // 延迟清理，给淡出留出时间
+  setTimeout(() => {
+    audioStore.register(null)
+  }, 1000)
   stopDrag()
 })
+
 
 
 // ========== 标题页水波纹特效逻辑 ==========

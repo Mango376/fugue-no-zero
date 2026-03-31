@@ -37,19 +37,23 @@ watch(() => store.isTransitioning, async (val) => {
   if (val) {
     phase.value = 'darkening'
     visible.value = true
-    audioStore.fadeOutCurrent(800)  // 黑幕出现同时音乐淡出
+    audioStore.fadeOutCurrent(800)
 
     await delay(800)
-    phase.value = 'notice'
 
-    await delay(2000)
+    // ← 只有 withNotice 为 true 时才显示提示
+    if (store.showHeadphoneNotice) {
+      phase.value = 'notice'
+      await delay(2000)
+    }
+
     phase.value = 'brightening'
-
     await delay(1000)
     visible.value = false
     store.endTransition()
   }
 })
+
 
 function delay(ms) {
   return new Promise(resolve => setTimeout(resolve, ms))

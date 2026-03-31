@@ -45,9 +45,10 @@ export const useGameStore = defineStore('game', () => {
 
 
 
-    const isTransitioning = ref(false)
-
-function startTransition() {
+const isTransitioning = ref(false)
+const showHeadphoneNotice = ref(false)
+function startTransition(withNotice = true) {  // ← 加参数，默认显示
+  showHeadphoneNotice.value = withNotice
   isTransitioning.value = true
 }
 
@@ -63,6 +64,7 @@ function endTransition() {
         isUnlocked,
         devUnlockAll,
         isTransitioning,
+        showHeadphoneNotice,
   startTransition,
   endTransition
     }
