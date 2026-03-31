@@ -887,6 +887,16 @@ const phasesWithState = computed(() =>
 // 生命周期
 // ========================
 onMounted(async () => {
+  const preloadIndex = Math.floor(Math.random() * hubPlaylist.length)
+  hubAudio.value = new Audio(hubPlaylist[preloadIndex])
+  hubAudio.value.preload = 'auto'
+  hubAudio.value.volume = 0
+  hubAudio.value.loop = false
+  hubAudio.value.addEventListener('ended', () => {
+    const nextIndex = Math.floor(Math.random() * hubPlaylist.length)
+    hubAudio.value.src = hubPlaylist[nextIndex]
+    hubAudio.value.play().catch(() => {})
+  })
   // ← 最先注册，确保任何点击都能触发解锁
   document.addEventListener('click',      unlockHubMusic)
   document.addEventListener('touchstart', unlockHubMusic)

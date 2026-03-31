@@ -1246,6 +1246,7 @@
         ref="bgmAudio" 
         :src="playlist[currentTrackIndex].src" 
         @ended="playRandom"
+        preload="auto"
       ></audio>
 
       <!-- 左侧：旋转黑金唱片 -->

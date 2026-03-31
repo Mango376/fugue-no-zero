@@ -1026,12 +1026,15 @@
     <!-- ================================================
       全局：后台音频播放器（不可见）
     ================================================ -->
-    <audio
-      ref="audioRef"
-      :src="currentTrack.url"
-      @timeupdate="onAudioTimeUpdate"
-      @ended="nextTrack"
-    ></audio>
+    <!-- 改之后 -->
+<audio
+  ref="audioRef"
+  :src="currentTrack.src"
+  @timeupdate="onAudioTimeUpdate"
+  @ended="nextTrack"
+  preload="auto"
+></audio>
+
 
     <!-- ================================================
       全局浮动组件（Hub / 问诊页显示）
@@ -1152,8 +1155,11 @@ const playlist = [
 ]
 
 
-const currentTrackIndex = ref(Math.floor(Math.random() * trackList.length))
-const currentTrack      = computed(() => trackList[currentTrackIndex.value])
+// 改之后
+const currentTrackIndex = ref(Math.floor(Math.random() * playlist.length))
+const currentTrack      = computed(() => playlist[currentTrackIndex.value])
+
+
 
 // ============================================================
 // 音乐播放器：首次交互自动播放（移动端需要用户手势）

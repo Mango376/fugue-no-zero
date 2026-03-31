@@ -567,7 +567,7 @@
     </Transition>
 
     <!-- ★ 全局背景音乐播放器（保证切换场景不断掉） ★ -->
-    <audio ref="audioRef" :src="currentAudioSrc" @ended="playNextTrack" preload="none"></audio>
+    <audio ref="audioRef" :src="currentAudioSrc" @ended="playNextTrack" preload="auto" ></audio>
 
   </div>
 </template>
