@@ -56,20 +56,8 @@ export const useAudioStore = defineStore('audio', () => {
     })
   }
 
-  async function fadeOutCurrent(duration = 800) {
-    if (currentAudio.value) {
-      await fadeOut(currentAudio.value, duration)
-    }
-  }
 
-  return {
-    currentAudio,
-    register,
-    fadeIn,
-    fadeOut,
-    fadeOutCurrent
-  }
-})
+
 function fadeOut(audio, duration = 800) {
   if (!audio) return
   const startVolume = audio.volume
@@ -84,3 +72,32 @@ function fadeOut(audio, duration = 800) {
     }
   }, 16)
 }
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+  async function fadeOutCurrent(duration = 800) {
+    if (currentAudio.value) {
+      await fadeOut(currentAudio.value, duration)
+    }
+  }
+
+  return {
+    currentAudio,
+    register,
+    fadeIn,
+    fadeOut,
+    fadeOutCurrent
+  }
+})

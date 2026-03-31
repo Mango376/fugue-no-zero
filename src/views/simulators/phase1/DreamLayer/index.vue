@@ -1316,20 +1316,17 @@ function delay(ms) {
 
 
 // ========== 悬浮播放器逻辑 (极简横条版) ==========
-import bgm1 from '@/assets/audio/phase1/DreamLayer/bgm_dream1.mp3'
-import bgm2 from '@/assets/audio/phase1/DreamLayer/bgm_dream2.mp3'
-import bgm3 from '@/assets/audio/phase1/DreamLayer/bgm_dream3.mp3'
-import bgm4 from '@/assets/audio/phase1/DreamLayer/bgm_dream4.mp3'
-import bgm5 from '@/assets/audio/phase1/DreamLayer/bgm_dream5.mp3'
-import bgm6 from '@/assets/audio/phase1/DreamLayer/bgm_dream6.mp3'
-import bgm7 from '@/assets/audio/phase1/DreamLayer/bgm_dream7.mp3'
-import bgm8 from '@/assets/audio/phase1/DreamLayer/bgm_dream8.mp3'
-import bgm9 from '@/assets/audio/phase1/DreamLayer/bgm_dream9.mp3'
-import bgm10 from '@/assets/audio/phase1/DreamLayer/bgm_dream10.mp3'
-
 const playlist = [
-  { src: bgm1 }, { src: bgm2 }, { src: bgm3 }, { src: bgm4 }, { src: bgm5 },
-  { src: bgm6 }, { src: bgm7 }, { src: bgm8 }, { src: bgm9 }, { src: bgm10 }
+  { src: 'https://drive.mujian.me/f/1vPFR/bgm_dream1.mp3' },
+  { src: 'https://drive.mujian.me/f/2jDFR/bgm_dream2.mp3' },
+  { src: 'https://drive.mujian.me/f/4wacR/bgm_dream3.mp3' },
+  { src: 'https://drive.mujian.me/f/0PJux/bgm_dream4.mp3' },
+  { src: 'https://drive.mujian.me/f/g12TD/bgm_dream5.mp3' },
+  { src: 'https://drive.mujian.me/f/qYwcy/bgm_dream6.mp3' },
+  { src: 'https://drive.mujian.me/f/WaKt6/bgm_dream7.mp3' },
+  { src: 'https://drive.mujian.me/f/30Mt4/bgm_dream8.mp3' },
+  { src: 'https://drive.mujian.me/f/PYrFp/bgm_dream9.mp3' },
+  { src: 'https://drive.mujian.me/f/6rrsa/bgm_dream10.mp3' },
 ]
 
 const bgmAudio = ref(null)

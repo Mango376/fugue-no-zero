@@ -652,8 +652,20 @@ function updateRealTime() {
 }
 
 // ── 收音机与本地歌单(随机切台+暂停保存进度) ──
-const audioModules = import.meta.glob('@/assets/audio/phase2/LetterWriter/*.mp3', { eager: true, import: 'default' })
-const playlist = Object.values(audioModules)
+const playlist = [
+  'https://drive.mujian.me/f/By6Uv/LR-bgm1.mp3',
+  'https://drive.mujian.me/f/DZgIw/LR-bgm2.mp3',
+  'https://drive.mujian.me/f/NvOUG/LR-bgm3.mp3',
+  'https://drive.mujian.me/f/Rv2Il/LR-bgm4.mp3',
+  'https://drive.mujian.me/f/Oa1sx/LR-bgm5.mp3',
+  'https://drive.mujian.me/f/YaEin/LR-bgm6.mp3',
+  'https://drive.mujian.me/f/JWDS5/LR-bgm7.mp3',
+  'https://drive.mujian.me/f/k18Fk/LR-bgm8.mp3',
+  'https://drive.mujian.me/f/nYRUP/LR-bgm9.mp3',
+  'https://drive.mujian.me/f/7x7tv/LR-bgm10.mp3',
+  'https://drive.mujian.me/f/9rkSo/LR-bgm11.mp3',
+]
+
 const router = useRouter()           // ← 加
 const gameStore = useGameStore()     // ← 加
 const audioStore = useAudioStore()

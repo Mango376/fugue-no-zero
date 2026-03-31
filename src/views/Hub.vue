@@ -524,11 +524,14 @@ import detailBg1 from '@/assets/images/backgrounds/detail-bg1.png'
 import detailBg2 from '@/assets/images/backgrounds/detail-bg2.png'
 import detailBg3 from '@/assets/images/backgrounds/detail-bg3.png'
 import detailBg4 from '@/assets/images/backgrounds/detail-bg4.png'
-import hubBgm1 from '@/assets/audio/bg/zore_bg1.mp3'
-import hubBgm2 from '@/assets/audio/bg/zore_bg.2.mp3'
-import hubBgm3 from '@/assets/audio/bg/zore_bg.3.mp3'
-import hubBgm4 from '@/assets/audio/bg/zore_bg.4.mp3'
-import hubBgm5 from '@/assets/audio/bg/zore_bg.5.mp3'
+const hubPlaylist = [
+  'https://drive.mujian.me/f/pJmIX/zore_bg1.mp3',
+  'https://drive.mujian.me/f/GoOiW/zore_bg.2.mp3',
+  'https://drive.mujian.me/f/XKNTm/zore_bg.3.mp3',
+  'https://drive.mujian.me/f/xYQcn/zore_bg.4.mp3',
+  'https://drive.mujian.me/f/v1Dso/zore_bg.5.mp3',
+]
+
 
 // ========================
 // 基础常量
@@ -536,7 +539,7 @@ import hubBgm5 from '@/assets/audio/bg/zore_bg.5.mp3'
 const bgImages  = [bg1, bg2, bg3, bg4, bg5]
 const phaseBgs  = [phase1Bg, phase2Bg, phase3Bg, phase4Bg]
 const detailBgs = [detailBg1, detailBg2, detailBg3, detailBg4]
-const hubPlaylist = [hubBgm1, hubBgm2, hubBgm3, hubBgm4, hubBgm5]
+
 
 // ========================
 // Store / Router

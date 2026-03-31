@@ -1129,20 +1129,6 @@ import { useGameLogic } from './composables/useGameLogic'
 import { useAudioStore } from '@/stores/audioStore'
 const audioStore = useAudioStore()
 // ============================================================
-// 音频文件导入（10 首背景音乐）
-// ============================================================
-import bgm1  from '@/assets/audio/phase1/Synesthesia/Untitled (1).mp3'
-import bgm2  from '@/assets/audio/phase1/Synesthesia/Untitled (2).mp3'
-import bgm3  from '@/assets/audio/phase1/Synesthesia/Untitled (3).mp3'
-import bgm4  from '@/assets/audio/phase1/Synesthesia/Untitled (4).mp3'
-import bgm5  from '@/assets/audio/phase1/Synesthesia/Untitled (5).mp3'
-import bgm6  from '@/assets/audio/phase1/Synesthesia/Untitled (6).mp3'
-import bgm7  from '@/assets/audio/phase1/Synesthesia/Untitled (7).mp3'
-import bgm8  from '@/assets/audio/phase1/Synesthesia/Untitled (8).mp3'
-import bgm9  from '@/assets/audio/phase1/Synesthesia/Untitled (9).mp3'
-import bgm10 from '@/assets/audio/phase1/Synesthesia/Untitled (10).mp3'
-
-// ============================================================
 // 音乐播放器：基础状态
 // ============================================================
 const showMusicPlayer    = ref(false)
@@ -1152,18 +1138,19 @@ const audioProgress      = ref(0)
 const progressBarRef     = ref(null)
 const isSeeking          = ref(false)
 const titlePosterRef      = ref(null)
-const trackList = [
-  { title: 'AUDIO_FILE_01', artist: 'PHASE 1 // SYNESTHESIA', url: bgm1  },
-  { title: 'AUDIO_FILE_02', artist: 'PHASE 1 // SYNESTHESIA', url: bgm2  },
-  { title: 'AUDIO_FILE_03', artist: 'PHASE 1 // SYNESTHESIA', url: bgm3  },
-  { title: 'AUDIO_FILE_04', artist: 'PHASE 1 // SYNESTHESIA', url: bgm4  },
-  { title: 'AUDIO_FILE_05', artist: 'PHASE 1 // SYNESTHESIA', url: bgm5  },
-  { title: 'AUDIO_FILE_06', artist: 'PHASE 1 // SYNESTHESIA', url: bgm6  },
-  { title: 'AUDIO_FILE_07', artist: 'PHASE 1 // SYNESTHESIA', url: bgm7  },
-  { title: 'AUDIO_FILE_08', artist: 'PHASE 1 // SYNESTHESIA', url: bgm8  },
-  { title: 'AUDIO_FILE_09', artist: 'PHASE 1 // SYNESTHESIA', url: bgm9  },
-  { title: 'AUDIO_FILE_10', artist: 'PHASE 1 // SYNESTHESIA', url: bgm10 },
+const playlist = [
+  { src: 'https://drive.mujian.me/f/j1nc9/Untitled%20%281%29.mp3' },
+  { src: 'https://drive.mujian.me/f/yp3t5/Untitled%20%282%29.mp3' },
+  { src: 'https://drive.mujian.me/f/M57fo/Untitled%20%283%29.mp3' },
+  { src: 'https://drive.mujian.me/f/ZvocO/Untitled%20%284%29.mp3' },
+  { src: 'https://drive.mujian.me/f/Ajmim/Untitled%20%285%29.mp3' },
+  { src: 'https://drive.mujian.me/f/8G2Sv/Untitled%20%286%29.mp3' },
+  { src: 'https://drive.mujian.me/f/oYrf6/Untitled%20%287%29.mp3' },
+  { src: 'https://drive.mujian.me/f/EArsG/Untitled%20%288%29.mp3' },
+  { src: 'https://drive.mujian.me/f/m1Ytg/Untitled%20%289%29.mp3' },
+  { src: 'https://drive.mujian.me/f/QKoUl/Untitled%20%2810%29.mp3' },
 ]
+
 
 const currentTrackIndex = ref(Math.floor(Math.random() * trackList.length))
 const currentTrack      = computed(() => trackList[currentTrackIndex.value])
