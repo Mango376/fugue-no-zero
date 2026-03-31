@@ -5,7 +5,8 @@ import {
   buildGuestGenerationPrompt,
   buildGuestDialoguePrompt,
   buildLetterPolishPrompt,
-  buildReviewPrompt
+  buildReviewPrompt,
+  buildForcedAcceptance
 } from '../prompts/promptBuilder'
 import { SYSTEM_PROMPT } from '../prompts/systemPrompt'
 
@@ -23,8 +24,7 @@ function buildInitialState() {
     recentGuestTypes: [],
     currentGuest: null,
     letterArchive: [],
-    currentOpenness: 'neutral',
-    warningCount: 0
+    currentOpenness: 'neutral'
   }
 }
 
@@ -59,7 +59,6 @@ function parseGuest(raw) {
     recipient: get('recipient'),
     surfacePurpose: get('surfacePurpose'),
     realPurpose: get('realPurpose'),
-    hiddenInfo: get('hiddenInfo'),
     satisfyCondition: get('satisfyCondition'),
     openingLine: get('openingLine')
   }
@@ -204,7 +203,6 @@ export function useGameLogic() {
 
       state.currentGuest = guest
       state.currentOpenness = 'neutral'
-      state.warningCount = 0
       return guest
     } finally {
       releaseRequestController(controller)
@@ -220,8 +218,7 @@ export function useGameLogic() {
         guest: state.currentGuest,
         playerMessage,
         conversationHistory,
-        currentOpenness: state.currentOpenness,
-        warningCount: state.warningCount
+        currentOpenness: state.currentOpenness
       })
 
       const raw = await callAI(prompt, { signal: controller.signal })
@@ -232,10 +229,7 @@ export function useGameLogic() {
       const parsed = parseDialogueResponse(raw)
       state.currentOpenness = parsed.openness
 
-      if (parsed.openness === 'guarded') state.warningCount += 1
-      if (parsed.openness === 'closing') state.warningCount += 1
-
-      if (state.warningCount >= 3 || parsed.openness === 'closing') {
+      if (parsed.openness === 'closing') {
         changeReputation(-5)
         state.guestsTurnedAway += 1
         state.currentGuest = null
@@ -274,6 +268,10 @@ export function useGameLogic() {
   async function reviewLetter({ letterContent, revisionCount, conversationHistory }) {
     if (!state.currentGuest) return { aborted: false }
 
+    if (revisionCount >= 2) {
+      return { ...buildForcedAcceptance(), aborted: false }
+    }
+
     const controller = createRequestController()
     try {
       const prompt = buildReviewPrompt({
@@ -288,10 +286,7 @@ export function useGameLogic() {
         return { aborted: true }
       }
 
-      return {
-        ...parseReview(raw),
-        aborted: false
-      }
+      return { ...parseReview(raw), aborted: false }
     } finally {
       releaseRequestController(controller)
     }
@@ -312,7 +307,6 @@ export function useGameLogic() {
     state.lettersWritten += 1
     state.currentGuest = null
     state.currentOpenness = 'neutral'
-    state.warningCount = 0
   }
 
   return {

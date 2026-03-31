@@ -24,7 +24,7 @@
 </template>
 
 <script setup>
-import { ref, watch } from 'vue'
+import { ref, watch, nextTick } from 'vue'
 import { useGameStore } from '@/stores/gameStore'
 import { useAudioStore } from '@/stores/audioStore'
 
@@ -35,25 +35,27 @@ const phase = ref('idle')
 
 watch(() => store.isTransitioning, async (val) => {
   if (val) {
+    const withNotice = store.showHeadphoneNotice
+
     phase.value = 'darkening'
     visible.value = true
     audioStore.fadeOutCurrent(800)
 
     await delay(800)
 
-    // ← 只有 withNotice 为 true 时才显示提示
-    if (store.showHeadphoneNotice) {
+    if (withNotice) {
       phase.value = 'notice'
-      await delay(2000)
+      await nextTick()   // ← 等 Vue 渲染出 notice 元素
+      await delay(2500)  // ← 显示 2.5 秒
     }
 
     phase.value = 'brightening'
+    await nextTick()     // ← 等 Vue 渲染
     await delay(1000)
     visible.value = false
     store.endTransition()
   }
 })
-
 
 function delay(ms) {
   return new Promise(resolve => setTimeout(resolve, ms))

@@ -188,13 +188,14 @@
           <!-- ... 里面的内容保持不变 ... -->
 
           <div class="modal-title">创作声明</div>
-          <div class="modal-content">
-            本作品灵感、视觉设计、美工均由
-            <span class="highlight">芒果</span>
-            独立完成，
-            <span class="highlight">不授权任何参考与借鉴。</span>
-          </div>
-          <div class="modal-warning">请尊重他人的创作成果</div>
+
+<div class="modal-content">
+  <div class="copyright-line">本作品灵感、视觉、音乐</div>
+  <div class="copyright-line">均由 <span class="highlight">滄璃</span> 独立完成</div>
+  <div class="copyright-line highlight-line">不授权任何参考与借鉴</div>
+  <div class="copyright-line warning-line">请尊重他人的创作成果</div>
+</div>
+
           <button class="modal-btn" @click="confirmCopyright">
             我已悉知
           </button>
@@ -502,9 +503,10 @@
 </template>
 
 <script setup>
-import { ref, computed, onMounted, onUnmounted } from 'vue'  // ← 加 onUnmounted
+import { ref, computed, onMounted, onUnmounted } from 'vue'
 import { useRouter } from 'vue-router'
 import { useGameStore } from '@/stores/gameStore'
+import { useAudioStore } from '@/stores/audioStore'
 import saveService from '@/services/saveService'
 import bg1 from '@/assets/images/backgrounds/landing-bg-1.jpg'
 import bg2 from '@/assets/images/backgrounds/landing-bg-2.jpg'
@@ -512,105 +514,131 @@ import bg3 from '@/assets/images/backgrounds/landing-bg-3.jpg'
 import bg4 from '@/assets/images/backgrounds/landing-bg-4.jpg'
 import bg5 from '@/assets/images/backgrounds/landing-bg-5.jpg'
 import copyBgImg from '@/assets/images/backgrounds/copyright-bg.png'
-import introBgImg from '@/assets/images/backgrounds/intro-bg.png' 
-import phasesBgImg from '@/assets/images/backgrounds/phases-bg.png' 
+import introBgImg from '@/assets/images/backgrounds/intro-bg.png'
+import phasesBgImg from '@/assets/images/backgrounds/phases-bg.png'
 import phase1Bg from '@/assets/images/phases/phase1.png'
 import phase2Bg from '@/assets/images/phases/phase2.png'
 import phase3Bg from '@/assets/images/phases/phase3.png'
 import phase4Bg from '@/assets/images/phases/phase4.png'
-import detailBg1 from '@/assets/images/backgrounds/detail-bg1.png' 
-import detailBg2 from '@/assets/images/backgrounds/detail-bg2.png' 
-import detailBg3 from '@/assets/images/backgrounds/detail-bg3.png' 
-import detailBg4 from '@/assets/images/backgrounds/detail-bg4.png' 
+import detailBg1 from '@/assets/images/backgrounds/detail-bg1.png'
+import detailBg2 from '@/assets/images/backgrounds/detail-bg2.png'
+import detailBg3 from '@/assets/images/backgrounds/detail-bg3.png'
+import detailBg4 from '@/assets/images/backgrounds/detail-bg4.png'
+import hubBgm1 from '@/assets/audio/bg/zore_bg1.mp3'
+import hubBgm2 from '@/assets/audio/bg/zore_bg.2.mp3'
+import hubBgm3 from '@/assets/audio/bg/zore_bg.3.mp3'
+import hubBgm4 from '@/assets/audio/bg/zore_bg.4.mp3'
+import hubBgm5 from '@/assets/audio/bg/zore_bg.5.mp3'
 
-const bgImages = [bg1, bg2, bg3, bg4, bg5]
-const phaseBgs = [phase1Bg, phase2Bg, phase3Bg, phase4Bg]
+// ========================
+// 基础常量
+// ========================
+const bgImages  = [bg1, bg2, bg3, bg4, bg5]
+const phaseBgs  = [phase1Bg, phase2Bg, phase3Bg, phase4Bg]
 const detailBgs = [detailBg1, detailBg2, detailBg3, detailBg4]
+const hubPlaylist = [hubBgm1, hubBgm2, hubBgm3, hubBgm4, hubBgm5]
+
+// ========================
+// Store / Router
+// ========================
+const store      = useGameStore()
+const audioStore = useAudioStore()
+const router     = useRouter()
+
+// ========================
+// Hub 背景音乐
+// ========================
+const hubAudio = ref(null)
+const hubMusicStarted = ref(false)
+function startHubMusic() {
+  // ← 已经启动过就不再重复创建
+  if (hubMusicStarted.value) return
+  hubMusicStarted.value = true
+
+  const randomIndex = Math.floor(Math.random() * hubPlaylist.length)
+  hubAudio.value = new Audio(hubPlaylist[randomIndex])
+  hubAudio.value.loop = false
+
+  hubAudio.value.addEventListener('ended', () => {
+    const nextIndex = Math.floor(Math.random() * hubPlaylist.length)
+    hubAudio.value.src = hubPlaylist[nextIndex]
+    hubAudio.value.play().catch(() => {})
+  })
+
+  hubAudio.value.play()
+    .then(() => {
+      audioStore.register(hubAudio.value)
+      audioStore.fadeIn(hubAudio.value, 0.5, 2000)
+      document.removeEventListener('click',      unlockHubMusic)
+      document.removeEventListener('touchstart', unlockHubMusic)
+    })
+    .catch(() => {
+      console.warn('Hub 音乐等待用户交互...')
+    })
+}
 
 
+// 首次点击屏幕时解锁音频
+const unlockHubMusic = () => {
+  if (!hubAudio.value) {
+    // 还没创建过，直接启动
+    startHubMusic()
+  } else if (hubAudio.value.paused) {
+    // 已创建但被拦截暂停，继续播放
+    hubAudio.value.play()
+      .then(() => {
+        audioStore.register(hubAudio.value)
+        audioStore.fadeIn(hubAudio.value, 0.5, 2000)
+      })
+      .catch(() => {})
+  }
+  document.removeEventListener('click',      unlockHubMusic)
+  document.removeEventListener('touchstart', unlockHubMusic)
+}
+
+
+// ========================
+// 背景图轮播
+// ========================
 const currentBg = ref(0)
-const showQuickLoad     = ref(false)
-const quickLoadStep     = ref('scripts')   // 'scripts' | 'saves'
-const allSaves          = ref([])
-const selectedScriptId  = ref(null)
-
 let bgTimer = null
 
 function startBgSlideshow() {
-  // 随机选一张开始
   currentBg.value = Math.floor(Math.random() * bgImages.length)
-  
-  // 然后每4秒切换下一张
   bgTimer = setInterval(() => {
     currentBg.value = (currentBg.value + 1) % bgImages.length
   }, 3000)
 }
 
-const detailBgImg = computed(() => {
-  if (!currentPhase.value) return detailBg1
-  const index = phases.value.findIndex(p => p.id === currentPhase.value.id)
-  return index !== -1 ? detailBgs[index] : detailBg1
-})
-
-const store = useGameStore()
-const router = useRouter()
-const screen = ref('landing')
+// ========================
+// 界面状态
+// ========================
+const screen      = ref('landing')
 const showSplash  = ref(true)
 const splashLine1 = ref(false)
-
-const ready = ref(false)
-const introReady = ref(false)
+const ready       = ref(false)
+const introReady  = ref(false)
 const phasesReady = ref(false)
 const detailReady = ref(false)
-
-const showBlackMask = ref(false)
-const showCopyright = ref(false)
-
-
-
-
+const showBlackMask    = ref(false)
+const showCopyright    = ref(false)
 const showLockedPhaseModal = ref(false)
-
-
-
-
-const currentPhase = ref(null)
-const activeSim = ref(null)
 const showPhaseModal   = ref(false)
 const activeModalPhase = ref(null)
-const currentModalBg = computed(() => {
-  if (!activeModalPhase.value) return ''
-  // 找到当前选中章节在总列表中的索引
-  const index = phases.value.findIndex(p => p.id === activeModalPhase.value.id)
-  // 返回对应的背景图
-  if (index !== -1 && phaseBgs[index]) {
-    return phaseBgs[index]
-  }
-  return ''
-})
+const currentPhase     = ref(null)
+const activeSim        = ref(null)
 
-function openPhaseModal(phase) {
-  // 第三章和第四章：整体锁定，弹出提示
-  if (phase.id === 'phase3' || phase.id === 'phase4') {
-    showLockedPhaseModal.value = true
-    return
-  }
-  activeModalPhase.value = phase
-  showPhaseModal.value = true
-}
+// ========================
+// 快速读档
+// ========================
+const showQuickLoad    = ref(false)
+const quickLoadStep    = ref('scripts')
+const allSaves         = ref([])
+const selectedScriptId = ref(null)
+const hasSaves         = ref({})
 
-function closeLockedPhaseModal() {
-  showLockedPhaseModal.value = false
-}
-function closePhaseModal() {
-  showPhaseModal.value = false
-  activeModalPhase.value = null
-}
-const hasSaves = ref({})
-// 是否有任何存档
 const hasAnySave = computed(() => Object.keys(hasSaves.value).length > 0)
 
-// 选中剧本的信息
 const selectedScriptInfo = computed(() => {
   if (!selectedScriptId.value) return null
   for (const phase of phases.value) {
@@ -620,7 +648,6 @@ const selectedScriptInfo = computed(() => {
   return null
 })
 
-// 按剧本分组的存档列表（只列有存档的）
 const savesGrouped = computed(() => {
   const map = {}
   for (const save of allSaves.value) {
@@ -628,35 +655,73 @@ const savesGrouped = computed(() => {
     map[save.scriptId].push(save)
   }
   return Object.entries(map).map(([scriptId, saves]) => {
-    // 找到对应剧本信息
-    let scriptName  = scriptId
-    let phaseLabel  = ''
-    let route       = ''
+    let scriptName = scriptId, phaseLabel = '', route = ''
     for (const phase of phases.value) {
       const sim = phase.sims.find(s => s.id === scriptId)
-      if (sim) {
-        scriptName = sim.name
-        phaseLabel = phase.label
-        route      = sim.route
-        break
-      }
+      if (sim) { scriptName = sim.name; phaseLabel = phase.label; route = sim.route; break }
     }
     return { scriptId, scriptName, phaseLabel, route, saves }
   })
 })
 
-// 当前选中剧本的存档列表
 const selectedScriptSaves = computed(() =>
   savesGrouped.value.find(g => g.scriptId === selectedScriptId.value)?.saves || []
 )
 
-// 当前声部（响应式，自动刷新存档状态）
+async function openQuickLoad() {
+  allSaves.value = await saveService.getAllSaves()
+  quickLoadStep.value = 'scripts'
+  selectedScriptId.value = null
+  showQuickLoad.value = true
+}
+function closeQuickLoad() { showQuickLoad.value = false }
+function selectScript(item) { selectedScriptId.value = item.scriptId; quickLoadStep.value = 'saves' }
+function loadFromQuick(save) {
+  showQuickLoad.value = false
+  const group = savesGrouped.value.find(g => g.scriptId === save.scriptId)
+  if (group?.route) router.push({ path: group.route, query: { load: save.id } })
+}
+function formatSaveTime(ts) {
+  if (!ts) return '未知时间'
+  const d = new Date(ts)
+  return `${d.getFullYear()}-${String(d.getMonth()+1).padStart(2,'0')}-${String(d.getDate()).padStart(2,'0')} ${String(d.getHours()).padStart(2,'0')}:${String(d.getMinutes()).padStart(2,'0')}`
+}
+
+// ========================
+// 章节弹窗
+// ========================
+const currentModalBg = computed(() => {
+  if (!activeModalPhase.value) return ''
+  const index = phases.value.findIndex(p => p.id === activeModalPhase.value.id)
+  return index !== -1 && phaseBgs[index] ? phaseBgs[index] : ''
+})
+
+function openPhaseModal(phase) {
+  if (phase.id === 'phase3' || phase.id === 'phase4') {
+    showLockedPhaseModal.value = true
+    return
+  }
+  activeModalPhase.value = phase
+  showPhaseModal.value = true
+}
+function closePhaseModal()       { showPhaseModal.value = false; activeModalPhase.value = null }
+function closeLockedPhaseModal() { showLockedPhaseModal.value = false }
+
+// ========================
+// 详情背景图
+// ========================
+const detailBgImg = computed(() => {
+  if (!currentPhase.value) return detailBg1
+  const index = phases.value.findIndex(p => p.id === currentPhase.value.id)
+  return index !== -1 ? detailBgs[index] : detailBg1
+})
+
 const currentPhaseWithState = computed(() =>
   phasesWithState.value.find(p => p.id === currentPhase.value?.id) || null
 )
 
 // ========================
-// 继续游戏（跳过版权和介绍）
+// 游戏流程
 // ========================
 async function continueGame() {
   showBlackMask.value = true
@@ -666,53 +731,12 @@ async function continueGame() {
   phasesReady.value = true
 }
 
-// ========================
-// 快速读档
-// ========================
-async function openQuickLoad() {
-  // 拉取最新存档列表
-  allSaves.value = await saveService.getAllSaves()
-  quickLoadStep.value = 'scripts'
-  selectedScriptId.value = null
-  showQuickLoad.value = true
-}
-
-function closeQuickLoad() {
-  showQuickLoad.value = false
-}
-
-function selectScript(item) {
-  selectedScriptId.value = item.scriptId
-  quickLoadStep.value = 'saves'
-}
-
-function loadFromQuick(save) {
-  showQuickLoad.value = false
-  // 找到对应路由
-  const group = savesGrouped.value.find(g => g.scriptId === save.scriptId)
-  if (group?.route) {
-    router.push({ path: group.route, query: { load: save.id } })
-  }
-}
-
-function formatSaveTime(ts) {
-  if (!ts) return '未知时间'
-  const d = new Date(ts)
-  return `${d.getFullYear()}-${String(d.getMonth()+1).padStart(2,'0')}-${String(d.getDate()).padStart(2,'0')} ${String(d.getHours()).padStart(2,'0')}:${String(d.getMinutes()).padStart(2,'0')}`
-}
-
-
-// ========================
-// Landing → 版权弹窗
-// ========================
-// enterGame 恢复干净
 async function enterGame() {
   showBlackMask.value = true
   await delay(1200)
   showCopyright.value = true
 }
 
-// loadHasSaves 独立出来
 async function loadHasSaves() {
   const all = await saveService.getAllSaves()
   const map = {}
@@ -720,96 +744,67 @@ async function loadHasSaves() {
   hasSaves.value = map
 }
 
-function closeCopyright() {
-  // 点击遮罩不关闭（必须点按钮）
-}
+function closeCopyright() {}
 
 async function confirmCopyright() {
-  // 1. 关闭弹窗
   showCopyright.value = false
   await delay(400)
-
-  // 2. 切换到介绍页
   screen.value = 'intro'
   showBlackMask.value = false
   introReady.value = false
-
   await delay(200)
   introReady.value = true
 }
 
-// ========================
-// Intro → Phases
-// ========================
 async function goToPhases() {
   showBlackMask.value = true
   await delay(600)
-
   screen.value = 'phases'
   showBlackMask.value = false
   phasesReady.value = false
-
   await delay(200)
   phasesReady.value = true
 }
 
-// ========================
-// Phases → Phase Detail
-// ========================
 async function enterPhase(phase) {
   showBlackMask.value = true
   await delay(500)
-
   currentPhase.value = phase
   activeSim.value = null
   screen.value = 'phase-detail'
   showBlackMask.value = false
   detailReady.value = false
-
   await delay(200)
   detailReady.value = true
 }
 
-// ========================
-// Phase Detail → Phases
-// ========================
 async function goBackToPhases() {
   showBlackMask.value = true
   await delay(400)
-
   screen.value = 'phases'
   currentPhase.value = null
   activeSim.value = null
   showBlackMask.value = false
-  phasesReady.value = true  // ← 加这一行
+  phasesReady.value = true
 }
 
-// ========================
-// 模拟器交互
-// ========================
 function toggleSim(id) {
   activeSim.value = activeSim.value === id ? null : id
 }
 
 async function startGame(sim) {
-  sessionStorage.setItem('hubReturn', JSON.stringify({
-    phaseId: currentPhase.value?.id
-  }))
+  sessionStorage.setItem('hubReturn', JSON.stringify({ phaseId: currentPhase.value?.id }))
   store.startTransition()
   await delay(800)
   router.push(sim.route)
 }
 
 async function loadGame(sim) {
-  sessionStorage.setItem('hubReturn', JSON.stringify({
-    phaseId: currentPhase.value?.id
-  }))
+  sessionStorage.setItem('hubReturn', JSON.stringify({ phaseId: currentPhase.value?.id }))
   store.startTransition()
   await delay(800)
   router.push({ path: sim.route, query: { load: 'true' } })
 }
-
-
 
 // ========================
 // 工具函数
@@ -829,10 +824,10 @@ const phases = ref([
     name: '看见',
     quote: '在演奏开始之前，你先看到的是演奏者',
     sims: [
-      { id: 'dream-layer',  name: '调率者：梦域', tag: '潜意识修补模拟器',  desc: '在科技发达的时代，人们在高强度的压力下努力前进，思维变得越发活跃却也逐渐脆弱，当人们终于扛不住压力时，意识的坍缩的风暴席卷而来。', alwaysUnlocked: true, hasSave: false, route: '/phase1/dream-layer' },
-      { id: 'echo-city',    name: '未解锁',   tag: '论坛管理员模拟器',  desc: '你是一名论坛管理员。通过删帖、禁言、处理申诉来控制对立情绪。语言会随着冲突升级而逐渐"非人化"——你将亲眼目睹语言暴力是如何一步步形成的。', unlocked: false, hasSave: false, route: '/phase1/echo-city' },
-      { id: 'synesthesia',  name: '共觉之境',   tag: '感官修复模拟器',    desc: '2157年，一场仿生人的“流感”席卷而来，在这个机器可以随时被淘汰的时代，每个“人”都在努力的活着。', alwaysUnlocked: true, hasSave: false, route: '/phase1/synesthesia' },
-      { id: 'unsent',       name: '未解锁',   tag: '草稿箱模拟器',      desc: '你意外收到了一个陌生人临终前的手机。里面全是从未发送的草稿：写给妈妈的道谢，写给前任的道歉，写给自己的鼓励。你来决定每一条草稿的命运。', unlocked: false, hasSave: false, route: '/phase1/unsent' },
+      { id: 'dream-layer',  name: '调率者：梦域', tag: '潜意识修补模拟器', desc: '在科技发达的时代，人们在高强度的压力下努力前进，思维变得越发活跃却也逐渐脆弱，当人们终于扛不住压力时，意识的坍缩的风暴席卷而来。', alwaysUnlocked: true, hasSave: false, route: '/phase1/dream-layer' },
+      { id: 'echo-city',    name: '未解锁', tag: '论坛管理员模拟器', desc: '你是一名论坛管理员。通过删帖、禁言、处理申诉来控制对立情绪。', unlocked: false, hasSave: false, route: '/phase1/echo-city' },
+      { id: 'synesthesia',  name: '共觉之境', tag: '感官修复模拟器', desc: '2157年，一场仿生人的"流感"席卷而来，在这个机器可以随时被淘汰的时代，每个"人"都在努力的活着。', alwaysUnlocked: true, hasSave: false, route: '/phase1/synesthesia' },
+      { id: 'unsent',       name: '未解锁', tag: '草稿箱模拟器', desc: '你意外收到了一个陌生人临终前的手机。里面全是从未发送的草稿。', unlocked: false, hasSave: false, route: '/phase1/unsent' },
     ]
   },
   {
@@ -842,10 +837,10 @@ const phases = ref([
     name: '倾听',
     quote: '当乐声渐起，每个声部都有自己的故事',
     sims: [
-      { id: 'letter-writer', name: '代笔者',  tag: '代写书信模拟器',   desc: '1980年代，某个南方小城。你在街边摆了一张桌子，为不识字或不会写信的人代笔。每一位坐下来的客人，都带着一段说不清楚的心事。你怎么听，决定了信里有什么。', alwaysUnlocked: true, hasSave: false, route: '/phase2/letter-writer' },
-      { id: 'listener',      name: '未解锁',  tag: '危机热线模拟器',   desc: '你是一条危机热线的接线员。每个来电者都带着自己完整的人生重量压过来。不是要"解决问题"，而是要"真正听见这个人"。我们以为自己很会倾听，但大多数时候，我们只是在等待自己说话的机会。', unlocked: false, hasSave: false, route: '/phase2/listener' },
-       { id: 'listener',      name: '未解锁',  tag: '危机热线模拟器',   desc: '你是一条危机热线的接线员。每个来电者都带着自己完整的人生重量压过来。不是要"解决问题"，而是要"真正听见这个人"。我们以为自己很会倾听，但大多数时候，我们只是在等待自己说话的机会。', unlocked: false, hasSave: false, route: '/phase2/listener' },
-        { id: 'listener',      name: '未解锁',  tag: '危机热线模拟器',   desc: '你是一条危机热线的接线员。每个来电者都带着自己完整的人生重量压过来。不是要"解决问题"，而是要"真正听见这个人"。我们以为自己很会倾听，但大多数时候，我们只是在等待自己说话的机会。', unlocked: false, hasSave: false, route: '/phase2/listener' },
+      { id: 'letter-writer', name: '执笔者', tag: '代写书信模拟器', desc: '1980年代，某个南方小城。你在街边摆了一张桌子，为不识字或不会写信的人代笔。', alwaysUnlocked: true, hasSave: false, route: '/phase2/letter-writer' },
+      { id: 'listener',      name: '未解锁', tag: '危机热线模拟器', desc: '你是一条危机热线的接线员。', unlocked: false, hasSave: false, route: '/phase2/listener' },
+      { id: 'listener2',     name: '未解锁', tag: '危机热线模拟器', desc: '你是一条危机热线的接线员。', unlocked: false, hasSave: false, route: '/phase2/listener' },
+      { id: 'listener3',     name: '未解锁', tag: '危机热线模拟器', desc: '你是一条危机热线的接线员。', unlocked: false, hasSave: false, route: '/phase2/listener' },
     ]
   },
   {
@@ -855,9 +850,9 @@ const phases = ref([
     name: '理解',
     quote: '如果你能听见千年前的余震，你就会明白当下的每一声叹息',
     sims: [
-      { id: 'ai-day-one',      name: 'AI的第一天',   tag: '算法视角模拟器',      desc: '身份反转。你扮演一个刚刚觉醒的AI，而真正的AI模拟整个外部的人类世界。当你试图表达感情，系统提示："检测到逻辑溢出，正在格式化。"', unlocked: false, hasSave: false, route: '/phase3/ai-day-one' },
-      { id: 'digital-estate',  name: '社交遗产',     tag: '数字遗产管理模拟器',  desc: '有人三天前突然离世，你受委托管理他的社交账号。粉丝涌入，家属意见不一，平台发来注销通知。每一个决定都在重塑别人对这个人的记忆。', unlocked: false, hasSave: false, route: '/phase3/digital-estate' },
-      { id: 'last-witness',    name: '最后的见证人', tag: '消逝记录模拟器',      desc: '你的工作是记录正在消失的事物：一种只有三个人还会说的方言，一个月底就要拆掉的老街区，一位记得某段历史的最后一位老人。你只能观察和记录，不能改变任何事。', unlocked: false, hasSave: false, route: '/phase3/last-witness' },
+      { id: 'ai-day-one',     name: 'AI的第一天',   tag: '算法视角模拟器',     desc: '身份反转。你扮演一个刚刚觉醒的AI。', unlocked: false, hasSave: false, route: '/phase3/ai-day-one' },
+      { id: 'digital-estate', name: '社交遗产',     tag: '数字遗产管理模拟器', desc: '有人三天前突然离世，你受委托管理他的社交账号。', unlocked: false, hasSave: false, route: '/phase3/digital-estate' },
+      { id: 'last-witness',   name: '最后的见证人', tag: '消逝记录模拟器',     desc: '你的工作是记录正在消失的事物。', unlocked: false, hasSave: false, route: '/phase3/last-witness' },
     ]
   },
   {
@@ -867,43 +862,48 @@ const phases = ref([
     name: '尊重',
     quote: '最后，当碳基的呼吸遇上硅基的脉冲，我们终将听见那场未完成的进化',
     sims: [
-      { id: 'crumbling-language', name: '即将瓦解的语言', tag: '语义熵减模拟器',    desc: '系统陆续通知你："概念\'颜色\'已从公共词库移除"，"情绪词\'孤独\'访问受限"。当我们失去表达某种感受的词语，我们是否也失去了那种感受本身？', unlocked: false, hasSave: false, route: '/phase4/crumbling-language' },
-      { id: 'grey-scales',        name: '灰色的天平',     tag: '道德困境模拟器',    desc: '资源极度匮乏的未来，你是资源分配算法的人类审核员。系统永远在暗示你选"最优解"，但每一个数字背后都是一个人。当我们把道德选择权交给算法，我们是否还能称之为"人"？', unlocked: false, hasSave: false, route: '/phase4/grey-scales' },
-      { id: 'last-archive',       name: '最后一份档案',   tag: '意义与自动化模拟器', desc: '高度自动化的未来，你是一名档案管理员。系统每天将人类记忆标记为"低效数据"建议删除：一个失败的告白，一次痛苦的争吵，一个没有奖牌的爱好。那些"无用的痛苦"，才是人类区别于机器的灵魂所在。', unlocked: false, hasSave: false, route: '/phase4/last-archive' },
+      { id: 'crumbling-language', name: '即将瓦解的语言', tag: '语义熵减模拟器',     desc: '系统陆续通知你："概念\'颜色\'已从公共词库移除"。', unlocked: false, hasSave: false, route: '/phase4/crumbling-language' },
+      { id: 'grey-scales',        name: '灰色的天平',     tag: '道德困境模拟器',     desc: '资源极度匮乏的未来，你是资源分配算法的人类审核员。', unlocked: false, hasSave: false, route: '/phase4/grey-scales' },
+      { id: 'last-archive',       name: '最后一份档案',   tag: '意义与自动化模拟器', desc: '高度自动化的未来，你是一名档案管理员。', unlocked: false, hasSave: false, route: '/phase4/last-archive' },
     ]
   }
 ])
 
-
-const phasesWithState = computed(() => {
-  return phases.value.map(phase => ({
+const phasesWithState = computed(() =>
+  phases.value.map(phase => ({
     ...phase,
     sims: phase.sims.map(sim => ({
       ...sim,
       unlocked: sim.alwaysUnlocked || store.isUnlocked(sim.id),
-      hasSave: hasSaves.value[sim.id] || false
+      hasSave:  hasSaves.value[sim.id] || false
     }))
   }))
-})
+)
 
+// ========================
+// 生命周期
+// ========================
 onMounted(async () => {
+  // ← 最先注册，确保任何点击都能触发解锁
+  document.addEventListener('click',      unlockHubMusic)
+  document.addEventListener('touchstart', unlockHubMusic)
+
   store.setGlobalApiBtn(false)
-    // 开场动画
-await delay(3000)
-splashLine1.value = true
 
-await delay(3500)
-splashLine1.value = false 
+  // 开场动画
+  await delay(3000)
+  splashLine1.value = true
+  await delay(3500)
+  splashLine1.value = false
+  await delay(1500)
+  showSplash.value = false
 
-await delay(1500) 
-showSplash.value = false
-
-store.setGlobalApiBtn(true)
-
+  store.setGlobalApiBtn(true)
   startBgSlideshow()
   await store.loadUnlocked()
   await loadHasSaves()
 
+  // 从模拟器返回
   const saved = sessionStorage.getItem('hubReturn')
   if (saved) {
     sessionStorage.removeItem('hubReturn')
@@ -911,25 +911,33 @@ store.setGlobalApiBtn(true)
     const phase = phasesWithState.value.find(p => p.id === phaseId)
     if (phase) {
       currentPhase.value = phase
-      screen.value = 'phase-detail'
-      detailReady.value = true
-      phasesReady.value = true
-      ready.value = true
-      store.setGlobalApiBtn(true) 
+      screen.value       = 'phase-detail'
+      detailReady.value  = true
+      phasesReady.value  = true
+      ready.value        = true
+      store.setGlobalApiBtn(true)
+      startHubMusic()
       return
     }
   }
 
   setTimeout(() => { ready.value = true }, 300)
+  startHubMusic()
 })
 
 onUnmounted(() => {
   if (bgTimer) clearInterval(bgTimer)
+
+  document.removeEventListener('click',      unlockHubMusic)
+  document.removeEventListener('touchstart', unlockHubMusic)
+
+  setTimeout(() => {
+    hubAudio.value?.pause()
+    audioStore.register(null)
+  }, 1000)
 })
-
-
-
 </script>
+
 
 <style scoped>
 /* ========================
@@ -2141,6 +2149,28 @@ Landing 屏
 
 }
 
+.copyright-line {
+  font-size: 0.9rem;
+  color: #5a4020;
+  letter-spacing: 0.08em;
+  line-height: 2.2;
+  text-align: center;
+  text-shadow: 
+    0 0 6px rgba(255, 255, 255, 1), 
+    0 0 12px rgba(255, 255, 255, 0.8);
+}
+
+.highlight-line {
+  color: #8a3010;
+  font-weight: bold;
+}
+
+.warning-line {
+  color: #c03020;
+  font-weight: bold;
+  letter-spacing: 0.15em;
+  margin-top: 0.2rem;
+}
 
 
 /* ========================

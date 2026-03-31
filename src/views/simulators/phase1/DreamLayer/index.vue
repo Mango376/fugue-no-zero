@@ -1294,10 +1294,17 @@ const router = useRouter()
 // 返回函数改成（DreamLayer 里找到类似 goHome / goBack 的函数）
 // DreamLayer 的 goHome
 async function goHome() {
-  gameStore.startTransition(false)  // ← 传 false，不显示提示
+  gameStore.startTransition(false)
+
+  // 淡出音乐，时长和路由动画保持一致
+  if (bgmAudio.value && isPlaying.value) {
+    audioStore.fadeOut(bgmAudio.value, 800)
+  }
+
   await new Promise(r => setTimeout(r, 800))
   router.back()
 }
+
 
 
 
@@ -1416,20 +1423,36 @@ onMounted(() => {
   nextTick(() => {
     if (bgmAudio.value) {
       audioStore.register(bgmAudio.value)
-      // 自动播放，淡入 1.5s
-      audioStore.fadeIn(bgmAudio.value, 0.8, 1500)
-      isPlaying.value = true  // ← 同步播放状态，让唱片旋转
+      bgmAudio.value.volume = 0
+      bgmAudio.value.play()
+        .then(() => {
+          isPlaying.value = true
+          audioStore.fadeIn(bgmAudio.value, 0.8, 1500)
+        })
+        .catch(() => {
+          isPlaying.value = false
+          console.warn('自动播放被浏览器拦截，等待用户交互')
+        })
     }
   })
 })
 
+
+
 onUnmounted(() => {
-  // 延迟清理，给淡出留出时间
+  // 如果 goHome 已经触发过淡出，这里音量已经接近 0，pause 无感知
+  // 如果是意外卸载（浏览器返回等），这里做兜底淡出
+  if (bgmAudio.value && isPlaying.value) {
+    audioStore.fadeOut(bgmAudio.value, 400)
+  }
+
   setTimeout(() => {
     audioStore.register(null)
   }, 1000)
+
   stopDrag()
 })
+
 
 
 
@@ -1649,6 +1672,11 @@ function getParticleStyle(n) {
 </script>
 
 <style scoped>
+@font-face {
+  font-family: '调率者标题';
+  src: url('@/assets/fonts/调率者标题.ttf') format('truetype');
+  font-display: swap;
+}
 /* ============================================================
    01. 基础变量与全局设置 (重塑立体光影)
 ============================================================ */
@@ -1920,7 +1948,7 @@ function getParticleStyle(n) {
   margin-bottom: 0.4rem;
 }
 .main-title {
-  font-family: 'Noto Serif SC', 'STKaiti', serif;
+  font-family: '调率者标题';
   font-size: 2.6rem; /* 从 3.8rem 大幅缩小 */
   font-weight: 300;
   letter-spacing: 0.1em;

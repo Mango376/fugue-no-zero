@@ -70,3 +70,17 @@ export const useAudioStore = defineStore('audio', () => {
     fadeOutCurrent
   }
 })
+function fadeOut(audio, duration = 800) {
+  if (!audio) return
+  const startVolume = audio.volume
+  const step = startVolume / (duration / 16)
+  const timer = setInterval(() => {
+    if (audio.volume > step) {
+      audio.volume = Math.max(0, audio.volume - step)
+    } else {
+      audio.volume = 0
+      audio.pause()
+      clearInterval(timer)
+    }
+  }, 16)
+}

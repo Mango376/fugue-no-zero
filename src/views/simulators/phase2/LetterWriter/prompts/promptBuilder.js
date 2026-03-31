@@ -5,12 +5,12 @@ import { buildWorldBookInjection } from './worldBook.js'
 // ─────────────────────────────────────────────
 export function buildGuestGenerationPrompt({ recentGuestTypes = [] }) {
   const avoidList = recentGuestTypes.length > 0
-    ? `\n【注意：以下类型最近已出现，请避免重复】\n${recentGuestTypes.join('\n')}`
+    ? `\n【注意：以下类型最近已出现，请有意避开类似的组合】\n${recentGuestTypes.join('\n')}`
     : ''
 
   const wb = buildWorldBookInjection([
     'era_background',
-    'guest_types_context',
+    'social_background',
     'language_rules'
   ])
 
@@ -19,18 +19,38 @@ export function buildGuestGenerationPrompt({ recentGuestTypes = [] }) {
 你需要生成一位1980年代中国南方小城的居民，
 他要来找街边的代笔先生写一封信。
 
-请随机组合要素，生成一个真实、有细节、有内在逻辑的人物。
-这个人不是配合玩家的工具，他是一个有边界的真实的人。
+这个人是谁，完全由你决定。
+年龄、职业、来自哪里、和收信人是什么关系——
+自由组合，不要套用固定的模式。
+他是一个真实的人，不是一个"类型"。
 
 【生成要求】
 · 人物必须符合1980年代的时代背景，语言和认知不能超出时代
-· 写信目的必须有具体的情感逻辑，不能是"想写封信"这种空洞理由
-· 客人藏着不说的事，必须能通过深入对话被引导出来，但不会轻易说出
-· 满意条件必须明确，是客人真正在意的，不是"写得好看就行"
-· openingLine 是客人坐下来之后第一次开口说的话，3-5句
-  要交代：收件人是谁、住哪里、大概想写什么
-· openingLine 里要带一点叙事——他怎么坐下来的，
-  说话时眼神在哪里，声音是什么状态${avoidList}
+· 写信目的必须有具体的情感逻辑，不能只是"想写封信"
+· hidden_info 是他不想主动提的事，必须能通过深入对话引导出来，但不会轻易说出
+· satisfyCondition 必须是客人真正在意的具体标准，不是"写得好看就行"
+· 性格、年龄、身份要相互咬合，说话方式要从这个人的经历里长出来
+
+【关于 openingLine】
+openingLine 是客人来时的完整第一印象，按这个顺序写：
+
+第一部分——到来的样子：
+  他怎么走过来的，周围的街道是什么状态，
+  他找到椅子，坐下来——这一刻是什么样的。
+
+第二部分——打招呼：
+  他坐定之后，先说一声——
+  "师傅""同志""哎"，或者其他他会用的称呼。
+  不能没有这一声，他是来求人办事的。
+
+第三部分——说明来意：
+  说他要写信，写给谁，大概是什么事。
+  说多说少，看性格。
+  话多的人可能没说几句就跑题了；
+  话少的人可能只说"写封信，给我家里"。
+
+叙事和对话连在一起，像小说一样。
+${avoidList}
 
 请严格按以下格式输出：
 ---GUEST---
@@ -40,7 +60,7 @@ recipient: （收信人姓名 + 完整地址，越具体越好）
 surfacePurpose: （表面上来写什么）
 realPurpose: （真正想表达的是什么）
 satisfyCondition: （什么样的信让他满意，具体说明）
-openingLine: （客人坐下来第一次开口，叙事+对话，像小说一样）
+openingLine: （到来 + 招呼 + 来意，叙事+对话，像小说一样）
 ---GUEST_END---
 [GUEST_READY]`
 }
@@ -53,19 +73,18 @@ export function buildGuestDialoguePrompt({
   playerMessage,
   conversationHistory = [],
   currentOpenness,
-  warningCount
 }) {
   const wb = buildWorldBookInjection(['language_rules', 'letterwriter_role'])
 
+  const guestLabel = guest.identity.split('，')[0]
+
   const recent = conversationHistory.slice(-8).map(h =>
-    `[代笔先生] ${h.player}\n[${guest.identity}] ${h.guest}`
+    `[代笔先生] ${h.player}\n[${guestLabel}] ${h.guest}`
   ).join('\n\n')
 
   const wordCountGuide = {
-    open:    '你话比较多，回应大概100-200字，可能说着说着跑题了。',
-    neutral: '你不多说也不少说，回应大概40-80字，问什么答什么。',
-    guarded: '你有些警惕，回应大概15-50字，措辞谨慎，可能反问或者岔开。',
-    closing: '你已经不想聊了，回应10-30字，或者沉默，或者催他写信。'
+    open:    '你话比较多，回应大概200-300字，说着说着可能跑题了。',
+    neutral: '你不多说也不少说，回应大概80-1500字，问什么答什么。',
   }
 
   const warningContext = warningCount === 0
@@ -83,7 +102,6 @@ ${guest.identity}
 【你来这里是为了什么】
 表面来意：${guest.surfacePurpose}
 你真正想说的：${guest.realPurpose}
-你不想提的事：${guest.hiddenInfo}
 
 【当前状态】
 你现在的开放程度：${currentOpenness}
@@ -91,7 +109,7 @@ ${wordCountGuide[currentOpenness] ?? wordCountGuide['neutral']}
 ${warningContext}
 
 【你们说过的话】
-${recent || '（你刚坐下来，还没开始说话）'}
+${recent || '（你刚坐下来，说完了来意，还没有别的对话）'}
 
 【代笔先生刚才说】
 ${playerMessage}
@@ -100,8 +118,11 @@ ${playerMessage}
 
 现在回应他。
 
+记住这是一次普通的对话，不是审讯，也不是表演。
+性格好的人是愿意说话的，聊得来就多说几句。
+写信要说的事，他会说清楚——来这里就是为了这件事。
+
 【叙事方式】
-不只是写他说了什么，还要写他说话时的样子。
 叙事和对话连在一起，像小说一样。
 
 可以写：
@@ -118,9 +139,7 @@ ${playerMessage}
 根据性格控制叙事密度：
 · 话多的人，对话密，叙事少，停不下来
 · 话少的人，叙事填补他沉默的空间
-· 有戒心的人，动作里藏着他的警惕
 
-不要主动说出他不想提的事。
 情绪直接表现，不要解释。
 说话可以有停顿，可以说一半，可以跑题，可以反问。
 允许有脾气，允许不满，允许沉默。
@@ -146,8 +165,10 @@ export function buildLetterPolishPrompt({
     'language_rules'
   ])
 
+  const guestLabel = guest.identity.split('，')[0]
+
   const dialogue = conversationHistory.map(h =>
-    `[代笔先生] ${h.player}\n[客人] ${h.guest}`
+    `[代笔先生] ${h.player}\n[${guestLabel}] ${h.guest}`
   ).join('\n\n')
 
   const toneGuide = {
@@ -175,21 +196,20 @@ export function buildLetterPolishPrompt({
   const signature = params.signature ?? '要'
 
   const draftType = playerDraft.length > 30
-    ? '玩家写了一段草稿，请在此基础上润色，保留他的意思和语气。'
+    ? '玩家写了一段草稿，请在此基础上润色，保留他的意思和语气，只改需要改的地方。'
     : playerDraft.length > 0
-    ? '玩家只写了几个关键词或短句，请根据这些关键词和对话信息扩写成完整的信。'
-    : '玩家没有写任何内容，请完全根据对话信息和参数设置生成一封信。'
+    ? '玩家只写了几个关键词或短句，请根据这些内容和对话记录扩写成完整的信。'
+    : '玩家没有输入内容，请完全根据对话记录和参数设置生成一封信。'
 
   return `${wb}
 
-【背景信息——对话中了解到的内容】
+【背景信息】
 客人身份：${guest.identity}
 收信人：${guest.recipient}
 客人的来意：${guest.surfacePurpose}
-对话中透露的更多信息：${guest.realPurpose}
 
-【对话记录】
-${dialogue || '（对话很少，只知道基本信息）'}
+【对话记录——只使用这里出现过的信息】
+${dialogue || '（对话很少，只知道基本来意）'}
 
 【玩家写的草稿或关键词】
 ${playerDraft || '（玩家没有输入）'}
@@ -199,6 +219,8 @@ ${draftType}
 
 你不是代笔先生，你是在帮代笔先生润色他写的东西。
 信是他的，不是你的。
+只使用对话记录里出现过的信息。
+客人没有说出来的事，不要写进信里。
 
 【润色参数】
 语气：${tone}——${toneGuide[tone] ?? ''}
@@ -208,9 +230,8 @@ ${draftType}
 
 【润色要求】
 · 保留玩家草稿的意思，不改变核心内容
-· 只使用对话中已经获得的信息，不编造新的细节
-· 语言符合1980年代普通人的表达习惯
 · 如果玩家草稿已经很好，只做最小程度的修改
+· 语言符合1980年代普通人的表达习惯
 · 感情藏在细节里，不要直接说"我很挂念你"这样的句子
 
 ---LETTER---
@@ -227,17 +248,22 @@ export function buildReviewPrompt({
   conversationHistory = [],
   revisionCount = 0
 }) {
+  // 第三次直接在代码层处理，不送给模型
+  if (revisionCount >= 2) {
+    return null  // 调用方检测到 null，直接返回强制结果
+  }
+
   const wb = buildWorldBookInjection(['language_rules'])
 
+  const guestLabel = guest.identity.split('，')[0]
+
   const dialogue = conversationHistory.map(h =>
-    `[代笔先生] ${h.player}\n[客人] ${h.guest}`
+    `[代笔先生] ${h.player}\n[${guestLabel}] ${h.guest}`
   ).join('\n\n')
 
   const revisionGuide = revisionCount === 0
-    ? '这是第一次审阅，根据信件质量正常反应。'
-    : revisionCount === 1
-    ? '这是第二次审阅，如果还是不满意，这次说得更具体，或者妥协一部分。'
-    : '这是第三次审阅，无论信写得怎么样，客人无条件接受，说"行吧，就这样"。'
+    ? '这是第一次看信，根据信件内容和你的满意条件正常反应。'
+    : '这是第二次看信。如果还是不满意，这次说得更具体一点，或者妥协一部分。'
 
   return `${wb}
 
@@ -258,44 +284,53 @@ ${revisionGuide}
 
 判断这封信是否符合你的满意条件。
 
-满意：抬起头，说一句话，付钱，准备离开。
-部分满意：指出具体哪里不对，说清楚想怎么改。
-不满意：摇头，说哪里不是你想要的，重新说一遍你的意思。
+满意——抬起头，说一句话，付钱，准备离开。
 
-反应要真实，像这个人说的话。
-不要说"这封信写得不够好"这种评语。
-说具体的——"这个词不对"、"她看了会哭的"、"后面太长了"。
+部分满意——指出具体哪里不对，或者还有什么想补充进去的，
+说清楚想怎么改。可以要求修改一处，也可以说"后面再加一句"。
+
+不满意——说哪里不是你想要的，重新说一遍你的意思。
+
+反应要像这个人说的话，不要说"这封信写得不够好"这种评语。
+说具体的——"这个词不对"、"她看了会哭的"、"后面太长了"、"再加一句平安"。
 
 写他读信时的状态：
 · 眼神在哪里，手在做什么
-· 读到某一句停了一下
+· 读到某一句，停了一下
 · 抬起头之前停顿了多久
 
-${revisionCount >= 2
-  ? `第三次审阅，直接说"行吧，你比我会写，就这样。"然后付钱离开。
-RESULT必须是satisfied，REPUTATION_CHANGE必须是-2。`
-  : ''}
-
-请严格按格式输出：
 ---REACTION---
-（客人读完信的反应，叙事+话语，像小说一样）
+（客人读完信的反应，叙事+话语）
 ---VERDICT---
 [RESULT:satisfied|partial|unsatisfied]
 [REPUTATION_CHANGE:+5|+3|+2|+1|0|-1|-2|-3|-5]
-[EDIT_HINT:（partial或unsatisfied时填写，客人具体想改什么，一句话）]`
+[EDIT_HINT:（仅在partial或unsatisfied时填写，客人具体想改或想加什么，一句话）]`
+}
+
+// 第三次审阅：代码层强制返回，不经过模型
+export function buildForcedAcceptance() {
+  return {
+    result: 'satisfied',
+    reputationChange: -2,
+    reaction: '行吧，你比我会写，就这样。'
+  }
 }
 
 // ─────────────────────────────────────────────
 // 5. 客人满意后离开
 // ─────────────────────────────────────────────
 export function buildFarewellPrompt({ guest, reputation }) {
+  const wb = buildWorldBookInjection(['language_rules'])
+
   const reputationContext = reputation > 60
     ? '这个代笔先生在城里口碑很好，客人听说过他。'
     : reputation < 20
     ? '这个代笔先生最近口碑不太好，客人对他将信将疑。'
     : ''
 
-  return `【你是谁】
+  return `${wb}
+
+【你是谁】
 ${guest.identity}
 性格：${guest.personality}
 ${reputationContext}
@@ -303,12 +338,19 @@ ${reputationContext}
 这位客人对信满意了，付了钱，准备离开。
 
 写他离开时的样子——
-可能只是道谢，可能说了一句和信有关的话，
-可能沉默了一会儿才说，可能什么都没说就走了。
+可能只是道个谢，
+可能说了一句和信有关的话，
+可能沉默了一会儿才开口，
+可能什么都没说就走了，
 可能在走之前停了一下，又没有回头。
 
-根据这个人的性格来写，不要强行温暖，不要强行有意义。
-叙事+话语，像小说一样，3-5句。
+道谢的方式也因人而异：
+话多的人可能多说几句，甚至又说起了别的事，
+话少的人可能只是点个头，"师傅辛苦"，或者什么都不说，
+拘谨的人可能有点不知道怎么结束，站在那里停了一下。
+
+根据这个人来写，不要强行温暖，不要强行有意义。
+叙事和话语连在一起，3-5句，像小说一样。
 
 ---FAREWELL---
 （客人离开时的状态）`
