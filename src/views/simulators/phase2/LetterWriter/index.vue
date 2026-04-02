@@ -1292,9 +1292,10 @@ const epilogueLines = [
 ══════════════════════════════════════════ */
 @font-face {
   font-family: '手写中文';
-  src: url('@/assets/fonts/手写中文.ttf') format('truetype');
+  src: url('https://drive-cdn.mujian.me/49/47353130-e6fe-435b-b8bf-b7379a01877b_手写中文.ttf') format('truetype');
   font-display: swap;
 }
+
 
 .letter-writer {
   --bg-wall:        #5C4A35;

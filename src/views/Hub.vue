@@ -508,22 +508,23 @@ import { useRouter } from 'vue-router'
 import { useGameStore } from '@/stores/gameStore'
 import { useAudioStore } from '@/stores/audioStore'
 import saveService from '@/services/saveService'
-import bg1 from '@/assets/images/backgrounds/landing-bg-1.jpg'
-import bg2 from '@/assets/images/backgrounds/landing-bg-2.jpg'
-import bg3 from '@/assets/images/backgrounds/landing-bg-3.jpg'
-import bg4 from '@/assets/images/backgrounds/landing-bg-4.jpg'
-import bg5 from '@/assets/images/backgrounds/landing-bg-5.jpg'
-import copyBgImg from '@/assets/images/backgrounds/copyright-bg.png'
-import introBgImg from '@/assets/images/backgrounds/intro-bg.png'
-import phasesBgImg from '@/assets/images/backgrounds/phases-bg.png'
-import phase1Bg from '@/assets/images/phases/phase1.png'
-import phase2Bg from '@/assets/images/phases/phase2.png'
-import phase3Bg from '@/assets/images/phases/phase3.png'
-import phase4Bg from '@/assets/images/phases/phase4.png'
-import detailBg1 from '@/assets/images/backgrounds/detail-bg1.png'
-import detailBg2 from '@/assets/images/backgrounds/detail-bg2.png'
-import detailBg3 from '@/assets/images/backgrounds/detail-bg3.png'
-import detailBg4 from '@/assets/images/backgrounds/detail-bg4.png'
+const bg1       = 'https://drive.mujian.me/f/WmKh6/landing-bg-1.jpg'
+const bg2       = 'https://drive.mujian.me/f/3qMT4/landing-bg-2.jpg'
+const bg3       = 'https://drive.mujian.me/f/Pyrip/landing-bg-3.jpg'
+const bg4       = 'https://drive.mujian.me/f/6drsa/landing-bg-4.jpg'
+const bg5       = 'https://drive.mujian.me/f/jnnS9/landing-bg-5.jpg'
+const copyBgImg = 'https://drive.mujian.me/f/EKrUG/copyright-bg.png'
+const introBgImg  = 'https://drive.mujian.me/f/MP7fo/intro-bg.jpg'
+const phasesBgImg = 'https://drive.mujian.me/f/y43s5/phases-bg.jpg'
+const phase1Bg  = 'https://drive.mujian.me/f/15PFR/phase1.png'
+const phase2Bg  = 'https://drive.mujian.me/f/47asR/phase2.png'
+const phase3Bg  = 'https://drive.mujian.me/f/q1wfy/phase3.png'
+const phase4Bg  = 'https://drive.mujian.me/f/gG2UD/phase4.png'
+const detailBg1 = 'https://drive.mujian.me/f/8g2Fv/detail-bg1.jpg'
+const detailBg2 = 'https://drive.mujian.me/f/ZrouO/detail-bg2.jpg'
+const detailBg3 = 'https://drive.mujian.me/f/Agmum/detail-bg3.jpg'
+const detailBg4 = 'https://drive.mujian.me/f/ozrF6/detail-bg4.jpg'
+
 const hubPlaylist = [
   'https://drive.mujian.me/f/pJmIX/zore_bg1.mp3',
   'https://drive.mujian.me/f/GoOiW/zore_bg.2.mp3',
@@ -887,19 +888,13 @@ const phasesWithState = computed(() =>
 // 生命周期
 // ========================
 onMounted(async () => {
-  const preloadIndex = Math.floor(Math.random() * hubPlaylist.length)
-  hubAudio.value = new Audio(hubPlaylist[preloadIndex])
-  hubAudio.value.preload = 'auto'
-  hubAudio.value.volume = 0
-  hubAudio.value.loop = false
-  hubAudio.value.addEventListener('ended', () => {
-    const nextIndex = Math.floor(Math.random() * hubPlaylist.length)
-    hubAudio.value.src = hubPlaylist[nextIndex]
-    hubAudio.value.play().catch(() => {})
-  })
-  // ← 最先注册，确保任何点击都能触发解锁
-  document.addEventListener('click',      unlockHubMusic)
-  document.addEventListener('touchstart', unlockHubMusic)
+  const saved = sessionStorage.getItem('hubReturn')
+
+  // ✅ 只注册监听器，不创建 Audio
+  if (!saved) {
+    document.addEventListener('click',      unlockHubMusic)
+    document.addEventListener('touchstart', unlockHubMusic)
+  }
 
   store.setGlobalApiBtn(false)
 
@@ -916,8 +911,6 @@ onMounted(async () => {
   await store.loadUnlocked()
   await loadHasSaves()
 
-  // 从模拟器返回
-  const saved = sessionStorage.getItem('hubReturn')
   if (saved) {
     sessionStorage.removeItem('hubReturn')
     const { phaseId } = JSON.parse(saved)
@@ -929,7 +922,10 @@ onMounted(async () => {
       phasesReady.value  = true
       ready.value        = true
       store.setGlobalApiBtn(true)
+      await delay(1500)
       startHubMusic()
+      document.removeEventListener('click',      unlockHubMusic)
+      document.removeEventListener('touchstart', unlockHubMusic)
       return
     }
   }
@@ -937,6 +933,7 @@ onMounted(async () => {
   setTimeout(() => { ready.value = true }, 300)
   startHubMusic()
 })
+
 
 onUnmounted(() => {
   if (bgTimer) clearInterval(bgTimer)
@@ -2207,23 +2204,43 @@ Landing 屏
   top: 1.5rem;
   left: 1.5rem;
   z-index: 20;
-  padding: 0.5rem 1rem;
-  background: rgba(255, 250, 238, 0.8);
-  border: 1px solid rgba(180, 140, 60, 0.25);
-  border-radius: 4px;
+  padding: 0.5rem 1.2rem;
+  background: linear-gradient(160deg, rgba(255, 252, 242, 0.95) 0%, rgba(245, 235, 210, 0.9) 100%);
+  border: 1px solid rgba(180, 140, 60, 0.35);
+  border-bottom: 2px solid rgba(140, 100, 30, 0.4);
+  border-radius: 6px;
   font-family: '正文中文', 'KaiTi', serif;
   font-size: 0.82rem;
-  color: #6a4e20;
+  color: #5a3e10;
   cursor: pointer;
-  transition: all 0.25s ease;
-  backdrop-filter: blur(4px);
+  transition: all 0.25s cubic-bezier(0.34, 1.56, 0.64, 1);
+  backdrop-filter: blur(8px);
   letter-spacing: 0.1em;
+  box-shadow: 
+    0 4px 12px rgba(100, 60, 10, 0.12),
+    0 1px 3px rgba(100, 60, 10, 0.08),
+    inset 0 1px 0 rgba(255, 255, 255, 0.9);
 }
 .back-btn:hover {
-  background: rgba(255, 250, 230, 0.95);
-  border-color: rgba(180, 140, 60, 0.5);
-  box-shadow: 0 3px 10px rgba(100, 60, 10, 0.1);
+  background: linear-gradient(160deg, #fffdf5 0%, #fdf5e0 100%);
+  border-color: rgba(180, 140, 60, 0.6);
+  border-bottom-color: rgba(140, 100, 30, 0.7);
+  box-shadow: 
+    0 6px 18px rgba(100, 60, 10, 0.18),
+    0 2px 6px rgba(100, 60, 10, 0.1),
+    inset 0 1px 0 rgba(255, 255, 255, 1);
+  transform: translateY(-2px);
+  color: #3a2808;
 }
+.back-btn:active {
+  transform: translateY(1px);
+  box-shadow: 
+    0 2px 6px rgba(100, 60, 10, 0.1),
+    inset 0 2px 4px rgba(140, 100, 30, 0.1);
+  border-bottom-width: 1px;
+}
+
+
 
 .detail-content {
   max-width: 680px;
@@ -2296,29 +2313,52 @@ Landing 屏
 }
 
 .sim-item {
-  background: rgba(255, 250, 238, 0.65);
-  border: 1px solid rgba(180, 140, 60, 0.15);
-  border-left: 3px solid transparent; 
-  border-radius: 6px;
+  background: linear-gradient(160deg, rgba(255, 252, 242, 0.85) 0%, rgba(250, 242, 220, 0.7) 100%);
+  border: 1px solid rgba(180, 140, 60, 0.2);
+  border-left: 3px solid transparent;
+  border-bottom: 2px solid rgba(160, 120, 40, 0.12);
+  border-radius: 8px;
   overflow: hidden;
-  transition: all 0.25s ease;
+  transition: all 0.3s cubic-bezier(0.34, 1.56, 0.64, 1);
+  box-shadow: 
+    0 4px 16px rgba(100, 60, 10, 0.06),
+    0 1px 4px rgba(100, 60, 10, 0.04),
+    inset 0 1px 0 rgba(255, 255, 255, 0.9);
 }
 .sim-item.unlocked:hover {
-  border-color: rgba(180, 140, 60, 0.4);
-  border-left-color: #9a7840; 
-  background: rgba(255, 248, 228, 0.88);
-  box-shadow: 0 3px 10px rgba(100, 60, 10, 0.07);
-  transform: translateX(4px); 
+  border-color: rgba(180, 140, 60, 0.45);
+  border-left-color: #9a7840;
+  border-bottom-color: rgba(140, 100, 30, 0.35);
+  background: linear-gradient(160deg, rgba(255, 253, 245, 0.95) 0%, rgba(253, 245, 225, 0.9) 100%);
+  box-shadow: 
+    0 8px 24px rgba(100, 60, 10, 0.12),
+    0 3px 8px rgba(100, 60, 10, 0.08),
+    inset 0 1px 0 rgba(255, 255, 255, 1);
+  transform: translateX(6px) translateY(-2px);
   cursor: pointer;
+}
+.sim-item.unlocked:active {
+  transform: translateX(3px) translateY(1px);
+  box-shadow: 
+    0 2px 8px rgba(100, 60, 10, 0.08),
+    inset 0 2px 4px rgba(140, 100, 30, 0.06);
 }
 .sim-item.locked {
   opacity: 0.38;
   cursor: not-allowed;
+  box-shadow: none;
 }
 .sim-item.active {
-  border-color: rgba(180, 140, 60, 0.45);
-  background: rgba(255, 248, 222, 0.92);
+  border-color: rgba(180, 140, 60, 0.5);
+  border-left-color: #b08840;
+  border-bottom-color: rgba(140, 100, 30, 0.4);
+  background: linear-gradient(160deg, rgba(255, 252, 235, 0.95) 0%, rgba(252, 242, 215, 0.92) 100%);
+  box-shadow: 
+    0 6px 20px rgba(100, 60, 10, 0.1),
+    inset 0 1px 0 rgba(255, 255, 255, 1),
+    inset 0 0 20px rgba(200, 160, 60, 0.04);
 }
+
 
 .sim-item-header {
   display: flex;
@@ -2424,44 +2464,79 @@ Landing 屏
 }
 .btn-start {
   flex: 1;
-  padding: 0.65rem 1rem;
-  border-radius: 4px;
+  padding: 0.7rem 1rem;
+  border-radius: 6px;
   font-size: 0.85rem;
   font-family: '正文中文', 'KaiTi', serif;
   letter-spacing: 0.12em;
   cursor: pointer;
-  transition: all 0.25s ease;
-  background: linear-gradient(135deg, #7a5018, #5a3808);
-  border: 1px solid #9a6828;
+  transition: all 0.25s cubic-bezier(0.34, 1.56, 0.64, 1);
+  background: linear-gradient(180deg, #9a6828 0%, #7a5018 40%, #5a3808 100%);
+  border: 1px solid #7a5018;
+  border-bottom: 2px solid #3a2005;
   color: #f5e8c0;
-  text-shadow: 0 1px 2px rgba(0,0,0,0.3);
+  text-shadow: 0 1px 3px rgba(0, 0, 0, 0.4);
+  box-shadow: 
+    0 4px 14px rgba(80, 40, 5, 0.3),
+    0 1px 4px rgba(80, 40, 5, 0.2),
+    inset 0 1px 0 rgba(255, 220, 120, 0.25);
 }
 .btn-start:hover {
-  background: linear-gradient(135deg, #8a6025, #6a4515);
-  box-shadow: 0 3px 10px rgba(100, 60, 10, 0.2);
-  transform: translateY(-1px);
+  background: linear-gradient(180deg, #aa7830 0%, #8a6025 40%, #6a4515 100%);
+  border-bottom-color: #4a2808;
+  box-shadow: 
+    0 6px 20px rgba(80, 40, 5, 0.4),
+    0 2px 6px rgba(80, 40, 5, 0.25),
+    inset 0 1px 0 rgba(255, 220, 120, 0.35);
+  transform: translateY(-3px);
+  color: #fff8e0;
 }
+.btn-start:active {
+  transform: translateY(1px);
+  border-bottom-width: 1px;
+  box-shadow: 
+    0 2px 6px rgba(80, 40, 5, 0.2),
+    inset 0 2px 4px rgba(40, 20, 0, 0.2);
+}
+
 .btn-load {
   flex: 1;
-  padding: 0.65rem 1rem;
-  border-radius: 4px;
+  padding: 0.7rem 1rem;
+  border-radius: 6px;
   font-size: 0.85rem;
   font-family: '正文中文', 'KaiTi', serif;
   letter-spacing: 0.12em;
   cursor: pointer;
-  transition: all 0.25s ease;
-  background: transparent;
-  border: 1px solid rgba(140, 100, 40, 0.3);
-  color: #8a6a30;
+  transition: all 0.25s cubic-bezier(0.34, 1.56, 0.64, 1);
+  background: linear-gradient(160deg, rgba(255, 252, 242, 0.9) 0%, rgba(245, 235, 210, 0.8) 100%);
+  border: 1px solid rgba(140, 100, 40, 0.35);
+  border-bottom: 2px solid rgba(120, 80, 20, 0.25);
+  color: #7a5a20;
+  box-shadow: 
+    0 3px 10px rgba(100, 60, 10, 0.08),
+    inset 0 1px 0 rgba(255, 255, 255, 0.9);
 }
 .btn-load:hover:not(.disabled) {
   border-color: rgba(140, 100, 40, 0.55);
-  background: rgba(200, 160, 70, 0.08);
+  border-bottom-color: rgba(120, 80, 20, 0.5);
+  background: linear-gradient(160deg, #fffdf5 0%, #fdf5e0 100%);
+  box-shadow: 
+    0 6px 16px rgba(100, 60, 10, 0.14),
+    inset 0 1px 0 rgba(255, 255, 255, 1);
+  transform: translateY(-3px);
+  color: #5a3e10;
+}
+.btn-load:active:not(.disabled) {
+  transform: translateY(1px);
+  border-bottom-width: 1px;
+  box-shadow: inset 0 2px 4px rgba(100, 60, 10, 0.08);
 }
 .btn-load.disabled {
   opacity: 0.3;
   cursor: not-allowed;
+  box-shadow: none;
 }
+
 
 /* ========================
    展开动画

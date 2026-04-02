@@ -8,7 +8,7 @@
       @touchstart.prevent="startDragTriggerTouch"
       @click="togglePanel"
     >
-      <img src="@/assets/images/API/ai-icon.png" class="api-trigger-img" alt="AI" />
+     <img src="https://drive.mujian.me/f/B46Cv/ai-icon.png" class="api-trigger-img" alt="AI" />
       <!-- 悬停提示 -->
       <span class="api-tooltip">API</span>
     </button>
@@ -444,7 +444,7 @@
   content: "";
   position: absolute;
   top: 0; left: 0; right: 0; bottom: 0;
-  background-image: url('@/assets/images/API/ai-BG.png');
+  background-image: url('https://drive.mujian.me/f/QMofl/ai-BG.png');
   background-size: cover;
   background-position: center;
   

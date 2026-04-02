@@ -1,0 +1,35 @@
+@font-face {
+  font-family: '正文中文';
+  src: url('https://drive-cdn.mujian.me/49/3f6bd7f1-732d-4b78-8e5d-4bbbc8dcb369_正文中文.ttf') format('truetype');
+  font-display: swap;
+}
+@font-face {
+  font-family: '内容英文';
+  src: url('https://drive-cdn.mujian.me/49/1171aa0a-5591-41ac-b481-13edac46fe87_内容英文.ttf') format('truetype');
+  font-display: swap;
+}
+@font-face {
+  font-family: '标题英文';
+  src: url('https://drive-cdn.mujian.me/49/ffa936d1-e978-4390-afec-c691479d13a6_标题英文.otf') format('opentype');
+  font-display: swap;
+}
+@font-face {
+  font-family: 'SynesthesiaCyberTitle';
+  src: url('https://drive-cdn.mujian.me/49/f93bdd68-c8f8-4dcd-97cf-ab1a2d95fdd9_赛博朋克标题.ttf') format('truetype');
+  font-display: swap;
+}
+@font-face {
+  font-family: 'SynesthesiaCyberTitleEn';
+  src: url('https://drive-cdn.mujian.me/49/5e9b8e2f-4694-4ffb-bed9-f9713d66816e_赛博朋克标题英文.otf') format('opentype');
+  font-display: swap;
+}
+@font-face {
+  font-family: 'SynesthesiaCyberText';
+  src: url('https://drive-cdn.mujian.me/49/39fd4b12-b0ee-4f08-b1f3-7283ad7b010f_赛博朋克正文.ttf') format('truetype');
+  font-display: swap;
+}
+@font-face {
+  font-family: 'SynesthesiaCyberTextEn';
+  src: url('https://drive-cdn.mujian.me/49/ca52512b-7271-47b4-8074-1c6af4b83b8d_赛博朋克正文英文.otf') format('opentype');
+  font-display: swap;
+}

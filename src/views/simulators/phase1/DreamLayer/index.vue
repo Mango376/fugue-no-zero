@@ -3,10 +3,25 @@
 <Transition name="fade">
   <div v-if="phase === 'title'" class="screen screen-title" style="background: transparent;" @click="spawnRipple">
     
-    <div 
-      style="position: absolute; inset: -2%; z-index: 0; background-size: cover; background-position: center; background-repeat: no-repeat; opacity: 0.35;" 
-      :style="{ backgroundImage: `url(${titleBg})` }"
-    ></div>
+      <div
+  class="title-bg-blurred"
+  :style="{ backgroundImage: `url(${titleBg})` }"
+></div>
+<div class="hacker-streams" style="z-index: 0;">
+  <div v-for="n in 18" :key="'stream-'+n" class="data-stream" :style="getStreamStyle(n)">
+    {{ streamTexts[n-1] }}
+  </div>
+</div>
+<div
+  class="title-bg-clear"
+  :style="{
+    backgroundImage: `url(${titleBg})`,
+    maskImage: `radial-gradient(circle 150px at ${circlePos.x}px ${circlePos.y}px, black 0%, black 45%, rgba(0,0,0,0.15) 75%, transparent 100%)`,
+    webkitMaskImage: `radial-gradient(circle 150px at ${circlePos.x}px ${circlePos.y}px, black 0%, black 45%, rgba(0,0,0,0.15) 75%, transparent 100%)`
+  }"
+></div>
+
+
 
     <div style="position: absolute; inset: 0; z-index: 0; pointer-events: none; 
                 background: radial-gradient(ellipse at center, rgba(247, 244, 235, 0) 15%, rgba(247, 244, 235, 0.95) 85%);">
@@ -17,23 +32,6 @@
         <div class="ring ring-1"></div>
         <div class="ring ring-2"></div>
         <div class="ring ring-3"></div>
-      </div>
-    </div>
-
-    <div class="title-scanlines"></div>
-    <div class="dream-orbs">
-      <div class="orb orb-1"></div>
-      <div class="orb orb-2"></div>
-      <div class="orb orb-3"></div>
-      <div class="orb orb-4"></div>
-      <div class="orb orb-5"></div>
-    </div>
-    <div class="dream-particles">
-      <span v-for="n in 25" :key="n" class="particle" :style="getParticleStyle(n)"></span>
-    </div>
-    <div class="hacker-streams">
-      <div v-for="n in 18" :key="'stream-'+n" class="data-stream" :style="getStreamStyle(n)">
-        {{ streamTexts[n-1] }}
       </div>
     </div>
 
@@ -1280,7 +1278,46 @@ import {
   diffLevels
 } from './composables/useGameLogic'
 import { parseScriptContext } from './prompts/promptBuilder'
-import titleBg from '@/assets/images/phases1/DreamLayer/title_bg.jpg'
+const titleBg = 'https://drive.mujian.me/f/mJYig/title_bg.jpg'
+// ========== 标题页：清晰圆圈游走 ==========
+const circlePos    = ref({ x: 200, y: 300 })
+const circleTarget = ref({ x: 200, y: 300 })
+let   circleAnimFrame = null
+
+function pickNewCircleTarget() {
+  const padding = 100
+  circleTarget.value = {
+    x: padding + Math.random() * (window.innerWidth  - padding * 2),
+    y: padding + Math.random() * (window.innerHeight - padding * 2),
+  }
+}
+
+function tickCircle() {
+  const LERP = 0.018
+  circlePos.value = {
+    x: circlePos.value.x + (circleTarget.value.x - circlePos.value.x) * LERP,
+    y: circlePos.value.y + (circleTarget.value.y - circlePos.value.y) * LERP,
+  }
+  const dx = circleTarget.value.x - circlePos.value.x
+  const dy = circleTarget.value.y - circlePos.value.y
+  if (Math.sqrt(dx * dx + dy * dy) < 8) {
+    pickNewCircleTarget()
+  }
+  circleAnimFrame = requestAnimationFrame(tickCircle)
+}
+
+function startCircleAnim() {
+  if (circleAnimFrame) return
+  pickNewCircleTarget()
+  tickCircle()
+}
+
+function stopCircleAnim() {
+  if (circleAnimFrame) {
+    cancelAnimationFrame(circleAnimFrame)
+    circleAnimFrame = null
+  }
+}
 
 const fileInputRef = ref(null)
 const narrativeEl  = ref(null)
@@ -1411,6 +1448,8 @@ function stopDrag() {
 }
 
 onMounted(() => {
+  startCircleAnim()
+
   if (typeof window !== 'undefined') {
     playerPos.value = {
       x: window.innerWidth - 380,
@@ -1438,8 +1477,7 @@ onMounted(() => {
 
 
 onUnmounted(() => {
-  // 如果 goHome 已经触发过淡出，这里音量已经接近 0，pause 无感知
-  // 如果是意外卸载（浏览器返回等），这里做兜底淡出
+stopCircleAnim()
   if (bgmAudio.value && isPlaying.value) {
     audioStore.fadeOut(bgmAudio.value, 400)
   }
@@ -1450,7 +1488,6 @@ onUnmounted(() => {
 
   stopDrag()
 })
-
 
 
 
@@ -1486,24 +1523,18 @@ const streamTexts = Array.from({ length: 18 }, () => {
   return str;
 });
 
-function getStreamStyle(n) {
-  // 随机横向位置
-  const left = (n * 5.5) + (Math.random() * 4) + '%';
-  // 错开下落时间
-  const delay = (Math.random() * 8) + 's';
-  // 随机下落速度 (下落得比较缓慢，符合梦境感)
-  const duration = (6 + Math.random() * 5) + 's';
-  // 随机透明度和大小，制造远近景的空间感
-  const opacity = 0.2 + (Math.random() * 0.4);
-  const fontSize = 0.6 + (Math.random() * 0.5) + 'rem';
-  
+const streamStyles = Array.from({ length: 18 }, (_, i) => {
+  const n = i + 1
   return {
-    left,
-    animationDelay: delay,
-    animationDuration: duration,
-    opacity,
-    fontSize
-  };
+    left: (n * 5.5) + (Math.random() * 4) + '%',
+    animationDelay: (Math.random() * 15) + 's',
+    animationDuration: (12 + Math.random() * 8) + 's',
+    opacity: 0.2 + (Math.random() * 0.4),
+    fontSize: 0.6 + (Math.random() * 0.5) + 'rem',
+  }
+})
+function getStreamStyle(n) {
+  return streamStyles[n - 1]
 }
 
 
@@ -1587,7 +1618,10 @@ dropsGained, expGained, breathText, patientFuture,
   goToSettlement, restartSelect, saveProgress,
   splitParagraphs, dismissBreath,
 } = useGameLogic(fileInputRef, narrativeEl)
-
+watch(phase, (val) => {
+  if (val === 'title') startCircleAnim()
+  else stopCircleAnim()
+})
 // ========== 折叠历史：显示上一轮叙事 + 内心独白 + 最后选择 ==========
 const collapsedDisplayEntries = computed(() => {
   const history = displayHistory.value
@@ -1672,9 +1706,10 @@ function getParticleStyle(n) {
 <style scoped>
 @font-face {
   font-family: '调率者标题';
-  src: url('@/assets/fonts/调率者标题.ttf') format('truetype');
+  src: url('https://drive-cdn.mujian.me/49/bb5783ec-3a0b-435f-9c44-878275a1647d_调率者标题.ttf') format('truetype');
   font-display: swap;
 }
+
 /* ============================================================
    01. 基础变量与全局设置 (重塑立体光影)
 ============================================================ */
@@ -1945,6 +1980,95 @@ function getParticleStyle(n) {
   position: relative;
   margin-bottom: 0.4rem;
 }
+
+/* --- 新增动画关键帧区域 --- */
+
+/* 1. 标题轻微漂浮晃动 */
+@keyframes titleSway {
+  0% { transform: translate(-3px, 3px); }
+  50% { transform: translate(3px, -3px); }
+  100% { transform: translate(-3px, 3px); }
+}
+
+/* 2. 背景图呼吸闪烁与微缩放 */
+@keyframes bgBreathe {
+  0% {
+    opacity: 0.25;
+    transform: scale(1);
+    filter: brightness(0.9);
+  }
+  50% {
+    opacity: 0.5;
+    transform: scale(1.02); /* 轻微放大，制造深吸气的感觉 */
+    filter: brightness(1.1); /* 亮度轻微闪烁 */
+  }
+  100% {
+    opacity: 0.25;
+    transform: scale(1);
+    filter: brightness(0.9);
+  }
+}
+
+/* 背景图动画类 */
+.title-bg-anim {
+  animation: bgBreathe 8s ease-in-out infinite;
+}
+/* ============================================================
+   标题页：所有文字元素的漂浮晃动
+============================================================ */
+
+/* 三种不同节奏的晃动，让各元素不同步，更自然 */
+@keyframes textFloat1 {
+  0%   { transform: translate(0px, 0px); }
+  25%  { transform: translate(-4px, -6px); }
+  50%  { transform: translate(2px, -10px); }
+  75%  { transform: translate(4px, -4px); }
+  100% { transform: translate(0px, 0px); }
+}
+@keyframes textFloat2 {
+  0%   { transform: translate(0px, 0px); }
+  30%  { transform: translate(5px, -8px); }
+  60%  { transform: translate(-3px, -5px); }
+  100% { transform: translate(0px, 0px); }
+}
+@keyframes textFloat3 {
+  0%   { transform: translate(0px, 0px); }
+  40%  { transform: translate(-6px, -5px); }
+  70%  { transform: translate(3px, -9px); }
+  100% { transform: translate(0px, 0px); }
+}
+
+/* 大标题（原来有 titleSway，替换掉） */
+.main-title-wrapper {
+  animation: textFloat1 7s ease-in-out infinite;
+}
+
+/* 副标题 */
+.hero-subtitle {
+  animation: textFloat2 9s ease-in-out infinite;
+  animation-delay: 0.8s;
+}
+
+/* Subject 档案标 */
+.title-subject {
+  animation: textFloat3 8s ease-in-out infinite;
+  animation-delay: 1.5s;
+}
+
+/* 菜单每一项，用 nth-child 错开时间 */
+.c-menu-item:nth-child(1) {
+  animation: textFloat1 8s ease-in-out infinite;
+  animation-delay: 0.3s;
+}
+.c-menu-item:nth-child(2) {
+  animation: textFloat2 9s ease-in-out infinite;
+  animation-delay: 1.1s;
+}
+.c-menu-item:nth-child(3) {
+  animation: textFloat3 7.5s ease-in-out infinite;
+  animation-delay: 0.6s;
+}
+
 .main-title {
   font-family: '调率者标题';
   font-size: 2.6rem; /* 从 3.8rem 大幅缩小 */
@@ -3027,6 +3151,33 @@ button, .hub-menu-item, .script-card,
 .is-playing .play-btn {
   color: var(--border-gold);
 }
+/* ============================================================
+   标题页：双层背景 —— 模糊底 + 清晰圆圈
+============================================================ */
+.title-bg-blurred {
+  position: absolute;
+  inset: -4%;
+  z-index: 0;
+  background-size: cover;
+  background-position: center;
+  background-repeat: no-repeat;
+  filter: blur(5px) brightness(0.75) saturate(0.9);
+  transform: scale(1.08);
+  pointer-events: none;
+}
+
+.title-bg-clear {
+  position: absolute;
+  inset: 0;
+  z-index: 1;
+  background-size: cover;
+  background-position: center;
+  background-repeat: no-repeat;
+  pointer-events: none;
+  mask-repeat: no-repeat;
+  -webkit-mask-repeat: no-repeat;
+}
+
 /* ============================================================
    18. 患者手册 深度质感优化
 ============================================================ */

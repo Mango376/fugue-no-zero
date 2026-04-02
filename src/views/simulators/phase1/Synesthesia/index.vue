@@ -1026,14 +1026,14 @@
     <!-- ================================================
       全局：后台音频播放器（不可见）
     ================================================ -->
-    <!-- 改之后 -->
 <audio
   ref="audioRef"
-  :src="currentTrack.src"
+  :src="currentTrack"
   @timeupdate="onAudioTimeUpdate"
   @ended="nextTrack"
   preload="auto"
 ></audio>
+
 
 
     <!-- ================================================
@@ -1141,23 +1141,16 @@ const audioProgress      = ref(0)
 const progressBarRef     = ref(null)
 const isSeeking          = ref(false)
 const titlePosterRef      = ref(null)
-const playlist = [
-  { src: 'https://drive.mujian.me/f/j1nc9/Untitled%20%281%29.mp3' },
-  { src: 'https://drive.mujian.me/f/yp3t5/Untitled%20%282%29.mp3' },
-  { src: 'https://drive.mujian.me/f/M57fo/Untitled%20%283%29.mp3' },
-  { src: 'https://drive.mujian.me/f/ZvocO/Untitled%20%284%29.mp3' },
-  { src: 'https://drive.mujian.me/f/Ajmim/Untitled%20%285%29.mp3' },
-  { src: 'https://drive.mujian.me/f/8G2Sv/Untitled%20%286%29.mp3' },
-  { src: 'https://drive.mujian.me/f/oYrf6/Untitled%20%287%29.mp3' },
-  { src: 'https://drive.mujian.me/f/EArsG/Untitled%20%288%29.mp3' },
-  { src: 'https://drive.mujian.me/f/m1Ytg/Untitled%20%289%29.mp3' },
-  { src: 'https://drive.mujian.me/f/QKoUl/Untitled%20%2810%29.mp3' },
-]
+const audioModules = import.meta.glob(
+  '@/assets/audio/phase1/Synesthesia/*.mp3',
+  { eager: true, import: 'default' }
+)
+const playlist = Object.values(audioModules)
 
-
-// 改之后
+// 这两行要保持改过的版本
 const currentTrackIndex = ref(Math.floor(Math.random() * playlist.length))
 const currentTrack      = computed(() => playlist[currentTrackIndex.value])
+
 
 
 
@@ -1166,23 +1159,21 @@ const currentTrack      = computed(() => playlist[currentTrackIndex.value])
 // ============================================================
 const unlockAutoPlay = () => {
   if (!isPlaying.value && audioRef.value) {
-    setupAnalyser()
-    if (audioContext?.state === 'suspended') audioContext.resume()
+    setupAnalyser()  // ← 恢复
+    if (audioContext?.state === 'suspended') audioContext.resume()  // ← 恢复
     audioRef.value.play()
       .then(() => {
         isPlaying.value = true
-        startViz()
-
-        // ← 新增
+        startViz()  // ← 恢复
         audioStore.register(audioRef.value)
         audioStore.fadeIn(audioRef.value, 0.8, 1500)
-
-        document.removeEventListener('click',      unlockAutoPlay)
+        document.removeEventListener('click', unlockAutoPlay)
         document.removeEventListener('touchstart', unlockAutoPlay)
       })
       .catch(() => console.warn('等待交互以播放音频...'))
   }
 }
+
 
 
 // ============================================================
@@ -1237,21 +1228,22 @@ function togglePlay() {
   if (isPlaying.value) {
     audioRef.value.pause()
     isPlaying.value = false
-    stopViz()
+    stopViz()  // ← 恢复
   } else {
-    setupAnalyser()
-    if (audioContext?.state === 'suspended') audioContext.resume()
+    setupAnalyser()  // ← 恢复
+    if (audioContext?.state === 'suspended') audioContext.resume()  // ← 恢复
     audioRef.value.play().catch(e => console.warn('音频播放失败', e))
     isPlaying.value = true
-    startViz()
+    startViz()  // ← 恢复
   }
 }
 
+
 // 随机切换曲目
 function playRandomTrack() {
-  let nextIndex = Math.floor(Math.random() * trackList.length)
-  while (nextIndex === currentTrackIndex.value && trackList.length > 1) {
-    nextIndex = Math.floor(Math.random() * trackList.length)
+  let nextIndex = Math.floor(Math.random() * playlist.length)
+  while (nextIndex === currentTrackIndex.value && playlist.length > 1) {
+    nextIndex = Math.floor(Math.random() * playlist.length)
   }
   currentTrackIndex.value = nextIndex
   if (isPlaying.value) {

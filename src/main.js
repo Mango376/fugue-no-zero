@@ -2,6 +2,7 @@ import { createApp } from 'vue'
 import { createPinia } from 'pinia'
 import { router } from './router'
 import './style.css'
+import './assets/styles/fonts.css'
 import App from './App.vue'
 
 // 👇 新增：引入你的 AI 服务
