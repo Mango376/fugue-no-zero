@@ -1313,8 +1313,8 @@ const epilogueLines = [
   --shadow-paper:   0 18px 55px rgba(0, 0, 0, 0.5), inset 0 0 60px rgba(150, 120, 70, 0.15);
 
   font-family: 'SimSun', '宋体', 'STSong', serif;
-  width: 100%;
-  min-height: var(--app-height);
+  width: 100vw;
+  height: 100vh;
   background-color: var(--bg-wall);
   color: var(--text-main);
   overflow: hidden;

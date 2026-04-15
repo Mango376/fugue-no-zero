@@ -1730,8 +1730,8 @@ function getParticleStyle(n) {
   --shadow-inset:   inset 0 2px 6px rgba(60, 53, 45, 0.05), inset 0 -1px 1px rgba(255, 255, 255, 0.6);
 
   font-family: 'KaiTi', 'STKaiti', 'Noto Serif SC', serif;
-  width: 100%;
-  min-height: var(--app-height);
+  width: 100vw;
+  height: 100vh;
   background: var(--bg-paper);
   color: var(--text-main);
   overflow: hidden;

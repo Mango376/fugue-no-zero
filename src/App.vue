@@ -21,8 +21,8 @@ import LoadingTransition from '@/components/common/LoadingTransition.vue'
 }
 
 #app {
-  width: 100%;
-  min-height: var(--app-height);
+  width: 100vw;
+  height: 100vh;
   overflow: hidden;
 }
 </style>

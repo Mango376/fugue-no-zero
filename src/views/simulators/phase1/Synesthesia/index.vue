@@ -1141,10 +1141,6 @@ const audioProgress      = ref(0)
 const progressBarRef     = ref(null)
 const isSeeking          = ref(false)
 const titlePosterRef      = ref(null)
-const progressDragThreshold = 6
-const musicFabDragThreshold = 8
-const lastMusicFabTouchAt = ref(0)
-const musicFabTouchStart = { x: 0, y: 0 }
 const audioModules = import.meta.glob(
   '@/assets/audio/phase1/Synesthesia/*.mp3',
   { eager: true, import: 'default' }
@@ -1184,43 +1180,26 @@ const unlockAutoPlay = () => {
 // 音乐播放器：进度条拖拽跳转
 // ============================================================
 
-function getPointerClientX(e) {
-  if (e.touches?.length) return e.touches[0].clientX
-  if (e.changedTouches?.length) return e.changedTouches[0].clientX
-  return e.clientX
-}
-
-function updateSeekFromEvent(e) {
-  if (!audioRef.value || !progressBarRef.value || !audioRef.value.duration) return
-  const rect = progressBarRef.value.getBoundingClientRect()
-  const clientX = getPointerClientX(e)
-  const ratio = Math.max(0, Math.min(1, (clientX - rect.left) / rect.width))
-  audioRef.value.currentTime = ratio * audioRef.value.duration
-  audioProgress.value = ratio * 100
-}
-
 // 点击进度条直接跳转
 function seekTo(e) {
-  updateSeekFromEvent(e)
+  if (!audioRef.value || !progressBarRef.value) return
+  const rect  = progressBarRef.value.getBoundingClientRect()
+  const ratio = Math.max(0, Math.min(1, (e.clientX - rect.left) / rect.width))
+  audioRef.value.currentTime = ratio * audioRef.value.duration
+  audioProgress.value        = ratio * 100
 }
 
 // 拖拽进度条跳转
 function startSeekDrag(e) {
   if (!audioRef.value || !progressBarRef.value) return
   isSeeking.value = true
-  const startX = getPointerClientX(e)
-  let hasDragged = false
-  updateSeekFromEvent(e)
 
   const move = (e) => {
-    const clientX = getPointerClientX(e)
-    if (Math.abs(clientX - startX) >= progressDragThreshold) {
-      hasDragged = true
-    }
-    if (e.cancelable && (hasDragged || e.touches?.length)) {
-      e.preventDefault()
-    }
-    updateSeekFromEvent(e)
+    const t     = e.touches ? e.touches[0] : e
+    const rect  = progressBarRef.value.getBoundingClientRect()
+    const ratio = Math.max(0, Math.min(1, (t.clientX - rect.left) / rect.width))
+    audioRef.value.currentTime = ratio * audioRef.value.duration
+    audioProgress.value        = ratio * 100
   }
 
   const end = () => {
@@ -1355,7 +1334,6 @@ const musicFabDragStyle = computed(() => {
 })
 
 function startMusicFabDrag(e) {
-  const isTouchInteraction = Boolean(e.touches?.length)
   const touch = e.touches ? e.touches[0] : e
   const el    = musicFabRef.value
   if (!el) return
@@ -1363,19 +1341,11 @@ function startMusicFabDrag(e) {
   const rect   = el.getBoundingClientRect()
   const startX = touch.clientX - rect.left
   const startY = touch.clientY - rect.top
-  musicFabTouchStart.x = touch.clientX
-  musicFabTouchStart.y = touch.clientY
   isMusicFabDragging.value = false
 
   const onMove = (e) => {
     const t = e.touches ? e.touches[0] : e
-    const dx = t.clientX - musicFabTouchStart.x
-    const dy = t.clientY - musicFabTouchStart.y
-    if (!isMusicFabDragging.value && Math.hypot(dx, dy) >= musicFabDragThreshold) {
-      isMusicFabDragging.value = true
-    }
-    if (!isMusicFabDragging.value) return
-    if (e.cancelable) e.preventDefault()
+    isMusicFabDragging.value = true
     musicFabPos.value = {
       x: Math.max(0, Math.min(t.clientX - startX, window.innerWidth  - el.offsetWidth)),
       y: Math.max(0, Math.min(t.clientY - startY, window.innerHeight - el.offsetHeight)),
@@ -1386,13 +1356,6 @@ function startMusicFabDrag(e) {
     document.removeEventListener('mouseup',   onEnd)
     document.removeEventListener('touchmove', onMove)
     document.removeEventListener('touchend',  onEnd)
-
-    if (isTouchInteraction && !isMusicFabDragging.value) {
-      lastMusicFabTouchAt.value = Date.now()
-      toggleMusicPlayer()
-    }
-
-    isMusicFabDragging.value = false
   }
 
   document.addEventListener('mousemove', onMove)
@@ -1402,7 +1365,6 @@ function startMusicFabDrag(e) {
 }
 
 function handleMusicFabClick() {
-  if (Date.now() - lastMusicFabTouchAt.value < 350) return
   if (!isMusicFabDragging.value) toggleMusicPlayer()
   isMusicFabDragging.value = false
 }
@@ -1657,53 +1619,29 @@ const fabDragStyle = computed(() => {
   }
 })
 
-const FAB_DRAG_THRESHOLD = 8  // 新增：移动多少 px 才算拖拽
-let lastPhoneFabTouchAt = 0   // 新增：防止 touch 和 click 重复触发
-
 function startFabDrag(e) {
-  const isTouchInteraction = Boolean(e.touches?.length)
   const touch = e.touches ? e.touches[0] : e
   const el    = phoneFabRef.value
   if (!el) return
 
-  const rect      = el.getBoundingClientRect()
-  const startX    = touch.clientX - rect.left
-  const startY    = touch.clientY - rect.top
-  const touchStartX = touch.clientX   // 新增：记录起点
-  const touchStartY = touch.clientY   // 新增：记录起点
+  const rect   = el.getBoundingClientRect()
+  const startX = touch.clientX - rect.left
+  const startY = touch.clientY - rect.top
   isFabDragging.value = false
 
   const onMove = (e) => {
-    const t  = e.touches ? e.touches[0] : e
-    const dx = t.clientX - touchStartX
-    const dy = t.clientY - touchStartY
-
-    // ✅ 超过阈值才标记为拖拽
-    if (!isFabDragging.value && Math.hypot(dx, dy) >= FAB_DRAG_THRESHOLD) {
-      isFabDragging.value = true
-    }
-    if (!isFabDragging.value) return  // ✅ 没拖就不移动
-
-    if (e.cancelable) e.preventDefault()
+    const t = e.touches ? e.touches[0] : e
+    isFabDragging.value = true
     fabPos.value = {
       x: Math.max(0, Math.min(t.clientX - startX, window.innerWidth  - el.offsetWidth)),
       y: Math.max(0, Math.min(t.clientY - startY, window.innerHeight - el.offsetHeight)),
     }
   }
-
   const onEnd = () => {
     document.removeEventListener('mousemove', onMove)
     document.removeEventListener('mouseup',   onEnd)
     document.removeEventListener('touchmove', onMove)
     document.removeEventListener('touchend',  onEnd)
-
-    // ✅ 手指抬起时，没拖就当作点击处理
-    if (isTouchInteraction && !isFabDragging.value) {
-      lastPhoneFabTouchAt = Date.now()
-      togglePhonePanel()
-    }
-
-    isFabDragging.value = false
   }
 
   document.addEventListener('mousemove', onMove)
@@ -1713,12 +1651,9 @@ function startFabDrag(e) {
 }
 
 function handleFabClick() {
-  // ✅ 如果 350ms 内已经被 touch 处理过，跳过（防止重复触发）
-  if (Date.now() - lastPhoneFabTouchAt < 350) return
   if (!isFabDragging.value) togglePhonePanel()
   isFabDragging.value = false
 }
-
 
 // ============================================================
 // 设备升级：二次确认弹窗逻辑
@@ -2098,8 +2033,8 @@ onBeforeUnmount(() => {
   --shadow-lg: 0 8px 30px rgba(255, 0, 124, 0.2);
 
   font-family: var(--font-body);
-  width: 100%;
-  min-height: var(--app-height);
+  width: 100vw;
+  height: 100vh;
   overflow: hidden;
   color: var(--text-main);
   position: relative;
@@ -4678,15 +4613,7 @@ onBeforeUnmount(() => {
   position: fixed;
   inset: 0;
   z-index: 40;
-}
-/* 抽屉关闭时，根容器本身不拦截点击 */
-.notes-panel-root:not(:has(.notes-backdrop)) {
   pointer-events: none;
-}
-
-/* 抽屉打开时（遮罩存在），根容器参与拦截 */
-.notes-panel-root:has(.notes-backdrop) {
-  pointer-events: all;
 }
 
 /* 半透明遮罩 */
@@ -4710,7 +4637,6 @@ onBeforeUnmount(() => {
   align-items: center;
   max-height: 85vh;
   pointer-events: all;
-  z-index: 2;  /* ✅ 新增：确保在遮罩上方 */
   transform: translateY(-50%) translateX(min(296px, 84vw));
   transition: transform 0.32s cubic-bezier(0.4, 0, 0.2, 1);
 }
@@ -5142,16 +5068,13 @@ onBeforeUnmount(() => {
   flex-direction: column;
   align-items: center;
   justify-content: center;
-  width: 56px; height: 56px;
+  width: 52px; height: 52px;
   padding: 0;
   border-radius: 8px;
   background: rgba(10, 15, 25, 0.9);
   cursor: pointer;
   z-index: 50;
   transition: transform 0.2s;
-  touch-action: none;
-  -webkit-tap-highlight-color: transparent;
-  user-select: none;
 }
 
 /* 手机悬浮球 */
@@ -5197,7 +5120,7 @@ onBeforeUnmount(() => {
   position: fixed;
   left: 1rem;
   bottom: 5.5rem;
-  width: min(280px, calc(100vw - 2rem));
+  width: 260px;
   background: linear-gradient(135deg, rgba(0, 243, 255, 0.08) 0%, rgba(5, 8, 12, 0.95) 100%);
   backdrop-filter: blur(12px);
   -webkit-backdrop-filter: blur(12px);
@@ -5220,24 +5143,7 @@ onBeforeUnmount(() => {
   padding-bottom: 0.5rem;
 }
 .music-sys-title { font-family: 'Courier New', monospace; font-size: 0.65rem; color: var(--neon-cyan); letter-spacing: 0.15em; text-shadow: 0 0 5px var(--neon-cyan); }
-.music-close {
-  display: inline-flex;
-  align-items: center;
-  justify-content: center;
-  width: 36px;
-  height: 36px;
-  background: transparent;
-  border: none;
-  color: var(--neon-cyan);
-  font-size: 1.2rem;
-  cursor: pointer;
-  line-height: 1;
-  transition: color 0.2s;
-  padding: 0;
-  margin: 0;
-  touch-action: manipulation;
-  -webkit-tap-highlight-color: transparent;
-}
+.music-close { background: transparent; border: none; color: var(--neon-cyan); font-size: 1.2rem; cursor: pointer; line-height: 1; transition: color 0.2s; padding: 0; margin: 0; }
 .music-close:hover { color: var(--neon-pink); text-shadow: 0 0 8px var(--neon-pink); }
 
 .music-info { display: flex; flex-direction: column; gap: 0.2rem; }
@@ -5280,51 +5186,31 @@ onBeforeUnmount(() => {
 /* 可拖拽进度条 */
 .music-progress-bg {
   width: 100%;
-  height: 18px;
-  background: transparent;
-  border-radius: 999px;
+  height: 4px;
+  background: rgba(255, 255, 255, 0.1);
+  border-radius: 2px;
   overflow: visible;
+  box-shadow: inset 0 1px 3px rgba(0, 0, 0, 0.8);
   position: relative;
   cursor: pointer;
-  touch-action: none;
-  -webkit-tap-highlight-color: transparent;
-}
-.music-progress-bg::before {
-  content: '';
-  position: absolute;
-  left: 0;
-  right: 0;
-  top: 50%;
-  height: 6px;
-  transform: translateY(-50%);
-  background: rgba(255, 255, 255, 0.12);
-  border-radius: 999px;
-  box-shadow: inset 0 1px 3px rgba(0, 0, 0, 0.8);
 }
 .music-progress-fill {
-  position: absolute;
-  left: 0;
-  top: 50%;
-  height: 6px;
-  transform: translateY(-50%);
+  height: 100%;
   background: var(--neon-cyan);
-  border-radius: 999px;
   box-shadow: 0 0 8px var(--neon-cyan);
   transition: width 0.1s linear;
-  z-index: 1;
 }
 /* 拖拽滑块 */
 .music-progress-thumb {
   position: absolute;
   top: 50%;
   transform: translate(-50%, -50%);
-  width: 16px; height: 16px;
+  width: 10px; height: 10px;
   border-radius: 50%;
   background: #fff;
   box-shadow: 0 0 6px var(--neon-cyan), 0 0 12px rgba(0, 243, 255, 0.6);
   pointer-events: none;
   transition: transform 0.1s ease;
-  z-index: 2;
 }
 .music-progress-bg:hover .music-progress-thumb {
   transform: translate(-50%, -50%) scale(1.4);
@@ -5337,23 +5223,20 @@ onBeforeUnmount(() => {
   border: 1px solid var(--neon-cyan);
   border-radius: 4px;
   color: var(--neon-cyan);
-  min-width: 48px;
-  height: 40px;
+  width: 40px; height: 32px;
   display: flex;
   align-items: center;
   justify-content: center;
   cursor: pointer;
   transition: all 0.1s;
   box-shadow: 0 3px 0 rgba(0, 40, 50, 1), 0 5px 10px rgba(0, 243, 255, 0.1), inset 0 1px 2px rgba(255, 255, 255, 0.2);
-  touch-action: manipulation;
-  -webkit-tap-highlight-color: transparent;
 }
 .music-ctrl-btn:active {
   transform: translateY(3px);
   box-shadow: 0 0 0 rgba(0, 40, 50, 1), 0 2px 5px rgba(0, 243, 255, 0.2), inset 0 2px 5px rgba(0, 0, 0, 0.6);
 }
 .play-btn {
-  min-width: 72px;
+  width: 60px;
   background: linear-gradient(180deg, rgba(255, 0, 124, 0.2) 0%, rgba(80, 0, 40, 0.8) 100%);
   border-color: var(--neon-pink);
   color: #fff;
@@ -5386,7 +5269,7 @@ onBeforeUnmount(() => {
   .consult-frame {
     flex: 1;
     min-height: 0;
-    height: calc(var(--app-height) - 185px - var(--safe-bottom));
+    height: calc(100vh - 185px);
     margin: 0.7rem 0.9rem 0.9rem;
     border-radius: 6px;
     border: 1px solid var(--neon-cyan);
@@ -5414,10 +5297,6 @@ onBeforeUnmount(() => {
   .treatment-scroll-area { padding: 0.8rem 0.85rem 2rem; }
   .modal-card            { padding: 1.2rem; }
   .modal-stats-row       { flex-direction: column; }
-  .music-panel           { left: 0.75rem; right: 0.75rem; bottom: calc(5.5rem + var(--safe-bottom)); width: auto; }
-  .music-controls        { gap: 0.55rem; }
-  .music-ctrl-btn        { flex: 1; min-width: 0; height: 44px; }
-  .play-btn              { min-width: 0; }
 }
 
 @media (prefers-reduced-motion: reduce) {
