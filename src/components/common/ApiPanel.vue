@@ -6,6 +6,7 @@
     :style="triggerStyle"
     @mousedown="startDragTrigger"
     @touchstart.prevent="startDragTriggerTouch"
+    @touchend.prevent="handleTriggerTouchEnd"
     @click="togglePanel"
   >
     <img src="https://drive-cdn.mujian.me/49/5a7cb569-a196-4336-84ce-71de29fddcb1_ai-icon.png" class="api-trigger-img" alt="AI" />
@@ -15,13 +16,13 @@
   <!-- 悬浮面板 -->
   <Teleport to="body">
     <Transition name="fade-overlay">
-      <div v-if="isOpen" class="api-panel-overlay" @click="isOpen = false"></div>
+      <div v-if="isOpen" class="api-panel-overlay" @click="isOpen = false" @touchend.prevent="isOpen = false"></div>
     </Transition>
     <Transition name="panel-fade">
       <div v-if="isOpen" class="api-panel" ref="panelRef">
 
         <!-- 拖拽头部 -->
-        <div class="api-panel-header" @mousedown="startDrag" @touchstart="startDragTouch">
+        <div class="api-panel-header" @mousedown="startDrag" @touchstart.prevent="startDragTouch">
           <div class="api-panel-title">
             <span class="orn-diamond">🎼</span>
             AI 接入设置
@@ -168,6 +169,7 @@ import { useGameStore } from '@/stores/gameStore'
 const isOpen = ref(false)
 const gameStore = useGameStore()
 let closeTimer = null
+let lastToggleTime = 0
 
 function openPanel() {
   clearTimeout(closeTimer)
@@ -192,6 +194,9 @@ const isTriggerDragging = ref(false)
 const triggerDragOffset = reactive({ x: 0, y: 0 })
 const dragMoved = ref(false)
 
+const touchStartPos = { x: 0, y: 0 }
+const DRAG_THRESHOLD = 8
+
 const triggerStyle = computed(() => ({
   transform: `translate(${triggerPos.x}px, ${triggerPos.y}px)`
 }))
@@ -210,9 +215,11 @@ function startDragTriggerTouch(e) {
   isTriggerDragging.value = true
   dragMoved.value = false
   const touch = e.touches[0]
+  touchStartPos.x = touch.clientX
+  touchStartPos.y = touch.clientY
   triggerDragOffset.x = touch.clientX - triggerPos.x
   triggerDragOffset.y = touch.clientY - triggerPos.y
-  document.addEventListener('touchmove', onDragTriggerTouch)
+  document.addEventListener('touchmove', onDragTriggerTouch, { passive: false })
   document.addEventListener('touchend', stopDragTrigger)
 }
 
@@ -225,10 +232,16 @@ function onDragTrigger(e) {
 
 function onDragTriggerTouch(e) {
   if (!isTriggerDragging.value) return
-  dragMoved.value = true
   const touch = e.touches[0]
-  triggerPos.x = touch.clientX - triggerDragOffset.x
-  triggerPos.y = touch.clientY - triggerDragOffset.y
+  const dx = touch.clientX - touchStartPos.x
+  const dy = touch.clientY - touchStartPos.y
+  if (Math.abs(dx) > DRAG_THRESHOLD || Math.abs(dy) > DRAG_THRESHOLD) {
+    dragMoved.value = true
+  }
+  if (dragMoved.value) {
+    triggerPos.x = touch.clientX - triggerDragOffset.x
+    triggerPos.y = touch.clientY - triggerDragOffset.y
+  }
 }
 
 function stopDragTrigger() {
@@ -237,10 +250,24 @@ function stopDragTrigger() {
   document.removeEventListener('mouseup', stopDragTrigger)
   document.removeEventListener('touchmove', onDragTriggerTouch)
   document.removeEventListener('touchend', stopDragTrigger)
+  // 重置拖动状态，防止下次点击失效
+  setTimeout(() => {
+    dragMoved.value = false
+  }, 300)
+}
+
+function handleTriggerTouchEnd() {
+  if (!dragMoved.value) {
+    togglePanel()
+  }
 }
 
 function togglePanel() {
   if (dragMoved.value) return
+  // 防止手机端 touch + click 双重触发
+  const now = Date.now()
+  if (now - lastToggleTime < 500) return
+  lastToggleTime = now
   isOpen.value = !isOpen.value
 }
 
@@ -380,7 +407,7 @@ function startDragTouch(e) {
   const touch = e.touches[0]
   dragOffset.x = touch.clientX - position.x
   dragOffset.y = touch.clientY - position.y
-  document.addEventListener('touchmove', onDragTouch)
+  document.addEventListener('touchmove', onDragTouch, { passive: false })
   document.addEventListener('touchend', stopDrag)
 }
 
@@ -392,6 +419,7 @@ function onDrag(e) {
 
 function onDragTouch(e) {
   if (!isDragging.value) return
+  e.preventDefault()
   const touch = e.touches[0]
   position.x = touch.clientX - dragOffset.x
   position.y = touch.clientY - dragOffset.y
@@ -421,8 +449,8 @@ onUnmounted(() => {
 /* ================== 触发按钮 ================== */
 .api-trigger {
   position: fixed; 
-  top: 1.5rem; 
-  right: 1.5rem; 
+  top: calc(1.5rem + env(safe-area-inset-top));
+  right: calc(1.5rem + env(safe-area-inset-right));
   background: none; 
   border: none;
   padding: 0; 
@@ -430,6 +458,7 @@ onUnmounted(() => {
   z-index: 100; 
   box-shadow: none;
   transition: opacity 1.5s ease-in-out; 
+  -webkit-tap-highlight-color: transparent;
 }
 
 .api-trigger.is-hidden {
@@ -448,7 +477,7 @@ onUnmounted(() => {
 /* ================== 悬浮提示字 ================== */
 .api-tooltip {
   position: absolute; 
-  top: 50%; 
+  top: calc(50% + ((var(--safe-top) - var(--safe-bottom)) / 2));
   left: 50%; 
   transform: translate(-50%, -50%);
   font-size: 0.85rem; 
@@ -477,12 +506,17 @@ onUnmounted(() => {
 
 /* ================== 核心面板 ================== */
 .api-panel {
-  position: fixed; top: 50%; left: 50%; transform: translate(-50%, -50%);
-  width: 360px; z-index: 200;
+  position: fixed;
+  top: calc(50% + ((var(--safe-top) - var(--safe-bottom)) / 2));
+  left: 50%;
+  transform: translate(-50%, -50%);
+  width: min(360px, calc(100vw - var(--safe-left) - var(--safe-right) - 1.5rem));
+  max-height: calc(var(--app-height) - var(--safe-top) - var(--safe-bottom) - 1.5rem);
+  z-index: 200;
   background-color: transparent; 
   border: none; 
   border-radius: 0; 
-  overflow: visible; 
+  overflow: hidden; 
   filter: drop-shadow(0 15px 30px rgba(0, 0, 0, 0.25));
 }
 
@@ -504,7 +538,9 @@ onUnmounted(() => {
   background: transparent;
   cursor: grab; user-select: none;
   position: relative; 
-  border-bottom: none; 
+  border-bottom: none;
+  -webkit-user-select: none;
+  touch-action: none;
 }
 
 .api-panel-header:active { cursor: grabbing; }
@@ -533,19 +569,41 @@ onUnmounted(() => {
 }
 
 .api-panel-close {
-  width: 28px; height: 28px; background: rgba(255, 255, 255, 0.3);
+  position: relative;
+  width: 28px; 
+  height: 28px; 
+  background: rgba(255, 255, 255, 0.3);
   border: none; border-radius: 50%; color: #2b180d; font-size: 1rem;
   cursor: pointer; transition: all 0.2s ease;
   display: flex; align-items: center; justify-content: center;
   backdrop-filter: blur(4px);
+  -webkit-tap-highlight-color: transparent;
 }
+
+.api-panel-close::before {
+  content: '';
+  position: absolute;
+  top: 50%; left: 50%;
+  transform: translate(-50%, -50%);
+  width: 44px;
+  height: 44px;
+}
+
 .api-panel-close:hover { background: rgba(255, 255, 255, 0.8); color: #d03020; }
 
 /* ================== 面板内容 ================== */
 .api-panel-body {
-  padding: 1.5rem; display: flex; flex-direction: column; gap: 1rem;
+  padding: 1.5rem; 
+  display: flex; 
+  flex-direction: column; 
+  gap: 1rem;
   background: transparent;
+  max-height: calc(var(--app-height) - var(--safe-top) - var(--safe-bottom) - 10rem);
+  overflow-y: auto;
+  -webkit-overflow-scrolling: touch;
+  scrollbar-width: none;
 }
+.api-panel-body::-webkit-scrollbar { display: none; }
 
 .field-group { display: flex; flex-direction: column; gap: 0.4rem; }
 
@@ -563,9 +621,12 @@ onUnmounted(() => {
   -webkit-backdrop-filter: blur(6px);
   border: 1px solid rgba(180, 140, 60, 0.4);
   border-radius: 6px;
-  font-size: 0.85rem; font-weight: bold; color: #1a1a1a;
+  font-size: 16px;
+  font-weight: bold; color: #1a1a1a;
   outline: none; transition: all 0.2s ease; box-sizing: border-box;
   font-family: -apple-system, BlinkMacSystemFont, sans-serif;
+  -webkit-appearance: none;
+  appearance: none;
 }
 .field-input::placeholder { color: #888; font-weight: normal; }
 .field-input:focus {
@@ -583,10 +644,13 @@ onUnmounted(() => {
 .input-row .field-input { flex: 1; }
 
 .eye-btn {
-  padding: 0 0.8rem; background: rgba(255, 255, 255, 0.6);
+  min-width: 44px;
+  padding: 0 0.8rem; 
+  background: rgba(255, 255, 255, 0.6);
   border: 1px solid rgba(180, 140, 60, 0.4); border-radius: 6px;
   font-size: 0.85rem; color: #2b180d; font-weight: bold;
   cursor: pointer; backdrop-filter: blur(4px);
+  -webkit-tap-highlight-color: transparent;
 }
 .eye-btn:hover { background: rgba(255, 255, 255, 0.9); }
 
@@ -601,6 +665,7 @@ onUnmounted(() => {
   display: flex;
   align-items: center;
   gap: 0.6rem;
+  min-height: 44px;
   padding: 0.6rem 0.8rem;
   background: rgba(255, 255, 255, 0.5);
   border: 1px solid rgba(180, 140, 60, 0.3);
@@ -608,6 +673,7 @@ onUnmounted(() => {
   cursor: pointer;
   transition: all 0.2s ease;
   backdrop-filter: blur(4px);
+  -webkit-tap-highlight-color: transparent;
 }
 
 .mode-option.active {
@@ -618,6 +684,9 @@ onUnmounted(() => {
 
 .mode-option input[type="radio"] {
   accent-color: #c69c3d;
+  width: 18px;
+  height: 18px;
+  flex-shrink: 0;
 }
 
 .mode-option span {
@@ -632,6 +701,7 @@ onUnmounted(() => {
   font-size: 0.75rem;
   color: #7a5030;
   font-weight: bold;
+  white-space: nowrap;
 }
 
 /* ================== 模式提示 ================== */
@@ -648,34 +718,43 @@ onUnmounted(() => {
 
 /* ================== 按钮区 ================== */
 .connect-btn {
-  width: 100%; padding: 0.7rem;
+  width: 100%; 
+  min-height: 44px;
+  padding: 0.7rem;
   background: rgba(245, 235, 210, 0.85);
   backdrop-filter: blur(4px);
   border: 1px solid rgba(180, 140, 60, 0.5); border-radius: 6px;
   font-size: 0.85rem; color: #5a4020; font-weight: bold; letter-spacing: 0.1em;
   cursor: pointer; transition: all 0.2s ease;
+  -webkit-tap-highlight-color: transparent;
 }
 .connect-btn:hover:not(:disabled) { background: rgba(255, 248, 230, 1); }
 
 .api-panel-footer { display: flex; gap: 0.8rem; margin-top: 0.5rem; }
 
 .save-btn {
-  flex: 2; padding: 0.7rem;
+  flex: 2; 
+  min-height: 44px;
+  padding: 0.7rem;
   background: rgba(100, 60, 20, 0.9);
   border: 1px solid #4a2b0f; border-radius: 6px;
   color: #f5e8c0; font-weight: bold; font-size: 0.85rem; letter-spacing: 0.1em;
   cursor: pointer; transition: all 0.2s ease;
+  -webkit-tap-highlight-color: transparent;
 }
 .save-btn:hover:not(:disabled) { background: rgba(130, 80, 30, 1); }
 .save-btn:disabled { opacity: 0.5; cursor: not-allowed; }
 
 .clear-btn {
-  flex: 1; padding: 0.7rem;
+  flex: 1; 
+  min-height: 44px;
+  padding: 0.7rem;
   background: rgba(255, 255, 255, 0.7);
   backdrop-filter: blur(4px);
   border: 1px solid rgba(180, 60, 40, 0.4); border-radius: 6px;
   color: #a03020; font-weight: bold; font-size: 0.85rem; letter-spacing: 0.05em;
   cursor: pointer; transition: all 0.2s ease;
+  -webkit-tap-highlight-color: transparent;
 }
 .clear-btn:hover { background: rgba(255, 255, 255, 1); }
 
@@ -690,7 +769,7 @@ onUnmounted(() => {
   font-weight: bold; text-shadow: 0 0 8px white;
 }
 .privacy-note { 
-  font-size: 0.75rem; color: #4a2f1d; text-align: center; 
+  font-size: 0.8rem; color: #4a2f1d; text-align: center; 
   margin: 0; font-weight: bold; text-shadow: 0 0 6px white; 
 }
 
@@ -727,8 +806,8 @@ onUnmounted(() => {
 /* ================== 全屏遮罩 ================== */
 .api-panel-overlay {
   position: fixed;
-  top: 0; left: 0;
-  width: 100vw; height: 100vh;
+  inset: 0;
+  min-height: var(--app-height);
   background: rgba(30, 20, 15, 0.45); 
   backdrop-filter: blur(2px);
   -webkit-backdrop-filter: blur(4px);
@@ -763,4 +842,34 @@ onUnmounted(() => {
 
 .toast-fade-enter-active, .toast-fade-leave-active { transition: opacity 0.3s ease; }
 .toast-fade-enter-from, .toast-fade-leave-to { opacity: 0; }
+
+@media (max-width: 640px) {
+  .api-trigger {
+    top: calc(1rem + var(--safe-top));
+    right: calc(1rem + var(--safe-right));
+  }
+
+  .api-trigger-img {
+    width: 64px;
+    height: 64px;
+  }
+
+  .api-panel {
+    width: calc(100vw - var(--safe-left) - var(--safe-right) - 1rem);
+    max-height: calc(var(--app-height) - var(--safe-top) - var(--safe-bottom) - 1rem);
+  }
+
+  .api-panel-header {
+    padding: 1rem 1rem 1.2rem;
+  }
+
+  .api-panel-body {
+    padding: 1rem;
+    max-height: calc(var(--app-height) - var(--safe-top) - var(--safe-bottom) - 8.75rem);
+  }
+
+  .api-panel-footer {
+    flex-direction: column;
+  }
+}
 </style>
