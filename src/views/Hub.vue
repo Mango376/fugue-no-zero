@@ -958,8 +958,9 @@ onUnmounted(() => {
    基础
    ======================== */
 .hub {
-  width: 100vw;
-  height: 100vh;
+  width: 100%;
+  min-height: var(--app-height);
+  height: var(--app-height);
   position: fixed;   /* ← 改成fixed */
   inset: 0;
   overflow: hidden;
@@ -1031,12 +1032,17 @@ onUnmounted(() => {
 .modal-overlay {
   position: fixed;
   inset: 0;
+  min-height: var(--app-height);
   background: rgba(10, 8, 0, 0.85);
   z-index: 60;
   display: flex;
   align-items: center;
   justify-content: center;
-  padding: 2rem;
+  padding:
+    calc(2rem + var(--safe-top))
+    calc(2rem + var(--safe-right))
+    calc(2rem + var(--safe-bottom))
+    calc(2rem + var(--safe-left));
 }
 .modal-box {
   background: linear-gradient(160deg, #f5edd8, #eddfc0);
@@ -1048,6 +1054,8 @@ onUnmounted(() => {
   text-align: center;
   box-shadow: 0 20px 60px rgba(0, 0, 0, 0.4);
   position: relative;
+  max-height: calc(var(--app-height) - var(--safe-top) - var(--safe-bottom) - 4rem);
+  overflow-y: auto;
 }
 
 /* ========================
@@ -1306,6 +1314,8 @@ onUnmounted(() => {
   justify-content: center;
   overflow-y: auto;
   z-index: 2;
+  box-sizing: border-box;
+  min-height: var(--app-height);
 }
 
 .screen-fade-enter-active,
@@ -1860,7 +1870,11 @@ Landing 屏
     var(--intro-bg);
   background-size: cover;
   background-position: center;
-  padding: 2rem 1.5rem; 
+  padding:
+    calc(2rem + var(--safe-top))
+    calc(1.5rem + var(--safe-right))
+    calc(2rem + var(--safe-bottom))
+    calc(1.5rem + var(--safe-left));
   align-items: center; /* 居中显示 */
   justify-content: center;
 }
@@ -1871,7 +1885,7 @@ Landing 屏
   opacity: 0;
   transform: translateY(10px);
   transition: opacity 0.8s ease, transform 0.8s ease;
-  max-height: 100vh; 
+  max-height: calc(var(--app-height) - var(--safe-top) - var(--safe-bottom) - 4rem);
   display: flex;
   flex-direction: column;
 }
@@ -2090,7 +2104,11 @@ Landing 屏
    Phases 屏
    ======================== */
 .phases-screen {
-  padding: 2rem 1.5rem;
+  padding:
+    calc(2rem + var(--safe-top))
+    calc(1.5rem + var(--safe-right))
+    calc(2rem + var(--safe-bottom))
+    calc(1.5rem + var(--safe-left));
   align-items: center;
   justify-content: center;
   background-image: 
@@ -2270,6 +2288,8 @@ Landing 屏
   display: flex;
   flex-direction: column;
   justify-content: center;
+  max-height: calc(var(--app-height) - var(--safe-top) - var(--safe-bottom) - 4rem);
+  overflow-y: auto;
 }
 
 .phase-modal::before {
@@ -2508,7 +2528,11 @@ Landing 屏
    Detail 屏
    ======================== */
 .detail-screen {
-  padding: 5rem 2rem 4rem;
+  padding:
+    calc(5rem + var(--safe-top))
+    calc(2rem + var(--safe-right))
+    calc(4rem + var(--safe-bottom))
+    calc(2rem + var(--safe-left));
   align-items: flex-start;
   justify-content: center;
   background-image: 
@@ -2522,8 +2546,8 @@ Landing 屏
 /* 返回按钮 */
 .back-btn {
   position: fixed;
-  top: 1.5rem;
-  left: 1.5rem;
+  top: calc(1.5rem + var(--safe-top));
+  left: calc(1.5rem + var(--safe-left));
   z-index: 20;
   padding: 0.5rem 1.2rem;
   background: linear-gradient(160deg, rgba(255, 252, 242, 0.95) 0%, rgba(245, 235, 210, 0.9) 100%);
@@ -3034,9 +3058,18 @@ Landing 屏
   .corner svg { width: 50px; height: 50px; }
   .intro-screen,
   .phases-screen,
-  .detail-screen { padding: 4rem 1rem 3rem; }
+  .detail-screen {
+    padding:
+      calc(4rem + var(--safe-top))
+      calc(1rem + var(--safe-right))
+      calc(3rem + var(--safe-bottom))
+      calc(1rem + var(--safe-left));
+  }
   .modal-box { padding: 2rem 1.5rem; }
-  .back-btn { top: 1rem; left: 1rem; }
+  .back-btn {
+    top: calc(1rem + var(--safe-top));
+    left: calc(1rem + var(--safe-left));
+  }
 
    /* phases 专属 */
    .phases-grid { 

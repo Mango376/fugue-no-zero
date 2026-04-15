@@ -1,5 +1,20 @@
 @import "tailwindcss";
 
+:root {
+  --app-width: 100vw;
+  --app-height: 100vh;
+  --safe-top: env(safe-area-inset-top, 0px);
+  --safe-right: env(safe-area-inset-right, 0px);
+  --safe-bottom: env(safe-area-inset-bottom, 0px);
+  --safe-left: env(safe-area-inset-left, 0px);
+}
+
+@supports (height: 100dvh) {
+  :root {
+    --app-height: 100dvh;
+  }
+}
+
 /* ========================
 字体声明
 ======================== */
@@ -56,10 +71,19 @@
   box-sizing: border-box;
 }
 
+html {
+  width: 100%;
+  min-height: 100%;
+  height: -webkit-fill-available;
+}
+
 body {
   overflow: hidden;
-  height: 100vh;
-  width: 100vw;
+  width: 100%;
+  min-height: var(--app-height);
+  min-height: -webkit-fill-available;
+  overscroll-behavior: none;
+  background: #060503;
   font-family: '正文中文', 'KaiTi', serif;
 }
 
@@ -71,8 +95,8 @@ select {
 }
 
 #app {
-  height: 100vh;
-  width: 100vw;
+  width: 100%;
+  min-height: var(--app-height);
 }
 
 /* ========================

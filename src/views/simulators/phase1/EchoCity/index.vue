@@ -7,8 +7,8 @@
   
   <style scoped>
   .placeholder {
-    width: 100vw;
-    height: 100vh;
+    width: 100%;
+    min-height: var(--app-height);
     display: flex;
     flex-direction: column;
     align-items: center;
