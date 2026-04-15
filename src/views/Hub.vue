@@ -69,7 +69,7 @@
 
       <!-- 副标题 -->
       <div class="landing-sub">
-        触碰这曲名为文明的乐谱
+        触碰这曲名为理解的乐谱
       </div>
 
       <!-- 进入按钮 -->
@@ -508,29 +508,29 @@ import { useRouter } from 'vue-router'
 import { useGameStore } from '@/stores/gameStore'
 import { useAudioStore } from '@/stores/audioStore'
 import saveService from '@/services/saveService'
-const bg1       = 'https://drive.mujian.me/f/WmKh6/landing-bg-1.jpg'
-const bg2       = 'https://drive.mujian.me/f/3qMT4/landing-bg-2.jpg'
-const bg3       = 'https://drive.mujian.me/f/Pyrip/landing-bg-3.jpg'
-const bg4       = 'https://drive.mujian.me/f/6drsa/landing-bg-4.jpg'
-const bg5       = 'https://drive.mujian.me/f/jnnS9/landing-bg-5.jpg'
-const copyBgImg = 'https://drive.mujian.me/f/EKrUG/copyright-bg.png'
-const introBgImg  = 'https://drive.mujian.me/f/MP7fo/intro-bg.jpg'
-const phasesBgImg = 'https://drive.mujian.me/f/y43s5/phases-bg.jpg'
-const phase1Bg  = 'https://drive.mujian.me/f/15PFR/phase1.png'
-const phase2Bg  = 'https://drive.mujian.me/f/47asR/phase2.png'
-const phase3Bg  = 'https://drive.mujian.me/f/q1wfy/phase3.png'
-const phase4Bg  = 'https://drive.mujian.me/f/gG2UD/phase4.png'
-const detailBg1 = 'https://drive.mujian.me/f/8g2Fv/detail-bg1.jpg'
-const detailBg2 = 'https://drive.mujian.me/f/ZrouO/detail-bg2.jpg'
-const detailBg3 = 'https://drive.mujian.me/f/Agmum/detail-bg3.jpg'
-const detailBg4 = 'https://drive.mujian.me/f/ozrF6/detail-bg4.jpg'
+const bg1       = 'https://drive-cdn.mujian.me/49/41e3d912-a974-4a56-98c3-93084db9d013_landing-bg-1.jpg'
+const bg2       = 'https://drive-cdn.mujian.me/49/32916e5d-20ad-40cf-a49b-760518d53761_landing-bg-2.jpg'
+const bg3       = 'https://drive-cdn.mujian.me/49/d75440a2-115d-41af-8775-5ccb83917b43_landing-bg-3.jpg'
+const bg4       = 'https://drive-cdn.mujian.me/49/be8c86d1-8709-4444-9bcb-13b01cf1ad49_landing-bg-4.jpg'
+const bg5       = 'https://drive-cdn.mujian.me/49/539d3316-7f0c-4701-a7f8-2b7524f9c9df_landing-bg-5.jpg'
+const copyBgImg = 'https://drive-cdn.mujian.me/49/d731e0bf-1f2d-4bc3-abf3-efda12b2437d_copyright-bg.png'
+const introBgImg  = 'https://drive-cdn.mujian.me/49/ed924b33-cc28-425b-8531-c4c41ade2005_intro-bg.jpg'
+const phasesBgImg = 'https://drive-cdn.mujian.me/49/5704f1ab-0d8d-48aa-8dcb-5c1b8ae38f67_phases-bg.jpg'
+const phase1Bg  = 'https://drive-cdn.mujian.me/49/2cdf9e2e-d44f-4542-8f37-e65cb7db90b1_phase1.png'
+const phase2Bg  = 'https://drive-cdn.mujian.me/49/308e8166-12df-431e-bb5c-e2521bb41770_phase2.png'
+const phase3Bg  = 'https://drive-cdn.mujian.me/49/9ddcafd4-048e-4a55-8281-d7d55bd23d83_phase3.png'
+const phase4Bg  = 'https://drive-cdn.mujian.me/49/aa1ad758-f151-4c7b-a201-35c84a2db112_phase4.png'
+const detailBg1 = 'https://drive-cdn.mujian.me/49/bb39c4c4-801a-4b1d-a9a8-ce801c0b103f_detail-bg1.jpg'
+const detailBg2 = 'https://drive-cdn.mujian.me/49/61f1a867-2661-4a89-942e-f08fc2a3200e_detail-bg2.jpg'
+const detailBg3 = 'https://drive-cdn.mujian.me/49/22f5ff98-b398-4eb1-a26e-02c9b9e6a74e_detail-bg3.jpg'
+const detailBg4 = 'https://drive-cdn.mujian.me/49/1d548199-9404-4c90-b0c1-87333dc42a31_detail-bg4.jpg'
 
 const hubPlaylist = [
-  'https://drive.mujian.me/f/pJmIX/zore_bg1.mp3',
-  'https://drive.mujian.me/f/GoOiW/zore_bg.2.mp3',
-  'https://drive.mujian.me/f/XKNTm/zore_bg.3.mp3',
-  'https://drive.mujian.me/f/xYQcn/zore_bg.4.mp3',
-  'https://drive.mujian.me/f/v1Dso/zore_bg.5.mp3',
+  'https://drive-cdn.mujian.me/49/dd62e196-95ef-415e-99f1-3911349eba98_zore_bg1.mp3',
+  'https://drive-cdn.mujian.me/49/a3b00dbb-a202-4d95-bbb5-584182bb84e6_zore_bg.2.mp3',
+  'https://drive-cdn.mujian.me/49/95eb33fe-eeae-4a32-abe0-b74214ad7ef4_zore_bg.3.mp3',
+  'https://drive-cdn.mujian.me/49/a75eeecf-23b0-49e0-afb0-30db581cbace_zore_bg.4.mp3',
+  'https://drive-cdn.mujian.me/49/4a91a7fb-6b91-4430-b5ff-8b37d0997c84_zore_bg.5.mp3',
 ]
 
 
@@ -564,8 +564,12 @@ function startHubMusic() {
   hubAudio.value.loop = false
 
   hubAudio.value.addEventListener('ended', () => {
-    const nextIndex = Math.floor(Math.random() * hubPlaylist.length)
-    hubAudio.value.src = hubPlaylist[nextIndex]
+    let nextIndex
+do {
+  nextIndex = Math.floor(Math.random() * hubPlaylist.length)
+} while (hubPlaylist[nextIndex] === hubAudio.value.src)
+hubAudio.value.src = hubPlaylist[nextIndex]
+
     hubAudio.value.play().catch(() => {})
   })
 
@@ -1122,22 +1126,82 @@ onUnmounted(() => {
   font-weight: bold;
 }
 .modal-btn {
-  padding: 0.7rem 2.5rem;
-  background: linear-gradient(135deg, #7a5018, #5a3808);
-  border: 1px solid #9a6828;
-  border-radius: 4px;
+  position: relative;
+  overflow: hidden;
+  padding: 0.75rem 2.8rem;
+  background: linear-gradient(
+    180deg,
+    #a07228 0%,
+    #7a5018 40%,
+    #5a3808 100%
+  );
+  border: none;
+  border-radius: 5px;
   color: #f5e8c0;
   font-family: '正文中文', 'KaiTi', serif;
   font-size: 0.9rem;
   letter-spacing: 0.2em;
   cursor: pointer;
-  transition: all 0.25s ease;
+  transition: transform 0.3s cubic-bezier(0.34, 1.56, 0.64, 1),
+              background 0.25s ease;
+  box-shadow:
+    inset 0  1px 0 rgba(255, 220, 120, 0.35),
+    inset 0 -2px 0 rgba(30, 12, 0, 0.35),
+    0 0 0 1px rgba(80, 40, 5, 0.55),
+    0 4px 10px rgba(60, 28, 4, 0.30),
+    0 8px 20px rgba(60, 28, 4, 0.15);
+  text-shadow: 0 1px 2px rgba(0, 0, 0, 0.4);
 }
+
+.modal-btn::before {
+  content: '';
+  position: absolute;
+  top: 0; left: 0; right: 0;
+  height: 45%;
+  background: linear-gradient(to bottom,
+    rgba(255, 255, 255, 0.18),
+    rgba(255, 255, 255, 0));
+  border-radius: 5px 5px 0 0;
+  pointer-events: none;
+}
+
 .modal-btn:hover {
-  background: linear-gradient(135deg, #8a6025, #6a4515);
-  box-shadow: 0 4px 12px rgba(100, 60, 10, 0.3);
-  transform: translateY(-1px);
+  background: linear-gradient(
+    180deg,
+    #b08235 0%,
+    #8a6025 40%,
+    #6a4515 100%
+  );
+  transform: translateY(-2px);
+  box-shadow:
+    inset 0  1px 0 rgba(255, 228, 130, 0.4),
+    inset 0 -2px 0 rgba(30, 12, 0, 0.40),
+    0 0 0 1px rgba(90, 48, 8, 0.6),
+    0 6px 16px rgba(60, 28, 4, 0.38),
+    0 12px 28px rgba(60, 28, 4, 0.18);
 }
+
+.modal-btn:active {
+  transform: translateY(1px);
+  box-shadow:
+    inset 0 2px 5px rgba(30, 12, 0, 0.35),
+    0 0 0 1px rgba(80, 40, 5, 0.5),
+    0 2px 6px rgba(60, 28, 4, 0.20);
+}
+
+.modal-btn.secondary {
+  background: transparent;
+  border: 1px solid rgba(140, 100, 40, 0.3);
+  color: #7a5830;
+  box-shadow: none;
+}
+.modal-btn.secondary::before { display: none; }
+.modal-btn.secondary:hover {
+  background: rgba(200, 160, 70, 0.08);
+  transform: translateY(-1px);
+  box-shadow: none;
+}
+
 .modal-fade-enter-active,
 .modal-fade-leave-active {
   transition: all 0.4s ease;
@@ -1276,42 +1340,99 @@ Landing 屏
 /* ========================
    Landing 存档按钮组
    ======================== */
-   .landing-save-actions {
+.landing-save-actions {
   display: flex;
-  gap: 0.8rem;
-  margin-top: -0.5rem;
+  gap: 0.75rem;
+  margin-top: -0.4rem;
 }
 
 .landing-save-btn {
   display: inline-flex;
   align-items: center;
   gap: 0.5rem;
-  padding: 0.6rem 1.5rem;
-  background: rgba(255, 255, 255, 0.2);
-  border: 1px solid rgba(42, 63, 95, 0.25);
-  border-radius: 2px;
+  padding: 0.62rem 1.5rem;
+  border: none;
+  border-radius: 4px;
   cursor: pointer;
-  backdrop-filter: blur(6px);
   font-family: '正文中文', 'KaiTi', serif;
   font-size: 0.85rem;
-  color: #1a1a2e;
+  color: #221205;
   letter-spacing: 0.15em;
-  transition: all 0.3s ease;
-  text-shadow: 0 0 8px rgba(255,255,255,0.9);
+  position: relative;
+  overflow: hidden;
+  backdrop-filter: blur(8px);
+  -webkit-backdrop-filter: blur(8px);
+  background: linear-gradient(
+    155deg,
+    rgba(255, 251, 236, 0.80) 0%,
+    rgba(246, 236, 210, 0.72) 100%
+  );
+  box-shadow:
+    inset 0  1px 0 rgba(255, 240, 170, 0.75),
+    inset 0 -2px 0 rgba(90, 45, 5, 0.16),
+    0 0 0 1px rgba(140, 100, 35, 0.25),
+    0 3px 8px  rgba(90, 45, 5, 0.12),
+    0 6px 16px rgba(90, 45, 5, 0.07);
+  text-shadow: 0 1px 0 rgba(255, 225, 130, 0.5);
+  transition: all 0.3s cubic-bezier(0.34, 1.56, 0.64, 1);
 }
+
+.landing-save-btn::before {
+  content: '';
+  position: absolute;
+  top: 0; left: 0; right: 0;
+  height: 48%;
+  background: linear-gradient(to bottom,
+    rgba(255, 255, 255, 0.42),
+    rgba(255, 255, 255, 0));
+  border-radius: 4px 4px 0 0;
+  pointer-events: none;
+}
+
 .landing-save-btn:hover {
-  background: rgba(255, 255, 255, 0.4);
-  border-color: rgba(42, 63, 95, 0.45);
+  background: linear-gradient(
+    155deg,
+    rgba(255, 253, 242, 0.94) 0%,
+    rgba(250, 240, 216, 0.88) 100%
+  );
+  box-shadow:
+    inset 0  1px 0 rgba(255, 245, 185, 0.90),
+    inset 0 -2px 0 rgba(90, 45, 5, 0.22),
+    0 0 0 1px rgba(160, 118, 40, 0.45),
+    0 5px 14px rgba(90, 45, 5, 0.18),
+    0 8px 22px rgba(90, 45, 5, 0.10);
   transform: translateY(-2px);
+  color: #160c02;
 }
+
+.landing-save-btn:active {
+  transform: translateY(1px);
+  box-shadow:
+    inset 0 2px 4px rgba(90, 45, 5, 0.18),
+    0 0 0 1px rgba(140, 100, 35, 0.3),
+    0 1px 4px rgba(90, 45, 5, 0.12);
+}
+
 .landing-save-btn.secondary {
-  background: rgba(255, 255, 255, 0.12);
-  border-color: rgba(42, 63, 95, 0.18);
+  background: linear-gradient(
+    155deg,
+    rgba(248, 243, 228, 0.60) 0%,
+    rgba(238, 228, 204, 0.52) 100%
+  );
+  box-shadow:
+    inset 0  1px 0 rgba(255, 235, 155, 0.55),
+    inset 0 -2px 0 rgba(90, 45, 5, 0.10),
+    0 0 0 1px rgba(140, 100, 35, 0.18),
+    0 2px 6px rgba(90, 45, 5, 0.08);
 }
+
 .save-btn-icon {
-  font-size: 0.75rem;
-  opacity: 0.7;
+  font-size: 0.72rem;
+  opacity: 0.75;
+  position: relative;
+  z-index: 1;
 }
+
 
 /* ========================
    快速读档弹窗
@@ -1540,44 +1661,147 @@ Landing 屏
 /* ========================
    副标题
    ======================== */
+@keyframes textBreathe {
+  0%, 100% {
+    opacity: 0.6;
+    transform: scale(1);
+    letter-spacing: 0.22em;
+    text-shadow: 0 0 6px rgba(255, 255, 255, 0.7);
+  }
+  50% {
+    opacity: 1;
+    transform: scale(1.022);
+    letter-spacing: 0.30em;
+    text-shadow:
+      0 0 10px rgba(255, 255, 255, 1),
+      0 0 24px rgba(200, 150, 40, 0.4),
+      0 0 48px rgba(200, 150, 40, 0.15);
+  }
+}
+
 .landing-sub {
   font-size: 0.95rem;
   color: #3e2a18;
-  letter-spacing: 0.25em;
   font-family: '正文中文', 'KaiTi', serif;
-  text-shadow: 0 0 10px rgba(255,255,255,0.9);
   margin-top: 1rem;
+  display: inline-block;
+  transform-origin: center center;
+  animation: textBreathe 4.2s ease-in-out infinite;
 }
+
 
 /* ========================
    进入按钮 (古典透明画框)
    ======================== */
+@keyframes btnShimmer {
+  0%      { left: -80%; }
+  60%, 100% { left: 130%; }
+}
+
+@keyframes btnGlow {
+  0%, 100% { box-shadow:
+    inset 0  1px 0 rgba(255, 242, 180, 0.85),
+    inset 0 -2px 0 rgba(90, 45, 5, 0.22),
+    0 0 0 1px rgba(155, 110, 35, 0.38),
+    0 0 0 2.5px rgba(210, 165, 60, 0.10),
+    0 4px 10px rgba(90, 45, 5, 0.18),
+    0 8px 22px rgba(90, 45, 5, 0.10);
+  }
+  50% { box-shadow:
+    inset 0  1px 0 rgba(255, 248, 200, 0.95),
+    inset 0 -2px 0 rgba(90, 45, 5, 0.28),
+    0 0 0 1px rgba(185, 140, 55, 0.55),
+    0 0 0 3px rgba(220, 180, 70, 0.18),
+    0 5px 14px rgba(90, 45, 5, 0.22),
+    0 10px 28px rgba(90, 45, 5, 0.13);
+  }
+}
+
 .enter-btn {
+  position: relative;
+  overflow: hidden;
   margin-top: 0.5rem;
-  padding: 0.8rem 2.5rem;
-  background: rgba(255, 255, 255, 0.15); /* 极弱的毛玻璃背景，防止文字看不清 */
-  backdrop-filter: blur(4px);
-  border: 1px solid rgba(160, 120, 40, 0.3); /* 纤细的古典金框 */
-  border-radius: 2px;
+  padding: 0.9rem 3rem;
+  background: linear-gradient(
+    170deg,
+    rgba(255, 253, 240, 0.94) 0%,
+    rgba(250, 240, 212, 0.90) 45%,
+    rgba(242, 228, 195, 0.88) 100%
+  );
+  border: none;
+  border-radius: 5px;
   cursor: pointer;
-  transition: all 0.4s ease;
-  box-shadow: 0 4px 15px rgba(0, 0, 0, 0.05);
+  backdrop-filter: blur(10px);
+  -webkit-backdrop-filter: blur(10px);
+  animation: btnGlow 3.5s ease-in-out infinite;
+  transition: transform 0.35s cubic-bezier(0.34, 1.56, 0.64, 1),
+              background 0.3s ease;
+}
+
+.enter-btn::before {
+  content: '';
+  position: absolute;
+  inset: 0;
+  border-radius: 5px;
+  background: linear-gradient(
+    to bottom,
+    rgba(255, 255, 255, 0.55) 0%,
+    rgba(255, 255, 255, 0.10) 45%,
+    transparent 100%
+  );
+  pointer-events: none;
+}
+
+.enter-btn::after {
+  content: '';
+  position: absolute;
+  top: -30%;
+  left: -80%;
+  width: 45%;
+  height: 160%;
+  background: linear-gradient(
+    108deg,
+    transparent 35%,
+    rgba(255, 235, 140, 0.30) 50%,
+    transparent 65%
+  );
+  animation: btnShimmer 5s ease-in-out infinite;
+  pointer-events: none;
 }
 
 .enter-btn:hover {
-  background: rgba(255, 255, 255, 0.3);
-  border-color: rgba(160, 120, 40, 0.7);
-  transform: translateY(-2px);
-  box-shadow: 0 6px 20px rgba(160, 120, 40, 0.15);
+  transform: translateY(-3px) scale(1.02);
+  background: linear-gradient(
+    170deg,
+    rgba(255, 254, 244, 0.98) 0%,
+    rgba(253, 244, 218, 0.95) 50%,
+    rgba(246, 234, 202, 0.93) 100%
+  );
+}
+
+.enter-btn:active {
+  transform: translateY(1px) scale(0.99);
+  animation: none;
+  box-shadow:
+    inset 0 2px 5px rgba(90, 45, 5, 0.20),
+    0 0 0 1px rgba(140, 95, 28, 0.4),
+    0 2px 6px rgba(90, 45, 5, 0.15);
 }
 
 .enter-btn-text {
-  font-size: 0.9rem;
-  color: #1a110a;
-  letter-spacing: 0.25em;
+  position: relative;
+  z-index: 1;
+  font-size: 0.92rem;
+  color: #221205;
+  letter-spacing: 0.28em;
   font-family: '正文中文', 'KaiTi', serif;
   font-weight: bold;
+  text-shadow:
+    0  1px 0 rgba(255, 220, 110, 0.6),
+    0 -1px 0 rgba(0, 0, 0, 0.05);
 }
+
+
 
 /* ========================
    底部信息 (居中贴底 & 花体修复版)
@@ -1765,30 +1989,80 @@ Landing 屏
   flex-shrink: 0;
 }
 .next-btn {
+  position: relative;
+  overflow: hidden;
   display: inline-flex;
   align-items: center;
-  gap: 0.6rem;
-  padding: 0.7rem 2.5rem;
-  background: linear-gradient(135deg, #7a5018, #5a3808);
-  border: 1px solid #9a6828;
-  border-radius: 4px;
+  gap: 0.7rem;
+  padding: 0.8rem 2.8rem;
+  background: linear-gradient(
+    180deg,
+    #a07228 0%,
+    #7a5018 40%,
+    #5a3808 100%
+  );
+  border: none;
+  border-radius: 5px;
   color: #f5e8c0;
   font-family: '正文中文', 'KaiTi', serif;
-  font-size: 0.85rem;
-  letter-spacing: 0.2em;
+  font-size: 0.88rem;
+  letter-spacing: 0.22em;
   cursor: pointer;
-  transition: all 0.25s ease;
-  box-shadow: 0 4px 15px rgba(0,0,0,0.2);
+  transition: transform 0.35s cubic-bezier(0.34, 1.56, 0.64, 1),
+              background 0.25s ease;
+  box-shadow:
+    inset 0  1px 0 rgba(255, 220, 120, 0.35),
+    inset 0 -2px 0 rgba(30, 12, 0, 0.35),
+    0 0 0 1px rgba(80, 40, 5, 0.55),
+    0 4px 12px rgba(60, 28, 4, 0.30),
+    0 10px 24px rgba(60, 28, 4, 0.15);
+  text-shadow: 0 1px 2px rgba(0, 0, 0, 0.4);
 }
+
+.next-btn::before {
+  content: '';
+  position: absolute;
+  top: 0; left: 0; right: 0;
+  height: 45%;
+  background: linear-gradient(to bottom,
+    rgba(255, 255, 255, 0.18),
+    rgba(255, 255, 255, 0));
+  border-radius: 5px 5px 0 0;
+  pointer-events: none;
+}
+
 .next-btn:hover {
-  background: linear-gradient(135deg, #8a6025, #6a4515);
-  transform: translateY(-1px);
+  background: linear-gradient(
+    180deg,
+    #b08235 0%,
+    #8a6025 40%,
+    #6a4515 100%
+  );
+  transform: translateY(-3px) scale(1.015);
+  box-shadow:
+    inset 0  1px 0 rgba(255, 228, 130, 0.4),
+    inset 0 -2px 0 rgba(30, 12, 0, 0.40),
+    0 0 0 1px rgba(90, 48, 8, 0.6),
+    0 7px 18px rgba(60, 28, 4, 0.35),
+    0 14px 32px rgba(60, 28, 4, 0.18);
 }
+
+.next-btn:active {
+  transform: translateY(1px) scale(0.99);
+  box-shadow:
+    inset 0 2px 5px rgba(30, 12, 0, 0.30),
+    0 0 0 1px rgba(80, 40, 5, 0.5),
+    0 2px 6px rgba(60, 28, 4, 0.18);
+}
+
 .next-arrow {
-  font-size: 1rem;
+  font-size: 1.1rem;
+  position: relative;
+  z-index: 1;
   transition: transform 0.3s ease;
 }
-.next-btn:hover .next-arrow { transform: translateX(3px); }
+.next-btn:hover .next-arrow { transform: translateX(4px); }
+
 
 @media (max-width: 640px) {
   .intro-screen {
@@ -2134,22 +2408,69 @@ Landing 屏
 }
 
 .phase-modal-enter {
-  padding: 0.55rem 1.4rem;
-  background: linear-gradient(135deg, #7a5018, #5a3808);
-  border: 1px solid #9a6828;
-  border-radius: 3px;
+  position: relative;
+  overflow: hidden;
+  padding: 0.62rem 1.6rem;
+  background: linear-gradient(
+    180deg,
+    #a07228 0%,
+    #7a5018 40%,
+    #5a3808 100%
+  );
+  border: none;
+  border-radius: 4px;
   color: #f5e8c0;
   font-family: '正文中文', 'KaiTi', serif;
   font-size: 0.85rem;
   letter-spacing: 0.15em;
   cursor: pointer;
-  transition: all 0.25s ease;
+  transition: transform 0.3s cubic-bezier(0.34, 1.56, 0.64, 1),
+              background 0.25s ease;
+  box-shadow:
+    inset 0  1px 0 rgba(255, 220, 120, 0.32),
+    inset 0 -2px 0 rgba(30, 12, 0, 0.32),
+    0 0 0 1px rgba(80, 40, 5, 0.50),
+    0 3px 8px  rgba(60, 28, 4, 0.28),
+    0 7px 18px rgba(60, 28, 4, 0.13);
+  text-shadow: 0 1px 2px rgba(0, 0, 0, 0.4);
 }
+
+.phase-modal-enter::before {
+  content: '';
+  position: absolute;
+  top: 0; left: 0; right: 0;
+  height: 45%;
+  background: linear-gradient(to bottom,
+    rgba(255, 255, 255, 0.16),
+    rgba(255, 255, 255, 0));
+  border-radius: 4px 4px 0 0;
+  pointer-events: none;
+}
+
 .phase-modal-enter:hover {
-  background: linear-gradient(135deg, #8a6025, #6a4515);
-  transform: translateY(-1px);
-  box-shadow: 0 4px 12px rgba(100, 60, 10, 0.25);
+  background: linear-gradient(
+    180deg,
+    #b08235 0%,
+    #8a6025 40%,
+    #6a4515 100%
+  );
+  transform: translateY(-2px);
+  box-shadow:
+    inset 0  1px 0 rgba(255, 228, 130, 0.38),
+    inset 0 -2px 0 rgba(30, 12, 0, 0.38),
+    0 0 0 1px rgba(90, 48, 8, 0.55),
+    0 5px 14px rgba(60, 28, 4, 0.32),
+    0 10px 24px rgba(60, 28, 4, 0.15);
 }
+
+.phase-modal-enter:active {
+  transform: translateY(1px);
+  box-shadow:
+    inset 0 2px 4px rgba(30, 12, 0, 0.28),
+    0 0 0 1px rgba(80, 40, 5, 0.45),
+    0 1px 4px rgba(60, 28, 4, 0.16);
+}
+
 
 /* 移动端 */
 @media (max-width: 640px) {

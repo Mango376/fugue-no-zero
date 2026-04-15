@@ -1278,7 +1278,7 @@ import {
   diffLevels
 } from './composables/useGameLogic'
 import { parseScriptContext } from './prompts/promptBuilder'
-const titleBg = 'https://drive.mujian.me/f/mJYig/title_bg.jpg'
+const titleBg = 'https://drive-cdn.mujian.me/49/704f29cd-3029-44ed-bcfb-34c9a8e42965_title_bg.jpg'
 // ========== 标题页：清晰圆圈游走 ==========
 const circlePos    = ref({ x: 200, y: 300 })
 const circleTarget = ref({ x: 200, y: 300 })

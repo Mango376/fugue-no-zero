@@ -1,48 +1,68 @@
+import { MujianSdk } from '@mujian/js-sdk'
+import '@mujian/js-sdk/lite'
 import axios from 'axios'
 import db from '../db/gameDB'
-import { MujianSdk } from '@mujian/js-sdk'
 
 const MUJIAN_CHAT_TIMEOUT_MS = 300000
 
 class AIService {
   constructor() {
-    this._mujian = null
-    this._isMujian = false
+    this._mode = 'openapi'   // 当前生效的模式
+    this._mujian = null      // SDK 实例（sdk模式用）
+    this._openapi = null     // { baseURL, apiKey }（openapi模式用）
     this._initDone = false
-    this._initPromise = null // 🆕 新增：初始化状态锁
+    this._initPromise = null
   }
 
-  // 🆕 注意：这里去掉了方法前面的 async 关键字，改为返回一个 Promise
+  // 读取用户选择的模式，默认 openapi
+  async _getMode() {
+    const saved = await db.settings.get('ai_mode')
+    return saved?.value || 'openapi'
+  }
+
   _ensureInit() {
     if (this._initDone) return Promise.resolve()
-    
-    // 🆕 核心安全锁：如果已经正在初始化中了，直接返回正在进行的 Promise，防止并发重复执行
     if (this._initPromise) return this._initPromise
 
     this._initPromise = new Promise(async (resolve) => {
-      const isInPlatform = window.self !== window.top
+      const mode = await this._getMode()
 
-      if (!isInPlatform) {
-        this._isMujian = false
-        this._initDone = true
-        console.log('[AIService] 独立运行 → 使用玩家API')
-        resolve()
-        return
-      }
+      if (mode === 'openapi') {
+        try {
+          await Promise.race([
+            window.$mujian_lite.init(),
+            new Promise((_, reject) =>
+              setTimeout(() => reject(new Error('OpenAPI init timeout')), 15000)
+            )
+          ])
+          this._openapi = window.$mujian_lite.openapi
+          this._mode = 'openapi'
+          console.log('[AIService] ✅ OpenAPI 模式初始化成功')
+        } catch (e) {
+          this._mode = 'custom'
+          console.log('[AIService] OpenAPI 不可用，降级到自定义API模式:', e.message)
+        }
 
-      try {
-        this._mujian = MujianSdk.getInstance()
-        await Promise.race([
-          this._mujian.init(),
-          new Promise((_, reject) =>
-            setTimeout(() => reject(new Error('SDK init timeout')), 150000)
-          )
-        ])
-        this._isMujian = true
-        console.log('[AIService] ✅ 幕间SDK初始化成功')
-      } catch (e) {
-        this._isMujian = false
-        console.log('[AIService] SDK不可用:', e.message)
+      } else if (mode === 'sdk') {
+        try {
+          this._mujian = MujianSdk.getInstance()
+          await Promise.race([
+            this._mujian.init(),
+            new Promise((_, reject) =>
+              setTimeout(() => reject(new Error('SDK init timeout')), 15000)
+            )
+          ])
+          this._mode = 'sdk'
+          console.log('[AIService] ✅ SDK 模式初始化成功')
+        } catch (e) {
+          this._mode = 'custom'
+          console.log('[AIService] SDK 不可用，降级到自定义API模式:', e.message)
+        }
+
+      } else {
+        // custom 模式，不需要初始化SDK
+        this._mode = 'custom'
+        console.log('[AIService] 自定义 API 模式')
       }
 
       this._initDone = true
@@ -51,13 +71,13 @@ class AIService {
 
     return this._initPromise
   }
-  
-  // ... 下面的代码 (isReady, getConfig, call 等等) 保持完全不变！...
-
-
 
   isReady() {
-    return this._isMujian
+    return this._mode !== 'custom'
+  }
+
+  getCurrentMode() {
+    return this._mode
   }
 
   // ============================================================
@@ -81,10 +101,15 @@ class AIService {
     await this._ensureInit()
     const { signal } = options
 
-    if (this._isMujian) {
-      return this._callViaMujian(messages, systemPrompt, { signal })
+    if (this._mode === 'openapi') {
+      return this._callViaOpenAPI(messages, systemPrompt, { signal })
     }
 
+    if (this._mode === 'sdk') {
+      return this._callViaSdk(messages, systemPrompt, { signal })
+    }
+
+    // custom 模式
     const config = await this.getConfig()
     if (!config.endpoint || !config.apiKey || !config.model) {
       throw new Error('请先配置AI接入设置')
@@ -124,36 +149,91 @@ class AIService {
   }
 
   // ============================================================
-  // sendStream()：流式调用（每次创建独立的 controller）
+  // sendStream()：流式调用
   // ============================================================
   async sendStream({ messages, systemPrompt = '', onChunk, signal }) {
     await this._ensureInit()
 
-    if (this._isMujian) {
-      return this._streamViaMujian({ messages, systemPrompt, onChunk, signal })
-    } else {
-      return this._streamViaDirect({ messages, systemPrompt, onChunk, signal })
+    if (this._mode === 'openapi') {
+      return this._streamViaOpenAPI({ messages, systemPrompt, onChunk, signal })
     }
+
+    if (this._mode === 'sdk') {
+      return this._streamViaSdk({ messages, systemPrompt, onChunk, signal })
+    }
+
+    return this._streamViaDirect({ messages, systemPrompt, onChunk, signal })
   }
 
   // ============================================================
-  // 幕间：非流式（独立调用，不依赖共享 controller）
+  // OpenAPI 模式：非流式
   // ============================================================
-  async _callViaMujian(messages, systemPrompt = '', options = {}) {
+  async _callViaOpenAPI(messages, systemPrompt = '', options = {}) {
+    const { signal } = options
+    const { baseURL, apiKey } = this._openapi
+
+    const response = await fetch(`${baseURL}/chat/completions`, {
+      method: 'POST',
+      headers: {
+        'Authorization': `Bearer ${apiKey}`,
+        'Content-Type': 'application/json'
+      },
+      body: JSON.stringify({
+        model: 'deepseek-v3.2',
+        messages: [
+          ...(systemPrompt ? [{ role: 'system', content: systemPrompt }] : []),
+          ...messages
+        ]
+      }),
+      signal
+    })
+
+    if (!response.ok) throw new Error(`OpenAPI 请求失败: ${response.status}`)
+    const data = await response.json()
+    return data.choices[0].message.content
+  }
+
+  // ============================================================
+  // OpenAPI 模式：流式
+  // ============================================================
+  async _streamViaOpenAPI({ messages, systemPrompt = '', onChunk, signal }) {
+    const { baseURL, apiKey } = this._openapi
+
+    const response = await fetch(`${baseURL}/chat/completions`, {
+      method: 'POST',
+      headers: {
+        'Authorization': `Bearer ${apiKey}`,
+        'Content-Type': 'application/json'
+      },
+      body: JSON.stringify({
+        model: 'deepseek-v3.2',
+        stream: true,
+        messages: [
+          ...(systemPrompt ? [{ role: 'system', content: systemPrompt }] : []),
+          ...messages
+        ]
+      }),
+      signal
+    })
+
+    if (!response.ok) throw new Error(`OpenAPI 请求失败: ${response.status}`)
+    await this._readSSEStream(response, onChunk)
+  }
+
+  // ============================================================
+  // SDK 模式：非流式
+  // ============================================================
+  async _callViaSdk(messages, systemPrompt = '', options = {}) {
     const { signal } = options
     const userMsg = [...messages].reverse().find(m => m.role === 'user')
     const query = systemPrompt
       ? `${systemPrompt}\n\n${userMsg?.content || ''}`
       : userMsg?.content || ''
 
-    // 每次创建独立的 controller，避免并发覆盖
     const ctrl = new AbortController()
     if (signal) {
-      if (signal.aborted) {
-        ctrl.abort()
-      } else {
-        signal.addEventListener('abort', () => ctrl.abort(), { once: true })
-      }
+      if (signal.aborted) ctrl.abort()
+      else signal.addEventListener('abort', () => ctrl.abort(), { once: true })
     }
 
     return new Promise((resolve, reject) => {
@@ -167,7 +247,7 @@ class AIService {
       }
       const timeoutId = setTimeout(() => {
         ctrl.abort()
-        settle(reject, new Error(`幕间 AI 响应超时（>${MUJIAN_CHAT_TIMEOUT_MS / 1000}s）`))
+        settle(reject, new Error(`幕间 SDK 响应超时`))
       }, MUJIAN_CHAT_TIMEOUT_MS)
 
       this._mujian.ai.chat.complete(
@@ -178,16 +258,14 @@ class AIService {
         },
         ctrl.signal,
         { parseContent: true }
-      ).catch(error => {
-        settle(reject, error)
-      })
+      ).catch(error => settle(reject, error))
     })
   }
 
   // ============================================================
-  // 幕间：流式
+  // SDK 模式：流式
   // ============================================================
-  async _streamViaMujian({ messages, systemPrompt = '', onChunk, signal }) {
+  async _streamViaSdk({ messages, systemPrompt = '', onChunk, signal }) {
     const userMsg = [...messages].reverse().find(m => m.role === 'user')
     const query = systemPrompt
       ? `${systemPrompt}\n\n${userMsg?.content || ''}`
@@ -202,17 +280,15 @@ class AIService {
   }
 
   // ============================================================
-  // 本地：流式（fetch + SSE）
+  // 自定义 API：流式
   // ============================================================
   async _streamViaDirect({ messages, systemPrompt, onChunk, signal }) {
     const config = await this.getConfig()
-
     if (!config.endpoint || !config.apiKey || !config.model) {
       throw new Error('请先配置AI接入设置')
     }
 
     const base = config.endpoint.replace(/\/+$/, '')
-
     const response = await fetch(`${base}/chat/completions`, {
       method: 'POST',
       headers: {
@@ -230,10 +306,14 @@ class AIService {
       signal
     })
 
-    if (!response.ok) {
-      throw new Error(`API请求失败: ${response.status}`)
-    }
+    if (!response.ok) throw new Error(`API请求失败: ${response.status}`)
+    await this._readSSEStream(response, onChunk)
+  }
 
+  // ============================================================
+  // 公共：SSE 流读取（openapi 和 custom 共用）
+  // ============================================================
+  async _readSSEStream(response, onChunk) {
     const reader  = response.body.getReader()
     const decoder = new TextDecoder()
     let fullContent = ''
@@ -264,21 +344,21 @@ class AIService {
   }
 
   // ============================================================
-  // 幕间专属工具方法
+  // SDK 专属工具方法（仅 sdk 模式可用）
   // ============================================================
   async getProjectInfo() {
     await this._ensureInit()
-    return this._isMujian ? this._mujian.ai.chat.project.getInfo() : null
+    return this._mode === 'sdk' ? this._mujian.ai.chat.project.getInfo() : null
   }
 
   async getPersona() {
     await this._ensureInit()
-    return this._isMujian ? this._mujian.ai.chat.settings.persona.getActive() : null
+    return this._mode === 'sdk' ? this._mujian.ai.chat.settings.persona.getActive() : null
   }
 
   async getHistory() {
     await this._ensureInit()
-    return this._isMujian ? this._mujian.ai.chat.message.getAll() : []
+    return this._mode === 'sdk' ? this._mujian.ai.chat.message.getAll() : []
   }
 }
 
