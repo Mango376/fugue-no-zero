@@ -37,19 +37,27 @@
           <div class="field-group">
             <label class="field-label">连接方式</label>
             <div class="mode-selector">
+              <label class="mode-option" :class="{ active: form.mode === 'tavern' }">
+                <input type="radio" v-model="form.mode" value="tavern" />
+                <span>🍺 酒馆直连</span>
+                <small>使用酒馆已配置的 API</small>
+              </label>
               <label class="mode-option" :class="{ active: form.mode === 'custom' }">
                 <input type="radio" v-model="form.mode" value="custom" />
                 <span>🔧 自定义 API</span>
-                <small>自有 API / 酒馆直连</small>
+                <small>自有 API 直连</small>
               </label>
             </div>
           </div>
 
           <!-- 接入提示 -->
           <div class="mode-hint">
-            <span>
-              🔧 支持 OpenAI 格式的任意接口。在酒馆中游玩时，可填酒馆接口：<br/>
-              http://127.0.0.1:8000/api/backends/chat-completions/generate
+            <span v-if="form.mode === 'tavern'">
+              🍺 直接使用酒馆里已配置好的模型和密钥，无需填写任何内容。<br/>
+              需在酒馆 config.yaml 中将 whitelistMode 设为 false 并重启酒馆。
+            </span>
+            <span v-else>
+              🔧 支持 OpenAI 格式的任意接口，填写站点地址、密钥和模型名。
             </span>
           </div>
 
@@ -95,9 +103,19 @@
               {{ connectError }}
             </div>
 
+            <div class="field-group">
+              <label class="field-label">模型名</label>
+              <input
+                v-model="form.model"
+                class="field-input"
+                placeholder="必填，如 gpt-4o / deepseek-chat"
+              />
+              <p class="field-hint">或点上方「连接」后从列表选择</p>
+            </div>
+
             <Transition name="slide-down">
               <div v-if="models.length > 0" class="field-group">
-                <label class="field-label">选择模型</label>
+                <label class="field-label">或从列表选择</label>
                 <select v-model="form.model" class="field-select">
                   <option v-for="model in models" :key="model.id" :value="model.id">
                     {{ model.id }}
@@ -107,7 +125,11 @@
             </Transition>
           </template>
 
-          <div v-if="savedConfig.model && form.mode === 'custom'" class="current-config">
+          <div v-if="savedConfig.mode === 'tavern'" class="current-config">
+            <span class="orn-diamond small">◆</span>
+            当前：酒馆直连
+          </div>
+          <div v-else-if="savedConfig.model && form.mode === 'custom'" class="current-config">
             <span class="orn-diamond small">◆</span>
             当前：{{ savedConfig.model }}
           </div>
@@ -116,7 +138,7 @@
             <button
               class="save-btn"
               @click="saveConfig"
-              :disabled="form.mode === 'custom' && !form.model"
+              :disabled="form.mode === 'custom' && (!form.endpoint || !form.apiKey || !form.model)"
             >
               确认保存
             </button>
@@ -261,7 +283,7 @@ const form = reactive({
   endpoint: '',
   apiKey: '',
   model: '',
-  mode: 'custom'
+  mode: 'tavern'
 })
 
 const showKey = ref(false)
@@ -275,7 +297,7 @@ const savedConfig = reactive({
   endpoint: '',
   apiKey: '',
   model: '',
-  mode: 'custom'
+  mode: 'tavern'
 })
 
 // ========================
@@ -361,9 +383,9 @@ async function clearConfig() {
   await db.settings.delete('ai_endpoint')
   await db.settings.delete('ai_key')
   await db.settings.delete('ai_model')
-  form.mode     = 'custom'
+  form.mode     = 'tavern'
   form.endpoint = ''; form.apiKey = ''; form.model = ''
-  savedConfig.mode     = 'custom'
+  savedConfig.mode     = 'tavern'
   savedConfig.endpoint = ''; savedConfig.apiKey = ''; savedConfig.model = ''
   models.value = []
   connectStatus.value = '连接并获取模型'

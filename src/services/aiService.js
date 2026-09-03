@@ -17,7 +17,7 @@ class AIService {
   // 读取用户选择的模式，默认 openapi
   async _getMode() {
     const saved = await db.settings.get('ai_mode')
-    return saved?.value || 'custom'
+    return saved?.value || 'tavern'
   }
 
   _ensureInit() {
@@ -59,6 +59,10 @@ class AIService {
           console.log('[AIService] SDK 不可用，降级到自定义API模式:', e.message)
         }
 
+      } else if (mode === 'tavern') {
+        // 酒馆直连：走本机酒馆的生成接口，用酒馆里配置好的模型
+        this._mode = 'tavern'
+        console.log('[AIService] 酒馆直连模式')
       } else {
         // custom 模式，不需要初始化SDK
         this._mode = 'custom'
@@ -74,6 +78,11 @@ class AIService {
 
   isReady() {
     return this._mode !== 'custom'
+  }
+
+  // 酒馆直连接口地址（本机酒馆默认端口 8000）
+  get tavernEndpoint() {
+    return 'http://127.0.0.1:8000/api/backends/chat-completions/generate'
   }
 
   getCurrentMode() {
@@ -109,6 +118,10 @@ class AIService {
       return this._callViaSdk(messages, systemPrompt, { signal })
     }
 
+    if (this._mode === 'tavern') {
+      return this._callViaTavern(messages, systemPrompt, { signal })
+    }
+
     // custom 模式
     const config = await this.getConfig()
     if (!config.endpoint || !config.apiKey || !config.model) {
@@ -138,6 +151,31 @@ class AIService {
   }
 
   // ============================================================
+  // 酒馆直连模式：非流式
+  // ============================================================
+  async _callViaTavern(messages, systemPrompt = '', options = {}) {
+    const { signal } = options
+    const response = await axios.post(
+      this.tavernEndpoint,
+      {
+        messages: [
+          ...(systemPrompt ? [{ role: 'system', content: systemPrompt }] : []),
+          ...messages
+        ]
+      },
+      {
+        headers: { 'Content-Type': 'application/json' },
+        timeout: 300000,
+        signal
+      }
+    )
+    if (response.data?.choices?.[0]?.message?.content) {
+      return response.data.choices[0].message.content
+    }
+    throw new Error('酒馆未返回有效结果，请确认酒馆已启动且 whitelistMode 已设为 false')
+  }
+
+  // ============================================================
   // generateReply()：快捷调用
   // ============================================================
   async generateReply(userMessage, systemPrompt, options = {}) {
@@ -160,6 +198,13 @@ class AIService {
 
     if (this._mode === 'sdk') {
       return this._streamViaSdk({ messages, systemPrompt, onChunk, signal })
+    }
+
+    if (this._mode === 'tavern') {
+      // 酒馆接口按非流式请求，收到后一次性推给 onChunk
+      const text = await this._callViaTavern(messages, systemPrompt, { signal })
+      if (onChunk && text) onChunk(text)
+      return text
     }
 
     return this._streamViaDirect({ messages, systemPrompt, onChunk, signal })
