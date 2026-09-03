@@ -45,7 +45,9 @@ export const useAudioStore = defineStore('audio', () => {
       const timer = setInterval(() => {
         current -= step
         if (current <= 0) {
-          audioEl.volume = 0
+  
+
+        audioEl.volume = 0
           audioEl.pause()
           clearInterval(timer)
           resolve()
@@ -55,37 +57,6 @@ export const useAudioStore = defineStore('audio', () => {
       }, interval)
     })
   }
-
-
-
-function fadeOut(audio, duration = 800) {
-  if (!audio) return
-  const startVolume = audio.volume
-  const step = startVolume / (duration / 16)
-  const timer = setInterval(() => {
-    if (audio.volume > step) {
-      audio.volume = Math.max(0, audio.volume - step)
-    } else {
-      audio.volume = 0
-      audio.pause()
-      clearInterval(timer)
-    }
-  }, 16)
-}
-
-
-
-
-
-
-
-
-
-
-
-
-
-
 
   async function fadeOutCurrent(duration = 800) {
     if (currentAudio.value) {

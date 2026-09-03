@@ -72,21 +72,22 @@
         触碰这曲名为理解的乐谱
       </div>
 
-      <!-- 进入按钮 -->
-      <button class="enter-btn" @click="enterGame">
-        <span class="enter-btn-text">点击进入演奏</span>
-      </button>
-
-      <div v-if="hasAnySave" class="landing-save-actions">
-  <button class="landing-save-btn" @click="continueGame">
-    <span class="save-btn-icon">▶</span>
-    继续游戏
-  </button>
-  <button class="landing-save-btn secondary" @click="openQuickLoad">
-    <span class="save-btn-icon">◈</span>
-    快速读档
-  </button>
-</div>
+       <div class="landing-actions">
+ <button class="landing-save-btn" @click="enterGame">
+ <span class="save-btn-icon">▷</span>
+ 开始游戏
+ </button>
+ <template v-if="hasAnySave">
+ <button class="landing-save-btn" @click="continueGame">
+ <span class="save-btn-icon">▶</span>
+ 继续游戏
+ </button>
+ <button class="landing-save-btn secondary" @click="openQuickLoad">
+ <span class="save-btn-icon">◈</span>
+ 读取存档
+ </button>
+ </template>
+ </div>
       <!-- 底部信息 -->
       <div class="landing-footer">
         <div class="footer-line">SYS·OBSERVATION·ACTIVE·FREQ</div>
@@ -892,50 +893,58 @@ const phasesWithState = computed(() =>
 // 生命周期
 // ========================
 onMounted(async () => {
-  const saved = sessionStorage.getItem('hubReturn')
+ const saved = sessionStorage.getItem('hubReturn')
 
-  // ✅ 只注册监听器，不创建 Audio
-  if (!saved) {
-    document.addEventListener('click',      unlockHubMusic)
-    document.addEventListener('touchstart', unlockHubMusic)
-  }
+ if (saved) {
+ // 从模拟器返回：跳过开场动画，黑幕渐出 + 音乐渐强
+ showSplash.value = false
+ showBlackMask.value = true
 
-  store.setGlobalApiBtn(false)
+ store.setGlobalApiBtn(true)
+ startBgSlideshow()
+ await store.loadUnlocked()
+ await loadHasSaves()
 
-  // 开场动画
-  await delay(3000)
-  splashLine1.value = true
-  await delay(3500)
-  splashLine1.value = false
-  await delay(1500)
-  showSplash.value = false
+ sessionStorage.removeItem('hubReturn')
+ const { phaseId } = JSON.parse(saved)
+ const phase = phasesWithState.value.find(p => p.id === phaseId)
 
-  store.setGlobalApiBtn(true)
-  startBgSlideshow()
-  await store.loadUnlocked()
-  await loadHasSaves()
+ if (phase) {
+ currentPhase.value = phase
+ screen.value = 'phase-detail'
+ detailReady.value = true
+ phasesReady.value = true
+ }
+ ready.value = true
 
-  if (saved) {
-    sessionStorage.removeItem('hubReturn')
-    const { phaseId } = JSON.parse(saved)
-    const phase = phasesWithState.value.find(p => p.id === phaseId)
-    if (phase) {
-      currentPhase.value = phase
-      screen.value       = 'phase-detail'
-      detailReady.value  = true
-      phasesReady.value  = true
-      ready.value        = true
-      store.setGlobalApiBtn(true)
-      await delay(1500)
-      startHubMusic()
-      document.removeEventListener('click',      unlockHubMusic)
-      document.removeEventListener('touchstart', unlockHubMusic)
-      return
-    }
-  }
+ await delay(300)
+ showBlackMask.value = false
 
-  setTimeout(() => { ready.value = true }, 300)
-  startHubMusic()
+ await delay(600)
+ startHubMusic()
+ return
+ }
+
+ // 首次进入：播放完整开场动画
+ document.addEventListener('click', unlockHubMusic)
+ document.addEventListener('touchstart', unlockHubMusic)
+
+ store.setGlobalApiBtn(false)
+
+ await delay(3000)
+ splashLine1.value = true
+ await delay(3500)
+ splashLine1.value = false
+ await delay(1500)
+ showSplash.value = false
+
+ store.setGlobalApiBtn(true)
+ startBgSlideshow()
+ await store.loadUnlocked()
+ await loadHasSaves()
+
+ setTimeout(() => { ready.value = true }, 300)
+ startHubMusic()
 })
 
 
@@ -1344,6 +1353,12 @@ Landing 屏
   display: flex;
   gap: 0.75rem;
   margin-top: -0.4rem;
+}
+
+.landing-actions {
+ display: flex;
+ gap: 0.75rem;
+ margin-top: -0.4rem;
 }
 
 .landing-save-btn {

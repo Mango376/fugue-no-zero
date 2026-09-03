@@ -37,31 +37,19 @@
           <div class="field-group">
             <label class="field-label">连接方式</label>
             <div class="mode-selector">
-              <label class="mode-option" :class="{ active: form.mode === 'openapi' }">
-                <input type="radio" v-model="form.mode" value="openapi" />
-                <span>🎼 幕间 OpenAPI</span>
-                <small>默认推荐</small>
-              </label>
-              <label class="mode-option" :class="{ active: form.mode === 'sdk' }">
-                <input type="radio" v-model="form.mode" value="sdk" />
-                <span>⚡ 幕间 SDK</span>
-                <small>完整能力</small>
-              </label>
               <label class="mode-option" :class="{ active: form.mode === 'custom' }">
                 <input type="radio" v-model="form.mode" value="custom" />
                 <span>🔧 自定义 API</span>
-                <small>本地调试</small>
+                <small>自有 API / 酒馆直连</small>
               </label>
             </div>
           </div>
 
-          <!-- openapi / sdk 模式提示 -->
-          <div v-if="form.mode !== 'custom'" class="mode-hint">
-            <span v-if="form.mode === 'openapi'">
-              🎼 将使用幕间 OpenAPI，自动获取密钥，无需手动填写
-            </span>
-            <span v-if="form.mode === 'sdk'">
-              ⚡ 将使用幕间完整 SDK，支持消息管理、人设等更多能力
+          <!-- 接入提示 -->
+          <div class="mode-hint">
+            <span>
+              🔧 支持 OpenAI 格式的任意接口。在酒馆中游玩时，可填酒馆接口：<br/>
+              http://127.0.0.1:8000/api/backends/chat-completions/generate
             </span>
           </div>
 
@@ -122,11 +110,6 @@
           <div v-if="savedConfig.model && form.mode === 'custom'" class="current-config">
             <span class="orn-diamond small">◆</span>
             当前：{{ savedConfig.model }}
-          </div>
-
-          <div v-if="savedConfig.mode && form.mode !== 'custom'" class="current-config">
-            <span class="orn-diamond small">◆</span>
-            当前模式：{{ savedConfig.mode === 'openapi' ? '幕间 OpenAPI' : '幕间 SDK' }}
           </div>
 
           <div class="api-panel-footer">
@@ -278,7 +261,7 @@ const form = reactive({
   endpoint: '',
   apiKey: '',
   model: '',
-  mode: 'openapi'
+  mode: 'custom'
 })
 
 const showKey = ref(false)
@@ -292,7 +275,7 @@ const savedConfig = reactive({
   endpoint: '',
   apiKey: '',
   model: '',
-  mode: 'openapi'
+  mode: 'custom'
 })
 
 // ========================
@@ -378,9 +361,9 @@ async function clearConfig() {
   await db.settings.delete('ai_endpoint')
   await db.settings.delete('ai_key')
   await db.settings.delete('ai_model')
-  form.mode     = 'openapi'
+  form.mode     = 'custom'
   form.endpoint = ''; form.apiKey = ''; form.model = ''
-  savedConfig.mode     = 'openapi'
+  savedConfig.mode     = 'custom'
   savedConfig.endpoint = ''; savedConfig.apiKey = ''; savedConfig.model = ''
   models.value = []
   connectStatus.value = '连接并获取模型'
@@ -477,7 +460,7 @@ onUnmounted(() => {
 /* ================== 悬浮提示字 ================== */
 .api-tooltip {
   position: absolute; 
-  top: calc(50% + ((var(--safe-top) - var(--safe-bottom)) / 2));
+  top: calc(50% + ((var(--safe-top, 0px) - var(--safe-bottom, 0px)) / 2));
   left: 50%; 
   transform: translate(-50%, -50%);
   font-size: 0.85rem; 
@@ -507,11 +490,11 @@ onUnmounted(() => {
 /* ================== 核心面板 ================== */
 .api-panel {
   position: fixed;
-  top: calc(50% + ((var(--safe-top) - var(--safe-bottom)) / 2));
+  top: calc(50% + ((var(--safe-top, 0px) - var(--safe-bottom, 0px)) / 2));
   left: 50%;
   transform: translate(-50%, -50%);
-  width: min(360px, calc(100vw - var(--safe-left) - var(--safe-right) - 1.5rem));
-  max-height: calc(var(--app-height) - var(--safe-top) - var(--safe-bottom) - 1.5rem);
+  width: min(360px, calc(100vw - var(--safe-left, 0px) - var(--safe-right, 0px) - 1.5rem));
+  max-height: calc(var(--app-height, 100vh) - var(--safe-top, 0px) - var(--safe-bottom, 0px) - 1.5rem);
   z-index: 200;
   background-color: transparent; 
   border: none; 
@@ -855,8 +838,8 @@ onUnmounted(() => {
   }
 
   .api-panel {
-    width: calc(100vw - var(--safe-left) - var(--safe-right) - 1rem);
-    max-height: calc(var(--app-height) - var(--safe-top) - var(--safe-bottom) - 1rem);
+    width: calc(100vw - var(--safe-left, 0px) - var(--safe-right, 0px) - 1rem);
+    max-height: calc(var(--app-height, 100vh) - var(--safe-top, 0px) - var(--safe-bottom, 0px) - 1rem);
   }
 
   .api-panel-header {
@@ -865,7 +848,7 @@ onUnmounted(() => {
 
   .api-panel-body {
     padding: 1rem;
-    max-height: calc(var(--app-height) - var(--safe-top) - var(--safe-bottom) - 8.75rem);
+    max-height: calc(var(--app-height, 100vh) - var(--safe-top, 0px) - var(--safe-bottom, 0px) - 8.75rem);
   }
 
   .api-panel-footer {

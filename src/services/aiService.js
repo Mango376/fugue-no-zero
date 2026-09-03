@@ -17,7 +17,7 @@ class AIService {
   // 读取用户选择的模式，默认 openapi
   async _getMode() {
     const saved = await db.settings.get('ai_mode')
-    return saved?.value || 'openapi'
+    return saved?.value || 'custom'
   }
 
   _ensureInit() {

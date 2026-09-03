@@ -16,3 +16,21 @@ const app = createApp(App)
 app.use(createPinia())
 app.use(router)
 app.mount('#app')
+// ============ 酒馆 iframe 高度自适应 ============
+// 被 iframe 嵌入时，向父页面持续上报内容真实高度
+function reportEmbedHeight() {
+  try {
+    if (window.parent === window) return   // 不在 iframe 里就不干活
+    const h = Math.max(
+      document.documentElement.scrollHeight,
+      document.body.scrollHeight
+    )
+    window.parent.postMessage({ type: 'fugue-height', height: h }, '*')
+  } catch (e) { /* 忽略 */ }
+}
+
+// 初次挂载 + 尺寸变化 + 路由切换都上报
+new ResizeObserver(reportEmbedHeight).observe(document.documentElement)
+window.addEventListener('load', reportEmbedHeight)
+router.afterEach(() => setTimeout(reportEmbedHeight, 300))
+reportEmbedHeight()
